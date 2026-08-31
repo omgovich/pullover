@@ -94,9 +94,16 @@ export async function pollForToken(
   const fetchFn = deps.fetchFn ?? fetch
   const sleep = deps.sleep ?? defaultSleep
   let intervalMs = info.interval * 1000
+  let elapsedMs = 0
+  const expiresInMs = info.expiresIn * 1000
 
   for (;;) {
     await sleep(intervalMs)
+    elapsedMs += intervalMs
+
+    if (elapsedMs >= expiresInMs) {
+      throw new Error('Время действия кода истекло. Пожалуйста, войдите снова.')
+    }
 
     const data = await postJson<TokenResponse>(
       ACCESS_TOKEN_URL,

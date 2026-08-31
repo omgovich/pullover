@@ -53,7 +53,7 @@ describe('requestDeviceCode', () => {
 describe('pollForToken', () => {
   it('returns the token once the user approves', async () => {
     const fetchFn = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse({ error: 'authorization_pending' }))
       .mockResolvedValueOnce(jsonResponse({ access_token: 'gho_secret' }))
     const sleep = vi.fn(async () => {})
@@ -66,6 +66,14 @@ describe('pollForToken', () => {
     expect(token).toBe('gho_secret')
     expect(fetchFn).toHaveBeenCalledTimes(2)
     expect(sleep).toHaveBeenCalledWith(5000)
+
+    const [url, init] = fetchFn.mock.calls[0]!
+    expect(url).toBe('https://github.com/login/oauth/access_token')
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+      client_id: 'client-123',
+      device_code: 'device-code-value',
+      grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+    })
   })
 
   it('backs off by five seconds on slow_down', async () => {
@@ -102,5 +110,22 @@ describe('pollForToken', () => {
         sleep: async () => {},
       }),
     ).rejects.toThrow(/expired_token/)
+  })
+
+  it('stops polling once the accumulated wait exceeds expiresIn, even if GitHub never says so', async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ error: 'authorization_pending' }),
+    )
+    const sleep = vi.fn(async () => {})
+    const info: DeviceCodeInfo = { ...INFO, expiresIn: 10 }
+
+    await expect(
+      pollForToken('client-123', info, {
+        fetchFn: fetchFn as unknown as typeof fetch,
+        sleep,
+      }),
+    ).rejects.toThrow(/истекло/)
+
+    expect(fetchFn).toHaveBeenCalledTimes(1)
   })
 })
