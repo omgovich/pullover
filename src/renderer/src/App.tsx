@@ -21,7 +21,12 @@ export default function App(): React.JSX.Element {
   if (snapshot.status === 'signed-out') return <SignIn />
 
   if (showSettings) {
-    return <SettingsPanel onClose={() => setShowSettings(false)} />
+    return (
+      <SettingsPanel
+        knownRepositories={snapshot.knownRepositories}
+        onClose={() => setShowSettings(false)}
+      />
+    )
   }
 
   if (snapshot.status === 'loading' && snapshot.items.length === 0) {

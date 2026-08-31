@@ -1,4 +1,5 @@
 import { classifyAll, countAttention } from '@core/classify'
+import { collectRepositories, filterByRepositories } from '@core/repo-filter'
 import type { InboxSnapshot } from '@shared/ipc'
 import type { PullRequest } from '@shared/types'
 import {
@@ -27,6 +28,7 @@ export class Inbox {
     errorMessage: null,
     myLogin: null,
     seen: {},
+    knownRepositories: [],
   }
 
   private prs: PullRequest[] = []
@@ -60,10 +62,20 @@ export class Inbox {
     this.deps.onChange(this.snapshot)
   }
 
-  /** Re-runs the classifier over PRs already in memory. No network. */
+  /**
+   * Re-runs the classifier over PRs already in memory. No network. This is
+   * also how a changed repository selection takes effect: `this.prs` always
+   * holds the unfiltered fetch, and narrowing happens here, so ticking a
+   * checkbox updates the inbox instantly instead of waiting on a refetch.
+   */
   reclassify(): void {
     if (this.myLogin === null) return
-    const items = classifyAll(this.prs, {
+    const settings = this.deps.store.getSettings()
+    const filtered = filterByRepositories(
+      this.prs,
+      settings.watchAllRepositories ? null : settings.repositories,
+    )
+    const items = classifyAll(filtered, {
       myLogin: this.myLogin,
       snoozes: this.deps.store.getSnoozes(),
       now: this.now(),
@@ -132,6 +144,7 @@ export class Inbox {
         errorMessage: null,
         myLogin: null,
         seen: {},
+        knownRepositories: [],
       })
       return
     }
@@ -141,15 +154,19 @@ export class Inbox {
     try {
       this.myLogin ??= await this.fetchLogin(client)
       const myLogin = this.myLogin
+      // Always fetch unfiltered: the picker's options come from what shows
+      // up in the inbox, so the search itself must never be narrowed by the
+      // repository selection.
+      this.prs = await this.fetchPrs(client, myLogin)
+
       const settings = this.deps.store.getSettings()
-      this.prs = await this.fetchPrs(
-        client,
+      const filtered = filterByRepositories(
+        this.prs,
         settings.watchAllRepositories ? null : settings.repositories,
-        myLogin,
       )
 
       const now = this.now()
-      const items = classifyAll(this.prs, {
+      const items = classifyAll(filtered, {
         myLogin: this.myLogin,
         snoozes: this.deps.store.getSnoozes(),
         now,
@@ -163,6 +180,7 @@ export class Inbox {
         errorMessage: null,
         myLogin: this.myLogin,
         seen: this.deps.store.getSeen(),
+        knownRepositories: collectRepositories(this.prs),
       })
     } catch (error) {
       // Keep the last good list on screen; the header shows the staleness.

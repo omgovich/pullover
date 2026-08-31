@@ -1,17 +1,34 @@
 import { useEffect, useState } from 'react'
-import { Button, Card, Checkbox, Text, TextField, View } from 'reshaped/bundle'
+import { Button, Checkbox, Text, View } from 'reshaped/bundle'
 import type { Settings } from '@shared/types'
 
 interface Props {
+  knownRepositories: string[]
   onClose: () => void
 }
 
 const INTERVAL_OPTIONS = [1, 5, 15, 30]
 
-export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
+/**
+ * Options to render = the union of `knownRepositories` and
+ * `settings.repositories`, sorted, unique, and deduped case-insensitively.
+ * Stored repository names are lowercased, while GitHub returns them in
+ * their original case — prefer the original casing when a name shows up in
+ * both, since it reads better.
+ */
+function repositoryOptions(known: string[], selected: string[]): string[] {
+  const byLower = new Map<string, string>()
+  for (const repo of [...known, ...selected]) {
+    if (!byLower.has(repo.toLowerCase())) byLower.set(repo.toLowerCase(), repo)
+  }
+  return [...byLower.values()].sort((a, b) => a.localeCompare(b))
+}
+
+export default function SettingsPanel({
+  knownRepositories,
+  onClose,
+}: Props): React.JSX.Element {
   const [settings, setSettings] = useState<Settings | null>(null)
-  const [draft, setDraft] = useState('')
-  const [error, setError] = useState<string | null>(null)
 
   const reload = async (): Promise<void> => {
     setSettings(await window.api.getSettings())
@@ -21,19 +38,12 @@ export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
     void reload()
   }, [])
 
-  const addRepository = async (): Promise<void> => {
-    setError(null)
-    try {
-      await window.api.addRepository(draft)
-      setDraft('')
-      await reload()
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+  const toggleRepository = async (fullName: string, checked: boolean): Promise<void> => {
+    if (checked) {
+      await window.api.addRepository(fullName)
+    } else {
+      await window.api.removeRepository(fullName)
     }
-  }
-
-  const removeRepository = async (fullName: string): Promise<void> => {
-    await window.api.removeRepository(fullName)
     await reload()
   }
 
@@ -48,6 +58,8 @@ export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
   }
 
   if (settings === null) return <View padding={4} />
+
+  const options = repositoryOptions(knownRepositories, settings.repositories)
 
   return (
     <View height="100vh" backgroundColor="page">
@@ -83,58 +95,28 @@ export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
 
           {!settings.watchAllRepositories && (
             <>
-              <View direction="row" gap={2}>
-                <View grow>
-                  <TextField
-                    name="repository"
-                    value={draft}
-                    placeholder="owner/repo"
-                    size="small"
-                    onChange={({ value }) => setDraft(value)}
-                    inputAttributes={{
-                      onKeyDown: (event) => {
-                        if (event.key === 'Enter') void addRepository()
-                      },
-                    }}
-                  />
-                </View>
-                <Button
-                  size="small"
-                  color="primary"
-                  disabled={draft.trim() === ''}
-                  onClick={() => void addRepository()}
-                >
-                  Add
-                </Button>
-              </View>
-
-              {error !== null && (
-                <Text variant="caption-1" color="critical">
-                  {error}
-                </Text>
-              )}
-
-              {settings.repositories.length === 0 ? (
+              {options.length === 0 ? (
                 <Text variant="caption-1" color="neutral-faded">
-                  None yet — nothing will show up until you add one.
+                  Nothing in your inbox yet, so there's nothing to narrow.
                 </Text>
               ) : (
-                settings.repositories.map((repo) => (
-                  <Card key={repo} padding={2}>
-                    <View direction="row" align="center" gap={2}>
-                      <Text variant="caption-1">{repo}</Text>
-                      <View grow />
-                      <Button
-                        size="small"
-                        variant="ghost"
-                        color="critical"
-                        onClick={() => void removeRepository(repo)}
-                      >
-                        Remove
-                      </Button>
-                    </View>
-                  </Card>
-                ))
+                <>
+                  {settings.repositories.length === 0 && (
+                    <Text variant="caption-1" color="neutral-faded">
+                      Nothing ticked, so nothing shows. Tick the repos you care about.
+                    </Text>
+                  )}
+                  {options.map((repo) => (
+                    <Checkbox
+                      key={repo}
+                      name={`repository-${repo}`}
+                      checked={settings.repositories.includes(repo.toLowerCase())}
+                      onChange={({ checked }) => void toggleRepository(repo, checked)}
+                    >
+                      {repo}
+                    </Checkbox>
+                  ))}
+                </>
               )}
             </>
           )}
