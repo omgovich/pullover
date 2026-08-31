@@ -1,0 +1,51 @@
+import type { ClassifiedPullRequest, Settings, SnoozeType } from './types'
+
+export interface InboxSnapshot {
+  status: 'signed-out' | 'loading' | 'ready' | 'error'
+  items: ClassifiedPullRequest[]
+  attentionCount: number
+  lastUpdatedAt: string | null
+  errorMessage: string | null
+  myLogin: string | null
+  /** PR id → ISO timestamp of when the user last marked it seen. */
+  seen: Record<string, string>
+}
+
+export interface DeviceCodePayload {
+  userCode: string
+  verificationUri: string
+}
+
+export const IPC = {
+  getSnapshot: 'inbox:get-snapshot',
+  snapshotChanged: 'inbox:snapshot-changed',
+  refresh: 'inbox:refresh',
+  openPr: 'inbox:open-pr',
+  snooze: 'inbox:snooze',
+  unsnooze: 'inbox:unsnooze',
+  markSeen: 'inbox:mark-seen',
+  getSettings: 'settings:get',
+  setSettings: 'settings:set',
+  addRepository: 'settings:add-repository',
+  removeRepository: 'settings:remove-repository',
+  startAuth: 'auth:start',
+  deviceCode: 'auth:device-code',
+  signOut: 'auth:sign-out',
+} as const
+
+export interface RendererApi {
+  getSnapshot: () => Promise<InboxSnapshot>
+  onSnapshot: (listener: (snapshot: InboxSnapshot) => void) => () => void
+  onDeviceCode: (listener: (payload: DeviceCodePayload) => void) => () => void
+  refresh: () => Promise<void>
+  openPr: (url: string) => Promise<void>
+  snooze: (prId: string, type: SnoozeType, hours?: number) => Promise<void>
+  unsnooze: (prId: string) => Promise<void>
+  markSeen: (prId: string) => Promise<void>
+  getSettings: () => Promise<Settings>
+  setSettings: (patch: Partial<Settings>) => Promise<void>
+  addRepository: (fullName: string) => Promise<void>
+  removeRepository: (fullName: string) => Promise<void>
+  startAuth: () => Promise<void>
+  signOut: () => Promise<void>
+}
