@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { fetchPullRequests, fetchViewerLogin } from './fetch-prs'
 import { DETAILS_QUERY, SEARCH_QUERY, VIEWER_QUERY } from './queries'
 
+const DETAIL_BATCH_SIZE = 25
+
 function detailNode(id: string, overrides: Record<string, unknown> = {}) {
   return {
     id,
@@ -80,6 +82,29 @@ describe('fetchPullRequests', () => {
     await fetchPullRequests(client, ['acme/web'])
     const detailCalls = client.mock.calls.filter(([q]) => q === DETAILS_QUERY)
     expect(detailCalls).toHaveLength(1)
+    expect(detailCalls[0]![1]!.ids).toEqual(['PR_1'])
+  })
+
+  it('splits detail requests into batches of DETAIL_BATCH_SIZE ids', async () => {
+    const ids = Array.from({ length: 60 }, (_, i) => `PR_${i}`)
+    const client = fakeClient(
+      { 'author:@me': ids },
+      ids.map((id) => detailNode(id)),
+    )
+
+    const prs = await fetchPullRequests(client, ['acme/web'])
+
+    const detailCalls = client.mock.calls.filter(([q]) => q === DETAILS_QUERY)
+    expect(detailCalls).toHaveLength(3)
+
+    const idsPerCall = detailCalls.map(
+      ([, variables]) => (variables as { ids: string[] }).ids,
+    )
+    for (const batch of idsPerCall) {
+      expect(batch.length).toBeLessThanOrEqual(DETAIL_BATCH_SIZE)
+    }
+    expect(idsPerCall.flat().sort()).toEqual([...ids].sort())
+    expect(prs.map((pr) => pr.id).sort()).toEqual([...ids].sort())
   })
 
   it('maps the detail node into a domain pull request', async () => {
@@ -94,6 +119,26 @@ describe('fetchPullRequests', () => {
       detailNode('PR_1'),
     ])
     const prs = await fetchPullRequests(client, ['acme/web'])
+    expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
+  })
+
+  it('skips a null node GitHub returns in place of an unresolved id', async () => {
+    // Real GitHub returns `null` in the array slot for an id it cannot
+    // resolve, rather than omitting the entry outright.
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === VIEWER_QUERY) return { viewer: { login: 'vlad' } }
+      if (query === SEARCH_QUERY) {
+        return { search: { nodes: [{ id: 'PR_1' }, { id: 'PR_missing' }] } }
+      }
+      if (query === DETAILS_QUERY) {
+        expect(variables.ids).toEqual(['PR_1', 'PR_missing'])
+        return { nodes: [detailNode('PR_1'), null] }
+      }
+      throw new Error(`unexpected query: ${query}`)
+    })
+
+    const prs = await fetchPullRequests(client, ['acme/web'])
+
     expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
   })
 })
