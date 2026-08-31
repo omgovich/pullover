@@ -9,6 +9,22 @@ interface Props {
   onOpenSettings: () => void
 }
 
+/**
+ * Staleness must stay visible even while an error is showing — otherwise the
+ * user can't tell whether the list on screen is a minute or three days old.
+ */
+function statusText(snapshot: InboxSnapshot, now: string): string {
+  if (snapshot.errorMessage === null) {
+    return snapshot.lastUpdatedAt === null
+      ? 'Ещё не обновлялось'
+      : `Обновлено ${formatAge(snapshot.lastUpdatedAt, now)}`
+  }
+  if (snapshot.lastUpdatedAt === null) {
+    return snapshot.errorMessage
+  }
+  return `${snapshot.errorMessage} · обновлено ${formatAge(snapshot.lastUpdatedAt, now)}`
+}
+
 export default function Header({
   snapshot,
   now,
@@ -44,10 +60,7 @@ export default function Header({
           variant="caption-2"
           color={snapshot.errorMessage === null ? 'neutral-faded' : 'critical'}
         >
-          {snapshot.errorMessage ??
-            (snapshot.lastUpdatedAt === null
-              ? 'Ещё не обновлялось'
-              : `Обновлено ${formatAge(snapshot.lastUpdatedAt, now)}`)}
+          {statusText(snapshot, now)}
         </Text>
       </View>
 

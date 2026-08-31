@@ -32,7 +32,15 @@ export class Inbox {
   private prs: PullRequest[] = []
   private myLogin: string | null = null
   private timer: ReturnType<typeof setInterval> | null = null
+  /** The pass currently running, if any. */
   private inFlightRefresh: Promise<void> | null = null
+  /**
+   * At most one extra pass queued to run once the in-flight one finishes.
+   * Every caller that arrives while a pass is running shares this single
+   * follow-up promise, so N overlapping callers produce one extra pass, not
+   * N of them.
+   */
+  private queuedRefresh: Promise<void> | null = null
   private readonly now: () => string
   private readonly fetchPrs: typeof fetchPullRequests
   private readonly fetchLogin: typeof fetchViewerLogin
@@ -67,18 +75,42 @@ export class Inbox {
     })
   }
 
+  /**
+   * Runs exactly one pass at a time. A caller that arrives while a pass is
+   * already running does NOT join it — that pass may have already read
+   * state (settings, the signed-in client) that predates this caller's
+   * change, which is exactly how a caller that mutates state and then
+   * awaits refresh() (signOut, addRepository, removeRepository) used to see
+   * its change silently dropped. Instead, such a caller is queued behind a
+   * single follow-up pass that starts only after the current one finishes,
+   * so its returned promise always resolves after a pass that began after
+   * the call was made. Multiple callers arriving during the same pass share
+   * one follow-up (see queuedRefresh).
+   */
   async refresh(): Promise<void> {
-    // Overlapping callers (the poll timer, a manual refresh, a poll-interval
-    // change) join the in-flight pass instead of racing a second one, so a
-    // slow older refresh can never clobber a newer one's snapshot.
-    if (this.inFlightRefresh !== null) {
+    if (this.inFlightRefresh === null) {
+      this.inFlightRefresh = this.runPass()
       return this.inFlightRefresh
     }
 
-    const run = this.doRefresh()
-    this.inFlightRefresh = run
+    this.queuedRefresh ??= this.inFlightRefresh
+      // A failed pass must not strand the callers queued behind it — still
+      // run the follow-up pass they asked for.
+      .catch(() => undefined)
+      .then(() => this.startQueuedPass())
+
+    return this.queuedRefresh
+  }
+
+  private startQueuedPass(): Promise<void> {
+    this.queuedRefresh = null
+    this.inFlightRefresh = this.runPass()
+    return this.inFlightRefresh
+  }
+
+  private async runPass(): Promise<void> {
     try {
-      await run
+      await this.doRefresh()
     } finally {
       this.inFlightRefresh = null
     }
@@ -96,8 +128,10 @@ export class Inbox {
         status: 'signed-out',
         items: [],
         attentionCount: 0,
+        lastUpdatedAt: null,
         errorMessage: null,
         myLogin: null,
+        seen: {},
       })
       return
     }

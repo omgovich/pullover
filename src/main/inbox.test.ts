@@ -184,7 +184,10 @@ describe('Inbox.refresh', () => {
     expect(inbox.getSnapshot().errorMessage).toBeNull()
   })
 
-  it('joins a concurrent refresh instead of starting a second one', async () => {
+  it('queues a single follow-up pass instead of joining, for a refresh requested while one is already running', async () => {
+    // A caller that arrives mid-pass must NOT get the in-flight pass's
+    // result hand-me-down — that pass may have already read state this
+    // caller doesn't know about yet. It gets its own follow-up pass instead.
     const resolvers: Array<(prs: PullRequest[]) => void> = []
     const fetchPrs = vi.fn(
       () =>
@@ -197,24 +200,173 @@ describe('Inbox.refresh', () => {
     const first = inbox.refresh()
     const second = inbox.refresh()
 
-    // Let the microtask queue drain (login lookup, etc.) until the fetch
-    // has actually started, then give a concurrent second pass — if the
-    // guard is broken — a chance to reach fetchPrs too, so it can't dangle.
+    // Let the microtask queue drain (login lookup, etc.) until the first
+    // pass's fetch has actually started.
     while (resolvers.length === 0) {
       await Promise.resolve()
     }
-    await Promise.resolve()
-    await Promise.resolve()
 
-    // Resolve whatever fetch(es) actually started, so the test can't hang
-    // even if the re-entrancy guard is broken and a second pass was kicked
-    // off underneath us.
     const pr = makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })
-    resolvers.forEach((resolve) => resolve([pr]))
+    resolvers[0]!([pr])
+    await first
 
-    await Promise.all([first, second])
+    // `second`'s follow-up pass starts only after the first finishes; wait
+    // for its fetch to start, then resolve it too.
+    while (resolvers.length < 2) {
+      await Promise.resolve()
+    }
+    resolvers[1]!([pr])
+    await second
 
-    expect(fetchPrs).toHaveBeenCalledTimes(1)
+    expect(fetchPrs).toHaveBeenCalledTimes(2)
+    const snapshot = inbox.getSnapshot()
+    expect(snapshot.status).toBe('ready')
+    expect(snapshot.items.map((item) => item.pr.id)).toEqual(['PR_1'])
+  })
+
+  it('clears the cached login when signing out while a refresh is in flight, so a later sign-in as a different user classifies against the new login', async () => {
+    let client: object | null = CLIENT
+    const fetchLogin = vi
+      .fn()
+      .mockResolvedValueOnce('vlad')
+      .mockResolvedValueOnce('other-user')
+    // Authored by 'other-user' with changes requested: a clear attention
+    // item for 'other-user', invisible to 'vlad'.
+    const pr = makePullRequest({
+      id: 'PR_1',
+      authorLogin: 'other-user',
+      reviewDecision: 'CHANGES_REQUESTED',
+      buckets: [],
+    })
+    const resolvers: Array<(prs: PullRequest[]) => void> = []
+    const fetchPrs = vi.fn()
+    // The first call (the pass we sign out during) stays pending until we
+    // resolve it by hand; the eventual re-sign-in pass just resolves
+    // straight away — it isn't the thing under test here.
+    fetchPrs.mockImplementationOnce(
+      () =>
+        new Promise<PullRequest[]>((resolve) => {
+          resolvers.push(resolve)
+        }),
+    )
+    fetchPrs.mockResolvedValue([pr])
+    const inbox = build([], { getClient: () => client, fetchLogin, fetchPrs })
+
+    const first = inbox.refresh()
+    while (resolvers.length === 0) {
+      await Promise.resolve()
+    }
+
+    // Sign out exactly like signOut() in index.ts does: mutate state first,
+    // then ask for a refresh — while the first pass is still in flight.
+    client = null
+    const second = inbox.refresh()
+
+    resolvers[0]!([pr])
+    await first
+    await second
+
+    expect(inbox.getSnapshot().status).toBe('signed-out')
+    expect(inbox.getSnapshot().myLogin).toBeNull()
+    expect(inbox.getSnapshot().items).toEqual([])
+
+    // Sign back in as a different account.
+    client = CLIENT
+    await inbox.refresh()
+
+    // The stale 'vlad' login must not have survived the sign-out.
+    expect(fetchLogin).toHaveBeenCalledTimes(2)
+    expect(inbox.getSnapshot().myLogin).toBe('other-user')
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id)).toEqual(['PR_1'])
+    expect(inbox.getSnapshot().attentionCount).toBe(1)
+  })
+
+  it('starts a follow-up pass that reads settings written after the first pass began', async () => {
+    const resolvers: Array<(prs: PullRequest[]) => void> = []
+    const fetchPrs = vi.fn(
+      (_client: unknown, _repositories: string[]) =>
+        new Promise<PullRequest[]>((resolve) => {
+          resolvers.push(resolve)
+        }),
+    )
+    const inbox = build([], { fetchPrs })
+
+    const first = inbox.refresh()
+    while (resolvers.length === 0) {
+      await Promise.resolve()
+    }
+
+    // Mutate settings after the first pass already read them, exactly like
+    // addRepository()/removeRepository() in ipc.ts do, then ask for a
+    // refresh while that pass is still in flight.
+    store.addRepository('acme/api')
+    const second = inbox.refresh()
+
+    resolvers[0]!([])
+    await first
+
+    while (resolvers.length < 2) {
+      await Promise.resolve()
+    }
+    resolvers[1]!([])
+    await second
+
+    expect(fetchPrs).toHaveBeenCalledTimes(2)
+    expect(fetchPrs.mock.calls[0]?.[1]).toEqual(['acme/web'])
+    expect(fetchPrs.mock.calls[1]?.[1]).toEqual(['acme/web', 'acme/api'])
+  })
+
+  it('coalesces several refreshes requested during one pass into a single follow-up pass', async () => {
+    const resolvers: Array<(prs: PullRequest[]) => void> = []
+    const fetchPrs = vi.fn(
+      () =>
+        new Promise<PullRequest[]>((resolve) => {
+          resolvers.push(resolve)
+        }),
+    )
+    const inbox = build([], { fetchPrs })
+
+    const first = inbox.refresh()
+    while (resolvers.length === 0) {
+      await Promise.resolve()
+    }
+
+    const second = inbox.refresh()
+    const third = inbox.refresh()
+    const fourth = inbox.refresh()
+
+    resolvers[0]!([])
+    await first
+
+    while (resolvers.length < 2) {
+      await Promise.resolve()
+    }
+    resolvers[1]!([])
+    await Promise.all([second, third, fourth])
+
+    expect(fetchPrs).toHaveBeenCalledTimes(2)
+  })
+
+  it('lets a queued refresh run to completion, settling every caller, even when the pass ahead of it throws', async () => {
+    let calls = 0
+    const getClient = vi.fn(() => {
+      calls += 1
+      if (calls === 1) throw new Error('boom')
+      return CLIENT
+    })
+    const fetchPrs = vi.fn(async () => [
+      makePullRequest({ id: 'PR_1', buckets: ['review-requested'] }),
+    ])
+    const inbox = build([], { getClient, fetchPrs })
+
+    const first = inbox.refresh()
+    const second = inbox.refresh()
+
+    // The pass behind `first` throws; it must settle (reject), not hang.
+    await expect(first).rejects.toThrow('boom')
+    // The queued pass behind `second` must still run to completion.
+    await second
+
     const snapshot = inbox.getSnapshot()
     expect(snapshot.status).toBe('ready')
     expect(snapshot.items.map((item) => item.pr.id)).toEqual(['PR_1'])
