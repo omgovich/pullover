@@ -28,6 +28,12 @@ export function chunk<T>(items: T[], size: number): T[][] {
  * - `[]` — no repositories selected: no queries at all.
  * - a non-empty array — search only those repositories, chunked across
  *   several queries if the list is long.
+ *
+ * Every query is sorted by most-recently-updated. `SEARCH_QUERY` fetches only
+ * the first 50 results with no pagination, so once a search isn't narrowed by
+ * a small repository list it can plausibly exceed 50 — sorting makes the
+ * truncation predictable (freshest activity survives) instead of relying on
+ * GitHub's best-match ordering, which gives no such guarantee.
  */
 export function buildSearchQueries(
   repositories: string[] | null,
@@ -35,7 +41,9 @@ export function buildSearchQueries(
   chunkSize = 10,
 ): string[] {
   if (repositories === null) {
-    return [['is:pr', 'is:open', BUCKET_QUALIFIERS[bucket]].join(' ')]
+    return [
+      ['is:pr', 'is:open', BUCKET_QUALIFIERS[bucket], 'sort:updated-desc'].join(' '),
+    ]
   }
   if (repositories.length === 0) return []
   return chunk(repositories, chunkSize).map((group) =>
@@ -44,6 +52,7 @@ export function buildSearchQueries(
       'is:pr',
       'is:open',
       BUCKET_QUALIFIERS[bucket],
+      'sort:updated-desc',
     ].join(' '),
   )
 }
