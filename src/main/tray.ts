@@ -1,5 +1,14 @@
 import { Menu, Tray, nativeImage, type Rectangle } from 'electron'
 
+/**
+ * Pure string-building for the tray title, kept separate so it can be unit
+ * tested without constructing a real `Tray` (which needs a running Electron).
+ */
+export function formatBadgeTitle(count: number): string {
+  if (count === 0) return 'No PRs'
+  return count === 1 ? '1 PR' : `${count} PRs`
+}
+
 export function createTray(
   onToggle: (bounds: Rectangle) => void,
   onQuit: () => void,
@@ -8,7 +17,7 @@ export function createTray(
   // means the app ships without an icon asset.
   const tray = new Tray(nativeImage.createEmpty())
   tray.setToolTip('Pullover')
-  tray.setTitle('PR —')
+  tray.setTitle(formatBadgeTitle(0))
 
   tray.on('click', (_event, bounds) => onToggle(bounds))
   tray.on('right-click', () => {
@@ -21,5 +30,5 @@ export function createTray(
 }
 
 export function setBadge(tray: Tray, count: number): void {
-  tray.setTitle(count > 0 ? `PR ${count}` : 'PR —')
+  tray.setTitle(formatBadgeTitle(count))
 }

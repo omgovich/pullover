@@ -149,9 +149,9 @@ describe('snoozes', () => {
   })
 
   it('records a conditional snooze with no deadline', () => {
-    store.snooze('PR_1', 'until-reply', NOW)
+    store.snooze('PR_1', 'until-activity', NOW)
     const snooze = store.getSnoozes()['PR_1']
-    expect(snooze?.type).toBe('until-reply')
+    expect(snooze?.type).toBe('until-activity')
     expect(snooze?.until).toBeUndefined()
   })
 
@@ -160,7 +160,7 @@ describe('snoozes', () => {
   })
 
   it('removes a snooze', () => {
-    store.snooze('PR_1', 'until-reply', NOW)
+    store.snooze('PR_1', 'until-activity', NOW)
     store.unsnooze('PR_1')
     expect(store.getSnoozes()['PR_1']).toBeUndefined()
   })

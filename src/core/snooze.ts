@@ -14,9 +14,13 @@ export function isSnoozeActive(
   switch (snooze.type) {
     case 'until-time':
       return snooze.until !== undefined && now < snooze.until
-    case 'until-new-commits':
-      return pr.lastCommitPushedAt <= snooze.snoozedAt
-    case 'until-reply':
-      return !hasNewReplyInMyThreadsSince(pr, myLogin, snooze.snoozedAt)
+    case 'until-activity':
+      return (
+        !hasNewReplyInMyThreadsSince(pr, myLogin, snooze.snoozedAt) &&
+        pr.lastCommitPushedAt <= snooze.snoozedAt
+      )
   }
+  // A snooze persisted by an older build can carry a type no longer in the
+  // union — treat it as expired rather than returning `undefined`.
+  return false
 }

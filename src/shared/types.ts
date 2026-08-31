@@ -111,7 +111,7 @@ export interface ClassifiedPullRequest {
   isSnoozed: boolean
 }
 
-export type SnoozeType = 'until-reply' | 'until-new-commits' | 'until-time'
+export type SnoozeType = 'until-activity' | 'until-time'
 
 export interface Snooze {
   prId: string

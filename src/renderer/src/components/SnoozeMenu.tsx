@@ -7,8 +7,7 @@ interface Props {
 }
 
 const OPTIONS: Array<{ label: string; type: SnoozeType; hours?: number }> = [
-  { label: 'Until someone replies', type: 'until-reply' },
-  { label: 'Until new commits', type: 'until-new-commits' },
+  { label: 'Until something changes', type: 'until-activity' },
   { label: 'For 4 hours', type: 'until-time', hours: 4 },
   { label: 'Until tomorrow', type: 'until-time', hours: 24 },
 ]

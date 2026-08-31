@@ -29,47 +29,21 @@ describe('isSnoozeActive — until-time', () => {
   })
 })
 
-describe('isSnoozeActive — until-new-commits', () => {
+describe('isSnoozeActive — until-activity', () => {
   const snooze: Snooze = {
     prId: 'PR_1',
-    type: 'until-new-commits',
+    type: 'until-activity',
     snoozedAt: '2026-08-10T10:00:00Z',
   }
 
-  it('is active while the newest commit predates the snooze', () => {
+  it('stays asleep when nothing happened', () => {
     const pr = makePullRequest({ lastCommitPushedAt: '2026-08-09T10:00:00Z' })
     expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
   })
 
-  it('wakes up once a newer commit lands', () => {
-    const pr = makePullRequest({ lastCommitPushedAt: '2026-08-10T11:00:00Z' })
-    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(false)
-  })
-
-  it('stays active when the commit already existed at snooze time', () => {
-    const pr = makePullRequest({ lastCommitPushedAt: '2026-08-10T10:00:00Z' })
-    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
-  })
-})
-
-describe('isSnoozeActive — until-reply', () => {
-  const snooze: Snooze = {
-    prId: 'PR_1',
-    type: 'until-reply',
-    snoozedAt: '2026-08-10T10:00:00Z',
-  }
-
-  it('is active while nobody has answered my threads', () => {
+  it('wakes on a reply from someone else in a thread I am in', () => {
     const pr = makePullRequest({
-      reviewThreads: [
-        makeThread({ comments: [makeComment(ME, '2026-08-09T10:00:00Z')] }),
-      ],
-    })
-    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
-  })
-
-  it('wakes up when somebody replies to my thread', () => {
-    const pr = makePullRequest({
+      lastCommitPushedAt: '2026-08-09T10:00:00Z',
       reviewThreads: [
         makeThread({
           comments: [
@@ -82,8 +56,29 @@ describe('isSnoozeActive — until-reply', () => {
     expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(false)
   })
 
-  it('stays asleep when the reply arrived in a resolved thread', () => {
+  it('wakes on a commit newer than the snooze', () => {
+    const pr = makePullRequest({ lastCommitPushedAt: '2026-08-10T11:00:00Z' })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(false)
+  })
+
+  it('stays asleep when the only new comment is my own', () => {
     const pr = makePullRequest({
+      lastCommitPushedAt: '2026-08-09T10:00:00Z',
+      reviewThreads: [
+        makeThread({
+          comments: [
+            makeComment(ME, '2026-08-09T10:00:00Z'),
+            makeComment(ME, '2026-08-10T11:00:00Z'),
+          ],
+        }),
+      ],
+    })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
+  })
+
+  it('stays asleep when the reply landed in a resolved thread', () => {
+    const pr = makePullRequest({
+      lastCommitPushedAt: '2026-08-09T10:00:00Z',
       reviewThreads: [
         makeThread({
           isResolved: true,
@@ -95,5 +90,21 @@ describe('isSnoozeActive — until-reply', () => {
       ],
     })
     expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
+  })
+
+  it('stays asleep when the newest commit exactly equals snoozedAt', () => {
+    const pr = makePullRequest({ lastCommitPushedAt: '2026-08-10T10:00:00Z' })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
+  })
+})
+
+describe('isSnoozeActive — unknown legacy type', () => {
+  it('treats a type no longer in the union as expired', () => {
+    const snooze = {
+      prId: 'PR_1',
+      type: 'until-something-removed',
+      snoozedAt: '2026-08-10T10:00:00Z',
+    } as unknown as Snooze
+    expect(isSnoozeActive(makePullRequest(), snooze, ME, NOW)).toBe(false)
   })
 })
