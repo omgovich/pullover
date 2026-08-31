@@ -4165,13 +4165,12 @@ export default function App(): React.JSX.Element {
         )}
       </View>
 
-      {showSettings && <div hidden data-pending-task="14" />}
     </View>
   )
 }
 ```
 
-Note: the `showSettings` branch renders a placeholder until Task 14 replaces it with the real panel. It is wired now so `Header` has somewhere to point.
+Note: `showSettings` is declared and toggled here but nothing reads it yet — Task 14 adds the branch that renders the panel. `Header` needs somewhere to point, so the state lands in this task.
 
 - [ ] **Step 6: Verify the inbox renders against real data**
 
@@ -4377,13 +4376,7 @@ Add the import next to the other component imports:
 import SettingsPanel from './components/SettingsPanel'
 ```
 
-Replace this line:
-
-```tsx
-      {showSettings && <div hidden data-pending-task="14" />}
-```
-
-with an early return placed immediately after the `signed-out` check, so the panel replaces the list rather than overlaying it:
+Add an early return immediately after the `signed-out` check, so the panel replaces the list rather than overlaying it:
 
 ```tsx
   if (showSettings) {
@@ -4391,7 +4384,7 @@ with an early return placed immediately after the `signed-out` check, so the pan
   }
 ```
 
-The final ordering of the checks inside `App` is: `signed-out` → `showSettings` → `loading` → the list. Delete the now-unused placeholder line at the bottom of the returned tree.
+The final ordering of the checks inside `App` is: `signed-out` → `showSettings` → `loading` → the list. This is what makes Task 13's `showSettings` state load-bearing.
 
 - [ ] **Step 3: Verify settings work end to end**
 
