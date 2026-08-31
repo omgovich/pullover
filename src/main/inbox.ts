@@ -32,6 +32,7 @@ export class Inbox {
   private prs: PullRequest[] = []
   private myLogin: string | null = null
   private timer: ReturnType<typeof setInterval> | null = null
+  private inFlightRefresh: Promise<void> | null = null
   private readonly now: () => string
   private readonly fetchPrs: typeof fetchPullRequests
   private readonly fetchLogin: typeof fetchViewerLogin
@@ -67,9 +68,37 @@ export class Inbox {
   }
 
   async refresh(): Promise<void> {
+    // Overlapping callers (the poll timer, a manual refresh, a poll-interval
+    // change) join the in-flight pass instead of racing a second one, so a
+    // slow older refresh can never clobber a newer one's snapshot.
+    if (this.inFlightRefresh !== null) {
+      return this.inFlightRefresh
+    }
+
+    const run = this.doRefresh()
+    this.inFlightRefresh = run
+    try {
+      await run
+    } finally {
+      this.inFlightRefresh = null
+    }
+  }
+
+  private async doRefresh(): Promise<void> {
     const client = this.deps.getClient()
     if (client === null) {
-      this.emit({ status: 'signed-out', items: [], attentionCount: 0 })
+      // Sign-out: drop the cached identity and in-memory PRs so a
+      // subsequent sign-in (possibly as a different account) starts clean
+      // instead of classifying against the previous user's login.
+      this.myLogin = null
+      this.prs = []
+      this.emit({
+        status: 'signed-out',
+        items: [],
+        attentionCount: 0,
+        errorMessage: null,
+        myLogin: null,
+      })
       return
     }
 
