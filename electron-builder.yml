@@ -1,0 +1,17 @@
+appId: net.variant.github-review-inbox
+productName: GitHub Review Inbox
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+mac:
+  target:
+    - dmg
+    - dir
+  category: public.app-category.developer-tools
+  # A menu-bar-only app: no Dock icon, no app switcher entry.
+  extendInfo:
+    LSUIElement: true
+  identity: null
