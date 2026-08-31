@@ -45,6 +45,11 @@ describe('isSnoozeActive — until-new-commits', () => {
     const pr = makePullRequest({ lastCommitPushedAt: '2026-08-10T11:00:00Z' })
     expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(false)
   })
+
+  it('stays active when the commit already existed at snooze time', () => {
+    const pr = makePullRequest({ lastCommitPushedAt: '2026-08-10T10:00:00Z' })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
+  })
 })
 
 describe('isSnoozeActive — until-reply', () => {
