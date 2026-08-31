@@ -2266,7 +2266,10 @@ const INFO: DeviceCodeInfo = {
 
 describe('requestDeviceCode', () => {
   it('posts the client id and returns the user code', async () => {
-    const fetchFn = vi.fn(async () =>
+    // vi.fn<typeof fetch> gives mock.calls the real [url, init] tuple shape.
+    // Without it Vitest infers a zero-arg signature and destructuring calls[0]
+    // fails to compile.
+    const fetchFn = vi.fn<typeof fetch>(async () =>
       jsonResponse({
         device_code: 'device-code-value',
         user_code: 'ABCD-1234',
