@@ -1,4 +1,4 @@
-import { Actionable, Avatar, Badge, Button, Card, Text, View } from 'reshaped/bundle'
+import { Actionable, Avatar, Badge, Card, Text, View } from 'reshaped/bundle'
 import { formatAge, formatDiff } from '@core/format'
 import type { ClassifiedPullRequest } from '@shared/types'
 import SnoozeMenu from './SnoozeMenu'
@@ -69,15 +69,6 @@ export default function PullRequestCard({
             {item.reason}
           </Text>
           <View grow />
-          {isNew && (
-            <Button
-              size="small"
-              variant="ghost"
-              onClick={() => void window.api.markSeen(pr.id)}
-            >
-              Mark read
-            </Button>
-          )}
           <SnoozeMenu prId={pr.id} isSnoozed={item.isSnoozed} />
         </View>
       </View>
