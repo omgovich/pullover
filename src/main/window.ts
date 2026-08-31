@@ -20,6 +20,12 @@ export function createPopupWindow(): BrowserWindow {
     },
   })
 
+  // Without this the window belongs to whichever Space it was created on, so
+  // clicking the tray item on any other Space drags the user over to that one.
+  // A menu-bar popup should appear where the user already is — including on
+  // top of a fullscreen app, which is its own kind of Space.
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+
   // Links inside the renderer always open in the user's browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (isSafeExternalUrl(url)) {
