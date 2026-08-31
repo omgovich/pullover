@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LogIn } from 'lucide-react'
 import { Button, Text, View } from 'reshaped/bundle'
 import type { DeviceCodePayload } from '@shared/ipc'
 
@@ -33,7 +34,7 @@ export default function SignIn(): React.JSX.Element {
           <Text variant="body-2" color="neutral-faded" align="center">
             Sign in with GitHub to see what needs you.
           </Text>
-          <Button color="primary" loading={busy} onClick={() => void start()}>
+          <Button color="primary" icon={LogIn} loading={busy} onClick={() => void start()}>
             Sign in with GitHub
           </Button>
         </>

@@ -16,6 +16,7 @@
   "dependencies": {
     "@octokit/graphql": "^9.0.5",
     "electron-store": "^11.0.2",
+    "lucide-react": "^1.38.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "reshaped": "^4.1.0"

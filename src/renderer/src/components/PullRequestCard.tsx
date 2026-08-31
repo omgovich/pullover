@@ -1,3 +1,4 @@
+import { CircleCheck, CircleDashed, CircleX } from 'lucide-react'
 import { Actionable, Avatar, Badge, Card, Text, View } from 'reshaped/bundle'
 import { formatAge, formatDiff } from '@core/format'
 import type { ClassifiedPullRequest } from '@shared/types'
@@ -9,9 +10,9 @@ interface Props {
 }
 
 const CI_LABELS = {
-  success: { label: 'CI green', color: 'positive' },
-  failure: { label: 'CI red', color: 'critical' },
-  pending: { label: 'CI running', color: 'warning' },
+  success: { label: 'CI green', color: 'positive', icon: CircleCheck },
+  failure: { label: 'CI red', color: 'critical', icon: CircleX },
+  pending: { label: 'CI running', color: 'warning', icon: CircleDashed },
 } as const
 
 export default function PullRequestCard({
@@ -53,7 +54,7 @@ export default function PullRequestCard({
             {formatDiff(pr.additions, pr.deletions)}
           </Text>
           {ci !== null && (
-            <Badge color={ci.color} size="small" variant="faded">
+            <Badge color={ci.color} icon={ci.icon} size="small" variant="faded">
               {ci.label}
             </Badge>
           )}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { RefreshCw, Settings } from 'lucide-react'
 import { Button, Text, View } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { InboxSnapshot } from '@shared/ipc'
@@ -69,14 +70,18 @@ export default function Header({
       <Button
         size="small"
         variant="ghost"
+        icon={RefreshCw}
         loading={refreshing}
         onClick={() => void refresh()}
-      >
-        Refresh
-      </Button>
-      <Button size="small" variant="ghost" onClick={onOpenSettings}>
-        Settings
-      </Button>
+        attributes={{ title: 'Refresh', 'aria-label': 'Refresh' }}
+      />
+      <Button
+        size="small"
+        variant="ghost"
+        icon={Settings}
+        onClick={onOpenSettings}
+        attributes={{ title: 'Settings', 'aria-label': 'Settings' }}
+      />
     </View>
   )
 }

@@ -1,5 +1,7 @@
-import { Actionable, Badge, Text, useToggle, View } from 'reshaped/bundle'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { Actionable, Badge, Icon, Text, useToggle, View } from 'reshaped/bundle'
 import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
+import { CATEGORY_ICONS } from '../categoryIcons'
 import PullRequestCard from './PullRequestCard'
 
 interface Props {
@@ -24,6 +26,7 @@ export default function InboxSection({
     <View gap={2}>
       <Actionable onClick={toggle}>
         <View direction="row" gap={2} align="center" paddingBlock={1}>
+          <Icon svg={CATEGORY_ICONS[category]} size={4} color="neutral-faded" />
           <Text variant="caption-1" weight="bold" color="neutral-faded">
             {CATEGORY_TITLES[category].toUpperCase()}
           </Text>
@@ -31,9 +34,7 @@ export default function InboxSection({
             {items.length}
           </Badge>
           <View grow />
-          <Text variant="caption-1" color="neutral-faded">
-            {open ? '▾' : '▸'}
-          </Text>
+          <Icon svg={open ? ChevronDown : ChevronRight} size={4} color="neutral-faded" />
         </View>
       </Actionable>
 
