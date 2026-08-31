@@ -19,7 +19,12 @@ You only do this once, and it takes about two minutes.
      `https://github.com/omgovich/pullover` is fine.
    - **Authorization callback URL** — the form insists on one, but Device Flow
      never uses it. `http://localhost` is fine.
-   - **Description** — optional.
+   - **Description** — optional, but it's what you'll read on the
+     authorization screen. Suggested:
+
+     > A menu-bar inbox that shows only the pull requests waiting on you, and
+     > hides the ones where you're waiting on someone else. Reads only — it
+     > never comments, reviews, or merges anything.
 3. Click **Register application**.
 4. On the app's page, tick **Enable Device Flow** and click **Update
    application**. This is the step that's easy to miss — without it sign-in
