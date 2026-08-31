@@ -32,13 +32,13 @@ export const DETAILS_QUERY = `
         author { login avatarUrl }
         repository { nameWithOwner }
         reviews(first: 50) {
-          nodes { author { login } state submittedAt }
+          nodes { author { login } state submittedAt bodyText }
         }
-        reviewThreads(first: 50) {
+        reviewThreads(last: 50) {
           nodes {
             id
             isResolved
-            comments(first: 50) {
+            comments(last: 50) {
               nodes { author { login } createdAt bodyText }
             }
           }

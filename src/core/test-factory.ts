@@ -1,4 +1,9 @@
-import type { PullRequest, ReviewThread, ThreadComment } from '@shared/types'
+import type {
+  PullRequest,
+  Review,
+  ReviewThread,
+  ThreadComment,
+} from '@shared/types'
 
 export function makeComment(
   authorLogin: string,
@@ -6,6 +11,14 @@ export function makeComment(
   bodyText = '',
 ): ThreadComment {
   return { authorLogin, createdAt, bodyText }
+}
+
+export function makeReview(
+  authorLogin: string,
+  submittedAt: string,
+  overrides: Partial<Review> = {},
+): Review {
+  return { authorLogin, state: 'COMMENTED', submittedAt, bodyText: '', ...overrides }
 }
 
 export function makeThread(overrides: Partial<ReviewThread> = {}): ReviewThread {

@@ -79,8 +79,10 @@ describe('mapPullRequest', () => {
       [],
       'vlad',
     )
+    // bodyText is now part of the mapped Review contract (Finding 1: reviews
+    // are scanned for mentions too), defaulting to '' when the source omits it.
     expect(pr.reviews).toEqual([
-      { authorLogin: 'bob', state: 'APPROVED', submittedAt: '2026-08-02T10:00:00Z' },
+      { authorLogin: 'bob', state: 'APPROVED', submittedAt: '2026-08-02T10:00:00Z', bodyText: '' },
     ])
   })
 
@@ -99,9 +101,9 @@ describe('mapPullRequest', () => {
       'vlad',
     )
     expect(pr.reviews).toEqual([
-      { authorLogin: 'first', state: 'APPROVED', submittedAt: '2026-08-01T09:00:00Z' },
-      { authorLogin: 'second', state: 'CHANGES_REQUESTED', submittedAt: '2026-08-02T09:00:00Z' },
-      { authorLogin: 'third', state: 'COMMENTED', submittedAt: '2026-08-03T09:00:00Z' },
+      { authorLogin: 'first', state: 'APPROVED', submittedAt: '2026-08-01T09:00:00Z', bodyText: '' },
+      { authorLogin: 'second', state: 'CHANGES_REQUESTED', submittedAt: '2026-08-02T09:00:00Z', bodyText: '' },
+      { authorLogin: 'third', state: 'COMMENTED', submittedAt: '2026-08-03T09:00:00Z', bodyText: '' },
     ])
   })
 
@@ -286,6 +288,11 @@ describe('mapPullRequest', () => {
 
   describe('lastMentionAt', () => {
     it('picks the newest mention across conversation comments, thread comments and the PR body', () => {
+      // The conversation comment is deliberately the newest of the three
+      // sources (not the thread comment) so this test actually exercises the
+      // conversation-comments source: a mutant that dropped it from the scan
+      // used to slip through here because removing the middle-aged timestamp
+      // didn't change which source held the maximum.
       const pr = mapPullRequest(
         node({
           bodyText: 'cc @vlad for visibility',
@@ -294,7 +301,7 @@ describe('mapPullRequest', () => {
             nodes: [
               {
                 author: { login: 'alice' },
-                createdAt: '2026-08-03T10:00:00Z',
+                createdAt: '2026-08-07T10:00:00Z',
                 bodyText: '@vlad ping',
               },
             ],
@@ -320,7 +327,126 @@ describe('mapPullRequest', () => {
         [],
         'vlad',
       )
-      expect(pr.lastMentionAt).toBe('2026-08-05T10:00:00Z')
+      expect(pr.lastMentionAt).toBe('2026-08-07T10:00:00Z')
+    })
+
+    it('counts a mention inside a review body, using the review submittedAt', () => {
+      const pr = mapPullRequest(
+        node({
+          reviews: {
+            nodes: [
+              {
+                author: { login: 'bob' },
+                state: 'CHANGES_REQUESTED',
+                submittedAt: '2026-08-06T10:00:00Z',
+                bodyText: '@vlad посмотри ещё раз',
+              },
+            ],
+          },
+        }),
+        [],
+        'vlad',
+      )
+      expect(pr.lastMentionAt).toBe('2026-08-06T10:00:00Z')
+    })
+
+    it('does not count a mention in a review the user authored themselves', () => {
+      const pr = mapPullRequest(
+        node({
+          reviews: {
+            nodes: [
+              {
+                author: { login: 'vlad' },
+                state: 'COMMENTED',
+                submittedAt: '2026-08-06T10:00:00Z',
+                bodyText: '@vlad reminding myself',
+              },
+            ],
+          },
+        }),
+        [],
+        'vlad',
+      )
+      expect(pr.lastMentionAt).toBeNull()
+    })
+
+    it('does not count a self-mention in the pull request body', () => {
+      const pr = mapPullRequest(
+        node({
+          author: { login: 'vlad', avatarUrl: '' },
+          bodyText: '@vlad note to self',
+        }),
+        [],
+        'vlad',
+      )
+      expect(pr.lastMentionAt).toBeNull()
+    })
+
+    it('ignores a mention inside a resolved review thread', () => {
+      const pr = mapPullRequest(
+        node({
+          reviewThreads: {
+            nodes: [
+              {
+                id: 'RT_1',
+                isResolved: true,
+                comments: {
+                  nodes: [
+                    {
+                      author: { login: 'bob' },
+                      createdAt: '2026-08-06T10:00:00Z',
+                      bodyText: '@vlad look at this',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        }),
+        [],
+        'vlad',
+      )
+      expect(pr.lastMentionAt).toBeNull()
+    })
+
+    it('prefers an older mention in an unresolved thread over a newer one in a resolved thread', () => {
+      const pr = mapPullRequest(
+        node({
+          reviewThreads: {
+            nodes: [
+              {
+                id: 'RT_1',
+                isResolved: false,
+                comments: {
+                  nodes: [
+                    {
+                      author: { login: 'bob' },
+                      createdAt: '2026-08-02T10:00:00Z',
+                      bodyText: '@vlad still open',
+                    },
+                  ],
+                },
+              },
+              {
+                id: 'RT_2',
+                isResolved: true,
+                comments: {
+                  nodes: [
+                    {
+                      author: { login: 'bob' },
+                      createdAt: '2026-08-09T10:00:00Z',
+                      bodyText: '@vlad but this got resolved',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        }),
+        [],
+        'vlad',
+      )
+      expect(pr.lastMentionAt).toBe('2026-08-02T10:00:00Z')
     })
 
     it('does not count a mention the user wrote themselves', () => {
@@ -372,6 +498,18 @@ describe('mentionsUser', () => {
 
   it('requires a word boundary after the login, so @vlad does not match @vladimir', () => {
     expect(mentionsUser('cc @vladimir for context', 'vlad')).toBe(false)
+  })
+
+  it('does not match a different, hyphen-suffixed login sharing the same prefix', () => {
+    // GitHub logins are letters, digits and hyphens, so `-` is a login-legal
+    // character. A plain `\b` boundary treats it as a break (since `-` is not
+    // a word character) and would wrongly match these unrelated accounts.
+    expect(mentionsUser('cc @vlad-2 for review', 'vlad')).toBe(false)
+    expect(mentionsUser('ping @vlad-bot please', 'vlad')).toBe(false)
+  })
+
+  it('does not match a login embedded in an email address', () => {
+    expect(mentionsUser('reach out to me@vlad.io for details', 'vlad')).toBe(false)
   })
 
   it('returns false for text without the mention', () => {

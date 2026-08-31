@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { classify, classifyAll, countAttention } from '@core/classify'
 import type { ClassifyContext } from '@core/classify'
 import type { Snooze } from '@shared/types'
-import { makeComment, makePullRequest, makeThread } from './test-factory'
+import { makeComment, makePullRequest, makeReview, makeThread } from './test-factory'
 
 const ME = 'vlad'
 const NOW = '2026-08-10T12:00:00Z'
@@ -157,6 +157,39 @@ describe('classify — reviewer branch', () => {
       ],
       lastCommitPushedAt: '2026-08-01T10:00:00Z',
       lastMentionAt: '2026-08-01T10:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('waiting')
+  })
+
+  it('surfaces a PR GitHub matched as a mention even when the text scan found no mention, rather than hiding it', () => {
+    // Team mentions, mentions in a review body we don't fetch, commit-message
+    // mentions, etc. all leave lastMentionAt null even though GitHub's
+    // mentions:@me search did match this PR. It must not be dropped.
+    const pr = makePullRequest({ buckets: ['mentions'], lastMentionAt: null })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('mentioned')
+  })
+
+  it('treats an unlocated mention as no newer than the PR itself, not as unconditionally new', () => {
+    const pr = makePullRequest({
+      buckets: ['involves', 'mentions'],
+      updatedAt: '2026-08-01T10:00:00Z',
+      lastMentionAt: null,
+      reviews: [makeReview(ME, '2026-08-05T10:00:00Z')],
+    })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('waiting')
+  })
+
+  it('stays waiting when requested and participated only via a conversation comment, even with a newer mention', () => {
+    // Guards the `!requested` guard on the mentioned rule: a requested
+    // reviewer who has already commented should not be pulled into
+    // "Упоминания" just because a mention is newer than their comment.
+    const pr = makePullRequest({
+      buckets: ['review-requested', 'mentions'],
+      conversationComments: [makeComment(ME, '2026-08-01T10:00:00Z')],
+      lastMentionAt: '2026-08-05T10:00:00Z',
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('waiting')

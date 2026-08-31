@@ -68,9 +68,14 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
 
   if (pr.buckets.includes('mentions') && !requested) {
     const lastActivity = myLastActivityAt(pr, myLogin)
-    const mentionIsNew =
-      pr.lastMentionAt !== null &&
-      (lastActivity === null || pr.lastMentionAt > lastActivity)
+    // GitHub's mentions:@me search already told us the user was mentioned.
+    // `lastMentionAt` is null when our own text scan could not find where —
+    // a team mention, a mention in text we don't fetch, and so on. Rather
+    // than drop the PR, assume the mention is as recent as the PR's last
+    // activity: we know we were mentioned, we just can't see where, so we
+    // err toward showing it instead of silently hiding a PR that needs us.
+    const mentionAt = pr.lastMentionAt ?? pr.updatedAt
+    const mentionIsNew = lastActivity === null || mentionAt > lastActivity
     if (mentionIsNew) {
       return { category: 'mentioned', reason: 'Тебя упомянули' }
     }

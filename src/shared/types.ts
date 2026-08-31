@@ -32,6 +32,11 @@ export interface Review {
   authorLogin: string
   state: ReviewState
   submittedAt: string
+  /**
+   * Optional so existing fixtures that predate the mention scan reading review
+   * bodies keep compiling unchanged; `mapPullRequest` always fills it in.
+   */
+  bodyText?: string
 }
 
 export type ReviewDecision =

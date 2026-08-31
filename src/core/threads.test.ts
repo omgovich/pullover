@@ -239,16 +239,21 @@ describe('myLastActivityAt', () => {
   })
 
   it('returns the latest across my reviews, thread comments and conversation comments', () => {
+    // The conversation comment is deliberately the newest of the three
+    // sources (not the thread comment) so this test actually exercises that
+    // source: a mutant that made this function ignore conversation comments
+    // used to slip through here because the thread comment already held the
+    // maximum, so removing the conversation comment didn't change the result.
     const pr = makePullRequest({
       reviews: [
         { authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' },
       ],
       reviewThreads: [
-        makeThread({ comments: [makeComment(ME, '2026-08-05T10:00:00Z')] }),
+        makeThread({ comments: [makeComment(ME, '2026-08-04T10:00:00Z')] }),
       ],
-      conversationComments: [makeComment(ME, '2026-08-03T10:00:00Z')],
+      conversationComments: [makeComment(ME, '2026-08-07T10:00:00Z')],
     })
-    expect(myLastActivityAt(pr, ME)).toBe('2026-08-05T10:00:00Z')
+    expect(myLastActivityAt(pr, ME)).toBe('2026-08-07T10:00:00Z')
   })
 
   it('ignores activity by other people', () => {
