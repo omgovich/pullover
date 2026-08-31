@@ -169,7 +169,7 @@ export function mapPullRequest(
   // (see the invariant documented on `unresolvedThreads` in threads.ts).
   // `lastMentionAt` drives category selection just like those rules, so it
   // must honor the same invariant — otherwise a mention in a thread that has
-  // since been resolved would keep the PR in "Упоминания" forever.
+  // since been resolved would keep the PR in "Mentions" forever.
   const reviewThreadComments = reviewThreads
     .filter((thread) => !thread.isResolved)
     .flatMap((thread) => thread.comments)

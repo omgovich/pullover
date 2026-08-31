@@ -3,3 +3,4 @@ out/
 dist/
 .env
 .DS_Store
+docs/superpowers/

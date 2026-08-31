@@ -7,13 +7,13 @@ export function createTray(
   // An empty image plus a title renders as a text-only menu-bar item, which
   // means the app ships without an icon asset.
   const tray = new Tray(nativeImage.createEmpty())
-  tray.setToolTip('GitHub Review Inbox')
+  tray.setToolTip('Pullover')
   tray.setTitle('PR —')
 
   tray.on('click', (_event, bounds) => onToggle(bounds))
   tray.on('right-click', () => {
     tray.popUpContextMenu(
-      Menu.buildFromTemplate([{ label: 'Выйти', click: onQuit }]),
+      Menu.buildFromTemplate([{ label: 'Quit', click: onQuit }]),
     )
   })
 

@@ -124,7 +124,7 @@ describe('pollForToken', () => {
         fetchFn: fetchFn as unknown as typeof fetch,
         sleep,
       }),
-    ).rejects.toThrow(/истекло/)
+    ).rejects.toThrow(/expired/)
 
     expect(fetchFn).toHaveBeenCalledTimes(1)
   })

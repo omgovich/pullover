@@ -1,5 +1,5 @@
-appId: net.variant.github-review-inbox
-productName: GitHub Review Inbox
+appId: net.variant.pullover
+productName: Pullover
 directories:
   output: dist
   buildResources: build

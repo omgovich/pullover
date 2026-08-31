@@ -8,7 +8,7 @@ function tokenPath(): string {
 
 export function saveToken(token: string): void {
   if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error('Keychain недоступен — не могу сохранить токен')
+    throw new Error("Keychain isn't available, so the token can't be saved")
   }
   writeFileSync(tokenPath(), safeStorage.encryptString(token))
 }

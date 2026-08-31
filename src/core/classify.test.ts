@@ -28,7 +28,7 @@ describe('classify — reviewer branch', () => {
     const pr = makePullRequest({ buckets: ['review-requested'] })
     const result = classify(pr, ctx())
     expect(result.category).toBe('needs-review')
-    expect(result.reason).toBe('Ты назначен ревьюером')
+    expect(result.reason).toBe("You're on the reviewers list")
   })
 
   it('new-replies when somebody answered my thread', () => {
@@ -45,7 +45,7 @@ describe('classify — reviewer branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('new-replies')
-    expect(result.reason).toBe('1 новый ответ в твоих тредах')
+    expect(result.reason).toBe('1 new reply in your threads')
   })
 
   it('pluralises the reply count', () => {
@@ -61,7 +61,7 @@ describe('classify — reviewer branch', () => {
       buckets: ['involves'],
       reviewThreads: [thread('a'), thread('b'), thread('c')],
     })
-    expect(classify(pr, ctx()).reason).toBe('3 новых ответа в твоих тредах')
+    expect(classify(pr, ctx()).reason).toBe('3 new replies in your threads')
   })
 
   it('ignores a resolved thread that somebody answered', () => {
@@ -90,7 +90,7 @@ describe('classify — reviewer branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('re-review')
-    expect(result.reason).toBe('Новые коммиты после твоего ревью')
+    expect(result.reason).toBe('New commits since your review')
   })
 
   it('re-review when review was re-requested after I reviewed', () => {
@@ -103,7 +103,7 @@ describe('classify — reviewer branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('re-review')
-    expect(result.reason).toBe('Ревью запрошено повторно')
+    expect(result.reason).toBe('They asked you to look again')
   })
 
   it('new-replies outranks re-review', () => {
@@ -132,7 +132,7 @@ describe('classify — reviewer branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('mentioned')
-    expect(result.reason).toBe('Тебя упомянули')
+    expect(result.reason).toBe('Someone mentioned you')
   })
 
   it('mentioned when the mention is newer than my last activity, even though I participated', () => {
@@ -146,7 +146,7 @@ describe('classify — reviewer branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('mentioned')
-    expect(result.reason).toBe('Тебя упомянули')
+    expect(result.reason).toBe('Someone mentioned you')
   })
 
   it('not mentioned when the mention predates my last activity — falls through to waiting', () => {
@@ -185,7 +185,7 @@ describe('classify — reviewer branch', () => {
   it('stays waiting when requested and participated only via a conversation comment, even with a newer mention', () => {
     // Guards the `!requested` guard on the mentioned rule: a requested
     // reviewer who has already commented should not be pulled into
-    // "Упоминания" just because a mention is newer than their comment.
+    // "Mentions" just because a mention is newer than their comment.
     const pr = makePullRequest({
       buckets: ['review-requested', 'mentions'],
       conversationComments: [makeComment(ME, '2026-08-01T10:00:00Z')],
@@ -219,7 +219,7 @@ describe('classify — reviewer branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('waiting')
-    expect(result.reason).toBe('Ждёшь ответа автора')
+    expect(result.reason).toBe('Waiting on the author')
   })
 })
 
@@ -230,7 +230,7 @@ describe('classify — author branch', () => {
     const pr = makePullRequest({ ...mine, reviewDecision: 'CHANGES_REQUESTED' })
     const result = classify(pr, ctx())
     expect(result.category).toBe('my-pr-action')
-    expect(result.reason).toBe('Запрошены изменения')
+    expect(result.reason).toBe('Changes requested')
   })
 
   it('my-pr-action on a reviewer thread I have not answered', () => {
@@ -242,7 +242,7 @@ describe('classify — author branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('my-pr-action')
-    expect(result.reason).toBe('1 тред ждёт ответа')
+    expect(result.reason).toBe('1 thread waiting on you')
   })
 
   it('pluralises the unanswered thread count', () => {
@@ -252,7 +252,7 @@ describe('classify — author branch', () => {
       ...mine,
       reviewThreads: [thread('a'), thread('b')],
     })
-    expect(classify(pr, ctx()).reason).toBe('2 треда ждут ответа')
+    expect(classify(pr, ctx()).reason).toBe('2 threads waiting on you')
   })
 
   it('ignores resolved threads on my own PR', () => {
@@ -272,14 +272,14 @@ describe('classify — author branch', () => {
     const pr = makePullRequest({ ...mine, ciStatus: 'failure' })
     const result = classify(pr, ctx())
     expect(result.category).toBe('my-pr-action')
-    expect(result.reason).toBe('CI упал')
+    expect(result.reason).toBe('CI is red')
   })
 
   it('my-pr-action when approved and mergeable', () => {
     const pr = makePullRequest({ ...mine, reviewDecision: 'APPROVED' })
     const result = classify(pr, ctx())
     expect(result.category).toBe('my-pr-action')
-    expect(result.reason).toBe('Апрувнут — можно мержить')
+    expect(result.reason).toBe('Approved — ship it')
   })
 
   it('CI failure outranks the approval', () => {
@@ -288,14 +288,14 @@ describe('classify — author branch', () => {
       reviewDecision: 'APPROVED',
       ciStatus: 'failure',
     })
-    expect(classify(pr, ctx()).reason).toBe('CI упал')
+    expect(classify(pr, ctx()).reason).toBe('CI is red')
   })
 
   it('waiting while reviewers have not responded', () => {
     const pr = makePullRequest({ ...mine, reviewDecision: 'REVIEW_REQUIRED' })
     const result = classify(pr, ctx())
     expect(result.category).toBe('waiting')
-    expect(result.reason).toBe('Ждёшь ревью')
+    expect(result.reason).toBe('Waiting on reviewers')
   })
 })
 
@@ -313,7 +313,7 @@ describe('classify — snooze override', () => {
     const result = classify(pr, ctx(snoozes))
     expect(result.category).toBe('waiting')
     expect(result.isSnoozed).toBe(true)
-    expect(result.reason).toBe('Отложен')
+    expect(result.reason).toBe('Snoozed')
   })
 
   it('restores the PR once the snooze expires', () => {

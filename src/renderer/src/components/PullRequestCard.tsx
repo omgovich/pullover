@@ -10,9 +10,9 @@ interface Props {
 }
 
 const CI_LABELS = {
-  success: { label: 'CI ok', color: 'positive' },
-  failure: { label: 'CI упал', color: 'critical' },
-  pending: { label: 'CI идёт', color: 'warning' },
+  success: { label: 'CI green', color: 'positive' },
+  failure: { label: 'CI red', color: 'critical' },
+  pending: { label: 'CI running', color: 'warning' },
 } as const
 
 export default function PullRequestCard({
@@ -75,7 +75,7 @@ export default function PullRequestCard({
               variant="ghost"
               onClick={() => void window.api.markSeen(pr.id)}
             >
-              Прочитано
+              Mark read
             </Button>
           )}
           <SnoozeMenu prId={pr.id} isSnoozed={item.isSnoozed} />

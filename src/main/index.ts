@@ -45,7 +45,7 @@ async function doSignIn(
   onDeviceCode: (payload: { userCode: string; verificationUri: string }) => void,
 ): Promise<void> {
   if (!CLIENT_ID) {
-    throw new Error('MAIN_VITE_GITHUB_CLIENT_ID не задан — заполни .env')
+    throw new Error('MAIN_VITE_GITHUB_CLIENT_ID is not set — fill in your .env')
   }
 
   const info = await requestDeviceCode(CLIENT_ID)

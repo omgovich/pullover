@@ -44,16 +44,15 @@ export default function App(): React.JSX.Element {
         {snapshot.items.length === 0 ? (
           <View align="center" justify="center" grow gap={2}>
             <Text variant="body-2" color="neutral-faded">
-              Нечего смотреть
+              Nothing to look at
             </Text>
             {snapshot.status === 'error' ? (
               <Text variant="caption-1" color="neutral-faded" align="center">
-                Не удалось обновить список — данные могут быть неполными или
-                устаревшими.
+                Couldn't refresh — what you see may be stale or incomplete.
               </Text>
             ) : (
               <Text variant="caption-1" color="neutral-faded" align="center">
-                Добавь репозитории в настройках, если список должен быть не пустым.
+                Add some repos in settings if this looks emptier than it should.
               </Text>
             )}
           </View>

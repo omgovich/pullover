@@ -28,13 +28,8 @@ interface Verdict {
   reason: string
 }
 
-/** Russian count agreement: 1 ответ, 2 ответа, 5 ответов. */
-function plural(n: number, one: string, few: string, many: string): string {
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return one
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few
-  return many
+function pluralize(n: number, singular: string, plural: string): string {
+  return n === 1 ? singular : plural
 }
 
 function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
@@ -42,15 +37,15 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
   const participated = hasParticipated(pr, myLogin)
 
   if (requested && !participated) {
-    return { category: 'needs-review', reason: 'Ты назначен ревьюером' }
+    return { category: 'needs-review', reason: "You're on the reviewers list" }
   }
 
   const awaiting = threadsAwaitingMyReply(pr, myLogin)
   if (awaiting.length > 0) {
-    const word = plural(awaiting.length, 'новый ответ', 'новых ответа', 'новых ответов')
+    const word = pluralize(awaiting.length, 'new reply', 'new replies')
     return {
       category: 'new-replies',
-      reason: `${awaiting.length} ${word} в твоих тредах`,
+      reason: `${awaiting.length} ${word} in your threads`,
     }
   }
 
@@ -59,10 +54,10 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
     // I already reviewed, so GitHub cleared me from the reviewer list.
     // Being requested again means the author asked for another pass.
     if (requested) {
-      return { category: 're-review', reason: 'Ревью запрошено повторно' }
+      return { category: 're-review', reason: 'They asked you to look again' }
     }
     if (pr.lastCommitPushedAt > myReview.submittedAt) {
-      return { category: 're-review', reason: 'Новые коммиты после твоего ревью' }
+      return { category: 're-review', reason: 'New commits since your review' }
     }
   }
 
@@ -77,12 +72,12 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
     const mentionAt = pr.lastMentionAt ?? pr.updatedAt
     const mentionIsNew = lastActivity === null || mentionAt > lastActivity
     if (mentionIsNew) {
-      return { category: 'mentioned', reason: 'Тебя упомянули' }
+      return { category: 'mentioned', reason: 'Someone mentioned you' }
     }
   }
 
   if (participated) {
-    return { category: 'waiting', reason: 'Ждёшь ответа автора' }
+    return { category: 'waiting', reason: 'Waiting on the author' }
   }
 
   return { category: 'hidden', reason: '' }
@@ -90,24 +85,24 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
 
 function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
   if (pr.reviewDecision === 'CHANGES_REQUESTED') {
-    return { category: 'my-pr-action', reason: 'Запрошены изменения' }
+    return { category: 'my-pr-action', reason: 'Changes requested' }
   }
 
   const unanswered = unansweredThreads(pr, myLogin)
   if (unanswered.length > 0) {
-    const word = plural(unanswered.length, 'тред ждёт', 'треда ждут', 'тредов ждут')
-    return { category: 'my-pr-action', reason: `${unanswered.length} ${word} ответа` }
+    const word = pluralize(unanswered.length, 'thread', 'threads')
+    return { category: 'my-pr-action', reason: `${unanswered.length} ${word} waiting on you` }
   }
 
   if (pr.ciStatus === 'failure') {
-    return { category: 'my-pr-action', reason: 'CI упал' }
+    return { category: 'my-pr-action', reason: 'CI is red' }
   }
 
   if (pr.reviewDecision === 'APPROVED') {
-    return { category: 'my-pr-action', reason: 'Апрувнут — можно мержить' }
+    return { category: 'my-pr-action', reason: 'Approved — ship it' }
   }
 
-  return { category: 'waiting', reason: 'Ждёшь ревью' }
+  return { category: 'waiting', reason: 'Waiting on reviewers' }
 }
 
 export function classify(
@@ -129,7 +124,7 @@ export function classify(
 
   const snooze = ctx.snoozes[pr.id]
   if (snooze !== undefined && isSnoozeActive(pr, snooze, ctx.myLogin, ctx.now)) {
-    return { pr, category: 'waiting', reason: 'Отложен', isSnoozed: true }
+    return { pr, category: 'waiting', reason: 'Snoozed', isSnoozed: true }
   }
 
   return { pr, ...verdict, isSnoozed: false }

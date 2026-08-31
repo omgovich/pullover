@@ -16,13 +16,13 @@ interface Props {
 function statusText(snapshot: InboxSnapshot, now: string): string {
   if (snapshot.errorMessage === null) {
     return snapshot.lastUpdatedAt === null
-      ? 'Ещё не обновлялось'
-      : `Обновлено ${formatAge(snapshot.lastUpdatedAt, now)}`
+      ? 'Not fetched yet'
+      : `Updated ${formatAge(snapshot.lastUpdatedAt, now)}`
   }
   if (snapshot.lastUpdatedAt === null) {
     return snapshot.errorMessage
   }
-  return `${snapshot.errorMessage} · обновлено ${formatAge(snapshot.lastUpdatedAt, now)}`
+  return `${snapshot.errorMessage} · last updated ${formatAge(snapshot.lastUpdatedAt, now)}`
 }
 
 export default function Header({
@@ -53,8 +53,8 @@ export default function Header({
       <View gap={0}>
         <Text variant="body-2" weight="bold">
           {snapshot.attentionCount > 0
-            ? `${snapshot.attentionCount} требуют внимания`
-            : 'Всё чисто'}
+            ? `${snapshot.attentionCount} waiting on you`
+            : 'All clear'}
         </Text>
         <Text
           variant="caption-2"
@@ -72,10 +72,10 @@ export default function Header({
         loading={refreshing}
         onClick={() => void refresh()}
       >
-        Обновить
+        Refresh
       </Button>
       <Button size="small" variant="ghost" onClick={onOpenSettings}>
-        Настройки
+        Settings
       </Button>
     </View>
   )

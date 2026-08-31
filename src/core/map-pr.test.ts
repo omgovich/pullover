@@ -339,7 +339,7 @@ describe('mapPullRequest', () => {
                 author: { login: 'bob' },
                 state: 'CHANGES_REQUESTED',
                 submittedAt: '2026-08-06T10:00:00Z',
-                bodyText: '@vlad посмотри ещё раз',
+                bodyText: '@vlad take another look please',
               },
             ],
           },
