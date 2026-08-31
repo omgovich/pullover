@@ -39,7 +39,9 @@ function isStale(): boolean {
   return last === null || Date.now() - Date.parse(last) > STALE_AFTER_MS
 }
 
-async function signIn(
+let signInInFlight: Promise<void> | null = null
+
+async function doSignIn(
   onDeviceCode: (payload: { userCode: string; verificationUri: string }) => void,
 ): Promise<void> {
   if (!CLIENT_ID) {
@@ -61,11 +63,47 @@ async function signIn(
   inbox.start()
 }
 
+/**
+ * A device-code sign-in stays in flight for up to the code's expiry (15
+ * minutes by default). A second concurrent call joins that same run instead
+ * of starting an independent device-code cycle — two cycles would overwrite
+ * each other's clipboard/UI and race to save the token and start polling.
+ * The second caller's `onDeviceCode` is simply never invoked; it gets the
+ * first run's outcome.
+ */
+function signIn(
+  onDeviceCode: (payload: { userCode: string; verificationUri: string }) => void,
+): Promise<void> {
+  if (signInInFlight !== null) {
+    return signInInFlight
+  }
+
+  const run = doSignIn(onDeviceCode)
+  signInInFlight = run
+  return run.finally(() => {
+    signInInFlight = null
+  })
+}
+
 function signOut(): void {
   clearToken()
   client = null
   inbox.stop()
   void inbox.refresh()
+}
+
+/**
+ * Restarts polling after a settings change. Starting the timer while signed
+ * out would just tick forever calling refresh(), which re-emits
+ * signed-out each time — so this only (re)arms it when a client exists,
+ * and makes sure it's stopped otherwise.
+ */
+function restartPolling(): void {
+  if (client === null) {
+    inbox.stop()
+    return
+  }
+  inbox.start()
 }
 
 app.dock?.hide()
@@ -91,7 +129,7 @@ void app.whenReady().then(() => {
     getWindow: () => window,
     signIn,
     signOut,
-    restartPolling: () => inbox.start(),
+    restartPolling,
   })
 
   if (client !== null) inbox.start()

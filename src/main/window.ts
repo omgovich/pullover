@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { BrowserWindow, screen, shell, type Rectangle } from 'electron'
+import { isSafeExternalUrl } from './safe-url'
 
 const WIDTH = 420
 const HEIGHT = 620
@@ -21,7 +22,11 @@ export function createPopupWindow(): BrowserWindow {
 
   // Links inside the renderer always open in the user's browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url)
+    if (isSafeExternalUrl(url)) {
+      void shell.openExternal(url)
+    } else {
+      console.warn(`[window] refused to open unsafe URL: ${url}`)
+    }
     return { action: 'deny' }
   })
 

@@ -2,6 +2,7 @@ import { BrowserWindow, ipcMain, shell } from 'electron'
 import { IPC, type DeviceCodePayload } from '@shared/ipc'
 import type { Settings, SnoozeType } from '@shared/types'
 import type { Inbox } from './inbox'
+import { isSafeExternalUrl } from './safe-url'
 import type { AppStore } from './store'
 
 export interface IpcDeps {
@@ -19,7 +20,13 @@ export function registerIpc(deps: IpcDeps): void {
   ipcMain.handle(IPC.getSnapshot, () => deps.inbox.getSnapshot())
   ipcMain.handle(IPC.refresh, () => deps.inbox.refresh())
 
-  ipcMain.handle(IPC.openPr, (_event, url: string) => shell.openExternal(url))
+  ipcMain.handle(IPC.openPr, (_event, url: string) => {
+    if (!isSafeExternalUrl(url)) {
+      console.warn(`[ipc] refused to open unsafe URL: ${url}`)
+      return
+    }
+    return shell.openExternal(url)
+  })
 
   ipcMain.handle(
     IPC.snooze,
