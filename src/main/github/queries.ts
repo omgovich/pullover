@@ -31,7 +31,7 @@ export const DETAILS_QUERY = `
         bodyText
         author { login avatarUrl }
         repository { nameWithOwner }
-        reviews(first: 50) {
+        reviews(last: 50) {
           nodes { author { login } state submittedAt bodyText }
         }
         reviewThreads(last: 50) {
