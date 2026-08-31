@@ -50,6 +50,7 @@ async function collectIds(
 export async function fetchPullRequests(
   client: GraphQLClient,
   repositories: string[],
+  myLogin: string,
 ): Promise<PullRequest[]> {
   if (repositories.length === 0) return []
 
@@ -62,7 +63,9 @@ export async function fetchPullRequests(
     }
     for (const node of data.nodes) {
       if (!node) continue
-      prs.push(mapPullRequest(node, [...(bucketsById.get(node.id) ?? [])]))
+      prs.push(
+        mapPullRequest(node, [...(bucketsById.get(node.id) ?? [])], myLogin),
+      )
     }
   }
 

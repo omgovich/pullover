@@ -4,6 +4,7 @@ import {
   hasNewReplyInMyThreadsSince,
   hasParticipated,
   lastComment,
+  myLastActivityAt,
   myLatestReview,
   threadsAwaitingMyReply,
   unansweredThreads,
@@ -222,6 +223,45 @@ describe('hasParticipated', () => {
       ],
     })
     expect(hasParticipated(pr, ME)).toBe(true)
+  })
+
+  it('is true when I only commented in the conversation', () => {
+    const pr = makePullRequest({
+      conversationComments: [makeComment(ME, '2026-08-01T10:00:00Z')],
+    })
+    expect(hasParticipated(pr, ME)).toBe(true)
+  })
+})
+
+describe('myLastActivityAt', () => {
+  it('returns null when I have no activity at all', () => {
+    expect(myLastActivityAt(makePullRequest(), ME)).toBeNull()
+  })
+
+  it('returns the latest across my reviews, thread comments and conversation comments', () => {
+    const pr = makePullRequest({
+      reviews: [
+        { authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' },
+      ],
+      reviewThreads: [
+        makeThread({ comments: [makeComment(ME, '2026-08-05T10:00:00Z')] }),
+      ],
+      conversationComments: [makeComment(ME, '2026-08-03T10:00:00Z')],
+    })
+    expect(myLastActivityAt(pr, ME)).toBe('2026-08-05T10:00:00Z')
+  })
+
+  it('ignores activity by other people', () => {
+    const pr = makePullRequest({
+      reviews: [
+        { authorLogin: 'alice', state: 'APPROVED', submittedAt: '2026-08-09T10:00:00Z' },
+      ],
+      reviewThreads: [
+        makeThread({ comments: [makeComment('alice', '2026-08-08T10:00:00Z')] }),
+      ],
+      conversationComments: [makeComment('alice', '2026-08-07T10:00:00Z')],
+    })
+    expect(myLastActivityAt(pr, ME)).toBeNull()
   })
 })
 

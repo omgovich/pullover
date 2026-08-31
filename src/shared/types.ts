@@ -12,6 +12,7 @@ export const SEARCH_BUCKETS: readonly SearchBucket[] = [
 export interface ThreadComment {
   authorLogin: string
   createdAt: string
+  bodyText: string
 }
 
 export interface ReviewThread {
@@ -57,6 +58,10 @@ export interface PullRequest {
   reviewDecision: ReviewDecision
   reviews: Review[]
   reviewThreads: ReviewThread[]
+  /** Latest conversation-tab comments, oldest first. Inline review comments live in `reviewThreads`. */
+  conversationComments: ThreadComment[]
+  /** When the user was last @-mentioned on this PR, or null if never. */
+  lastMentionAt: string | null
   buckets: SearchBucket[]
 }
 

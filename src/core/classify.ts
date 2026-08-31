@@ -2,6 +2,7 @@ import { isSnoozeActive } from '@core/snooze'
 import {
   compareIso,
   hasParticipated,
+  myLastActivityAt,
   myLatestReview,
   threadsAwaitingMyReply,
   unansweredThreads,
@@ -65,8 +66,14 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
     }
   }
 
-  if (pr.buckets.includes('mentions') && !requested && !participated) {
-    return { category: 'mentioned', reason: 'Тебя упомянули' }
+  if (pr.buckets.includes('mentions') && !requested) {
+    const lastActivity = myLastActivityAt(pr, myLogin)
+    const mentionIsNew =
+      pr.lastMentionAt !== null &&
+      (lastActivity === null || pr.lastMentionAt > lastActivity)
+    if (mentionIsNew) {
+      return { category: 'mentioned', reason: 'Тебя упомянули' }
+    }
   }
 
   if (participated) {

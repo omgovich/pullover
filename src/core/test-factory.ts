@@ -3,8 +3,9 @@ import type { PullRequest, ReviewThread, ThreadComment } from '@shared/types'
 export function makeComment(
   authorLogin: string,
   createdAt: string,
+  bodyText = '',
 ): ThreadComment {
-  return { authorLogin, createdAt }
+  return { authorLogin, createdAt, bodyText }
 }
 
 export function makeThread(overrides: Partial<ReviewThread> = {}): ReviewThread {
@@ -37,6 +38,8 @@ export function makePullRequest(
     reviewDecision: 'REVIEW_REQUIRED',
     reviews: [],
     reviewThreads: [],
+    conversationComments: [],
+    lastMentionAt: null,
     buckets: [],
     ...overrides,
   }

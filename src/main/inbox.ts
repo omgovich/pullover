@@ -140,9 +140,11 @@ export class Inbox {
 
     try {
       this.myLogin ??= await this.fetchLogin(client)
+      const myLogin = this.myLogin
       this.prs = await this.fetchPrs(
         client,
         this.deps.store.getSettings().repositories,
+        myLogin,
       )
 
       const now = this.now()

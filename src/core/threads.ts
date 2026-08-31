@@ -67,9 +67,41 @@ export function myLatestReview(
 
 export function hasParticipated(pr: PullRequest, myLogin: string): boolean {
   if (myLatestReview(pr, myLogin) !== null) return true
-  return pr.reviewThreads.some((thread) =>
-    thread.comments.some((c) => c.authorLogin === myLogin),
-  )
+  if (
+    pr.reviewThreads.some((thread) =>
+      thread.comments.some((c) => c.authorLogin === myLogin),
+    )
+  ) {
+    return true
+  }
+  return pr.conversationComments.some((c) => c.authorLogin === myLogin)
+}
+
+/**
+ * When the user last did anything on this PR — reviewed, replied in a thread,
+ * or commented in the conversation. Null if they never have.
+ */
+export function myLastActivityAt(
+  pr: PullRequest,
+  myLogin: string,
+): string | null {
+  const dates: string[] = []
+
+  const myReview = myLatestReview(pr, myLogin)
+  if (myReview !== null) dates.push(myReview.submittedAt)
+
+  for (const thread of pr.reviewThreads) {
+    for (const c of thread.comments) {
+      if (c.authorLogin === myLogin) dates.push(c.createdAt)
+    }
+  }
+
+  for (const c of pr.conversationComments) {
+    if (c.authorLogin === myLogin) dates.push(c.createdAt)
+  }
+
+  if (dates.length === 0) return null
+  return dates.reduce((latest, d) => (compareIso(d, latest) > 0 ? d : latest))
 }
 
 export function hasNewReplyInMyThreadsSince(

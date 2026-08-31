@@ -28,6 +28,7 @@ export const DETAILS_QUERY = `
         additions
         deletions
         reviewDecision
+        bodyText
         author { login avatarUrl }
         repository { nameWithOwner }
         reviews(first: 50) {
@@ -38,9 +39,12 @@ export const DETAILS_QUERY = `
             id
             isResolved
             comments(first: 50) {
-              nodes { author { login } createdAt }
+              nodes { author { login } createdAt bodyText }
             }
           }
+        }
+        comments(last: 50) {
+          nodes { author { login } createdAt bodyText }
         }
         commits(last: 1) {
           nodes {

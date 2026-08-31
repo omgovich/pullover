@@ -126,10 +126,49 @@ describe('classify — reviewer branch', () => {
   })
 
   it('mentioned when only @-mentioned', () => {
-    const pr = makePullRequest({ buckets: ['mentions', 'involves'] })
+    const pr = makePullRequest({
+      buckets: ['mentions', 'involves'],
+      lastMentionAt: '2026-08-05T10:00:00Z',
+    })
     const result = classify(pr, ctx())
     expect(result.category).toBe('mentioned')
     expect(result.reason).toBe('Тебя упомянули')
+  })
+
+  it('mentioned when the mention is newer than my last activity, even though I participated', () => {
+    const pr = makePullRequest({
+      buckets: ['involves', 'mentions'],
+      reviews: [
+        { authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' },
+      ],
+      lastCommitPushedAt: '2026-08-01T10:00:00Z',
+      lastMentionAt: '2026-08-05T10:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('mentioned')
+    expect(result.reason).toBe('Тебя упомянули')
+  })
+
+  it('not mentioned when the mention predates my last activity — falls through to waiting', () => {
+    const pr = makePullRequest({
+      buckets: ['involves', 'mentions'],
+      reviews: [
+        { authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-05T10:00:00Z' },
+      ],
+      lastCommitPushedAt: '2026-08-01T10:00:00Z',
+      lastMentionAt: '2026-08-01T10:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('waiting')
+  })
+
+  it('is waiting, not hidden, when I only commented in the conversation', () => {
+    const pr = makePullRequest({
+      buckets: ['involves'],
+      conversationComments: [makeComment(ME, '2026-08-01T10:00:00Z')],
+    })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('waiting')
   })
 
   it('needs-review outranks mentioned', () => {

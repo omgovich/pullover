@@ -20,6 +20,8 @@ function detailNode(id: string, overrides: Record<string, unknown> = {}) {
     repository: { nameWithOwner: 'acme/web' },
     reviews: { nodes: [] },
     reviewThreads: { nodes: [] },
+    comments: { nodes: [] },
+    bodyText: '',
     commits: { nodes: [] },
     ...overrides,
   }
@@ -56,7 +58,7 @@ describe('fetchViewerLogin', () => {
 describe('fetchPullRequests', () => {
   it('returns nothing when no repositories are configured', async () => {
     const client = fakeClient({}, [])
-    await expect(fetchPullRequests(client, [])).resolves.toEqual([])
+    await expect(fetchPullRequests(client, [], 'vlad')).resolves.toEqual([])
     expect(client).not.toHaveBeenCalled()
   })
 
@@ -65,7 +67,7 @@ describe('fetchPullRequests', () => {
       { 'review-requested:@me': ['PR_1'], 'mentions:@me': ['PR_1'] },
       [detailNode('PR_1')],
     )
-    const prs = await fetchPullRequests(client, ['acme/web'])
+    const prs = await fetchPullRequests(client, ['acme/web'], 'vlad')
     expect(prs).toHaveLength(1)
     expect(prs[0]!.buckets.sort()).toEqual(['mentions', 'review-requested'])
   })
@@ -79,7 +81,7 @@ describe('fetchPullRequests', () => {
       },
       [detailNode('PR_1')],
     )
-    await fetchPullRequests(client, ['acme/web'])
+    await fetchPullRequests(client, ['acme/web'], 'vlad')
     const detailCalls = client.mock.calls.filter(([q]) => q === DETAILS_QUERY)
     expect(detailCalls).toHaveLength(1)
     expect(detailCalls[0]![1]!.ids).toEqual(['PR_1'])
@@ -92,7 +94,7 @@ describe('fetchPullRequests', () => {
       ids.map((id) => detailNode(id)),
     )
 
-    const prs = await fetchPullRequests(client, ['acme/web'])
+    const prs = await fetchPullRequests(client, ['acme/web'], 'vlad')
 
     const detailCalls = client.mock.calls.filter(([q]) => q === DETAILS_QUERY)
     expect(detailCalls).toHaveLength(3)
@@ -109,7 +111,7 @@ describe('fetchPullRequests', () => {
 
   it('maps the detail node into a domain pull request', async () => {
     const client = fakeClient({ 'author:@me': ['PR_1'] }, [detailNode('PR_1')])
-    const prs = await fetchPullRequests(client, ['acme/web'])
+    const prs = await fetchPullRequests(client, ['acme/web'], 'vlad')
     expect(prs[0]!.repository).toBe('acme/web')
     expect(prs[0]!.authorLogin).toBe('alice')
   })
@@ -118,7 +120,7 @@ describe('fetchPullRequests', () => {
     const client = fakeClient({ 'author:@me': ['PR_1', 'PR_missing'] }, [
       detailNode('PR_1'),
     ])
-    const prs = await fetchPullRequests(client, ['acme/web'])
+    const prs = await fetchPullRequests(client, ['acme/web'], 'vlad')
     expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
   })
 
@@ -137,8 +139,17 @@ describe('fetchPullRequests', () => {
       throw new Error(`unexpected query: ${query}`)
     })
 
-    const prs = await fetchPullRequests(client, ['acme/web'])
+    const prs = await fetchPullRequests(client, ['acme/web'], 'vlad')
 
     expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
+  })
+
+  it('passes myLogin through to mapPullRequest so mentions of that login are detected', async () => {
+    const client = fakeClient(
+      { 'mentions:@me': ['PR_1'] },
+      [detailNode('PR_1', { bodyText: 'Hey @vlad, take a look' })],
+    )
+    const prs = await fetchPullRequests(client, ['acme/web'], 'vlad')
+    expect(prs[0]!.lastMentionAt).not.toBeNull()
   })
 })
