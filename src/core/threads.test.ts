@@ -158,6 +158,17 @@ describe('myLatestReview', () => {
     expect(myLatestReview(pr, ME)?.state).toBe('CHANGES_REQUESTED')
   })
 
+  it('returns the chronologically latest review when my reviews are not in order', () => {
+    const pr = makePullRequest({
+      reviews: [
+        { authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-07T10:00:00Z' },
+        { authorLogin: 'alice', state: 'APPROVED', submittedAt: '2026-08-05T10:00:00Z' },
+        { authorLogin: ME, state: 'CHANGES_REQUESTED', submittedAt: '2026-08-02T10:00:00Z' },
+      ],
+    })
+    expect(myLatestReview(pr, ME)?.submittedAt).toBe('2026-08-07T10:00:00Z')
+  })
+
   it('ignores my unsubmitted PENDING draft review', () => {
     const pr = makePullRequest({
       reviews: [
