@@ -18,7 +18,7 @@ describe('buildSearchQueries', () => {
 
   it('builds one query for a small repository list', () => {
     expect(buildSearchQueries(['acme/web', 'acme/api'], 'review-requested')).toEqual([
-      'repo:acme/web repo:acme/api is:pr is:open review-requested:@me',
+      'repo:acme/web repo:acme/api is:pr is:open review-requested:@me sort:updated-desc',
     ])
   })
 
@@ -35,5 +35,28 @@ describe('buildSearchQueries', () => {
     expect(queries[0]).toContain('repo:acme/repo9')
     expect(queries[1]).toContain('repo:acme/repo10')
     expect(queries[1]).toContain('author:@me')
+  })
+
+  it('sorts scoped queries by most recently updated', () => {
+    expect(buildSearchQueries(['acme/web'], 'author')[0]).toContain('sort:updated-desc')
+  })
+
+  it('returns one unscoped query per bucket when watching everything', () => {
+    const queries = buildSearchQueries(null, 'review-requested')
+    expect(queries).toEqual(['is:pr is:open review-requested:@me sort:updated-desc'])
+    expect(queries[0]).not.toContain('repo:')
+  })
+
+  it('sorts the unscoped query by most recently updated', () => {
+    expect(buildSearchQueries(null, 'review-requested')[0]).toContain('sort:updated-desc')
+  })
+
+  it('never emits a repo: qualifier for null, across every bucket', () => {
+    for (const bucket of ['review-requested', 'author', 'involves', 'mentions'] as const) {
+      const queries = buildSearchQueries(null, bucket)
+      expect(queries).toHaveLength(1)
+      expect(queries[0]).not.toContain('repo:')
+      expect(queries[0]).toContain('is:pr is:open')
+    }
   })
 })

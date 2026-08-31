@@ -26,7 +26,7 @@ export async function fetchViewerLogin(client: GraphQLClient): Promise<string> {
 /** PR id → the set of search buckets it turned up in. */
 async function collectIds(
   client: GraphQLClient,
-  repositories: string[],
+  repositories: string[] | null,
 ): Promise<Map<string, Set<SearchBucket>>> {
   const byId = new Map<string, Set<SearchBucket>>()
 
@@ -49,10 +49,10 @@ async function collectIds(
 
 export async function fetchPullRequests(
   client: GraphQLClient,
-  repositories: string[],
+  repositories: string[] | null,
   myLogin: string,
 ): Promise<PullRequest[]> {
-  if (repositories.length === 0) return []
+  if (repositories !== null && repositories.length === 0) return []
 
   const bucketsById = await collectIds(client, repositories)
   const prs: PullRequest[] = []

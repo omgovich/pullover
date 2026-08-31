@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Card, Text, TextField, View } from 'reshaped/bundle'
+import { Button, Card, Checkbox, Text, TextField, View } from 'reshaped/bundle'
 import type { Settings } from '@shared/types'
 
 interface Props {
@@ -42,6 +42,11 @@ export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
     await reload()
   }
 
+  const setWatchAll = async (checked: boolean): Promise<void> => {
+    await window.api.setSettings({ watchAllRepositories: checked })
+    await reload()
+  }
+
   if (settings === null) return <View padding={4} />
 
   return (
@@ -68,58 +73,70 @@ export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
             REPOS
           </Text>
 
-          <View direction="row" gap={2}>
-            <View grow>
-              <TextField
-                name="repository"
-                value={draft}
-                placeholder="owner/repo"
-                size="small"
-                onChange={({ value }) => setDraft(value)}
-                inputAttributes={{
-                  onKeyDown: (event) => {
-                    if (event.key === 'Enter') void addRepository()
-                  },
-                }}
-              />
-            </View>
-            <Button
-              size="small"
-              color="primary"
-              disabled={draft.trim() === ''}
-              onClick={() => void addRepository()}
-            >
-              Add
-            </Button>
-          </View>
+          <Checkbox
+            name="watch-all"
+            checked={settings.watchAllRepositories}
+            onChange={({ checked }) => void setWatchAll(checked)}
+          >
+            Watch every repo I'm involved in
+          </Checkbox>
 
-          {error !== null && (
-            <Text variant="caption-1" color="critical">
-              {error}
-            </Text>
-          )}
-
-          {settings.repositories.length === 0 ? (
-            <Text variant="caption-1" color="neutral-faded">
-              None yet — that's why the list is empty.
-            </Text>
-          ) : (
-            settings.repositories.map((repo) => (
-              <Card key={repo} padding={2}>
-                <View direction="row" align="center" gap={2}>
-                  <Text variant="caption-1">{repo}</Text>
-                  <View grow />
-                  <Button
+          {!settings.watchAllRepositories && (
+            <>
+              <View direction="row" gap={2}>
+                <View grow>
+                  <TextField
+                    name="repository"
+                    value={draft}
+                    placeholder="owner/repo"
                     size="small"
-                    variant="ghost"
-                    color="critical"
-                    onClick={() => void removeRepository(repo)}
-                  >
-                    Remove
-                  </Button>
+                    onChange={({ value }) => setDraft(value)}
+                    inputAttributes={{
+                      onKeyDown: (event) => {
+                        if (event.key === 'Enter') void addRepository()
+                      },
+                    }}
+                  />
                 </View>
-              </Card>
-            ))
+                <Button
+                  size="small"
+                  color="primary"
+                  disabled={draft.trim() === ''}
+                  onClick={() => void addRepository()}
+                >
+                  Add
+                </Button>
+              </View>
+
+              {error !== null && (
+                <Text variant="caption-1" color="critical">
+                  {error}
+                </Text>
+              )}
+
+              {settings.repositories.length === 0 ? (
+                <Text variant="caption-1" color="neutral-faded">
+                  None yet — nothing will show up until you add one.
+                </Text>
+              ) : (
+                settings.repositories.map((repo) => (
+                  <Card key={repo} padding={2}>
+                    <View direction="row" align="center" gap={2}>
+                      <Text variant="caption-1">{repo}</Text>
+                      <View grow />
+                      <Button
+                        size="small"
+                        variant="ghost"
+                        color="critical"
+                        onClick={() => void removeRepository(repo)}
+                      >
+                        Remove
+                      </Button>
+                    </View>
+                  </Card>
+                ))
+              )}
+            </>
           )}
         </View>
 

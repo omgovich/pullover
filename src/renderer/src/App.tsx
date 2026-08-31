@@ -52,7 +52,7 @@ export default function App(): React.JSX.Element {
               </Text>
             ) : (
               <Text variant="caption-1" color="neutral-faded" align="center">
-                Add some repos in settings if this looks emptier than it should.
+                Nothing needs you right now.
               </Text>
             )}
           </View>

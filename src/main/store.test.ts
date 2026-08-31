@@ -36,6 +36,58 @@ describe('settings', () => {
     expect(store.getSettings().pollIntervalMinutes).toBe(15)
     expect(store.getSettings().repositories).toEqual([])
   })
+
+  it('defaults to watching every repo', () => {
+    expect(store.getSettings().watchAllRepositories).toBe(true)
+  })
+
+  it('normalises a pre-existing settings file missing watchAllRepositories to true', () => {
+    const backend = new MemoryStore()
+    // Simulate a settings file written before `watchAllRepositories` existed:
+    // the key is simply absent, not `undefined`-valued.
+    backend.set('settings', {
+      pollIntervalMinutes: 5,
+      repositories: [],
+    } as unknown as PersistedState['settings'])
+    store = new AppStore(backend)
+    expect(store.getSettings().watchAllRepositories).toBe(true)
+  })
+
+  it('preserves an explicit false rather than resurrecting it to true', () => {
+    const backend = new MemoryStore()
+    backend.set('settings', {
+      pollIntervalMinutes: 5,
+      repositories: ['acme/web'],
+      watchAllRepositories: false,
+    })
+    store = new AppStore(backend)
+    expect(store.getSettings().watchAllRepositories).toBe(false)
+  })
+
+  it('preserves other on-disk fields instead of clobbering them with defaults', () => {
+    const backend = new MemoryStore()
+    backend.set('settings', {
+      pollIntervalMinutes: 42,
+      repositories: ['acme/web', 'acme/api'],
+    } as unknown as PersistedState['settings'])
+    store = new AppStore(backend)
+    expect(store.getSettings()).toEqual({
+      pollIntervalMinutes: 42,
+      repositories: ['acme/web', 'acme/api'],
+      watchAllRepositories: true,
+    })
+  })
+
+  it('round-trips a partial update through the normalised settings', () => {
+    const backend = new MemoryStore()
+    backend.set('settings', {
+      pollIntervalMinutes: 5,
+      repositories: [],
+    } as unknown as PersistedState['settings'])
+    store = new AppStore(backend)
+    store.updateSettings({ watchAllRepositories: false })
+    expect(store.getSettings().watchAllRepositories).toBe(false)
+  })
 })
 
 describe('repositories', () => {

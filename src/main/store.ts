@@ -24,7 +24,14 @@ export class AppStore {
   constructor(private readonly backend: KeyValueStore) {}
 
   getSettings(): Settings {
-    return this.backend.get('settings')
+    // electron-store's default-merge is shallow at the top level only: an
+    // on-disk `settings` object wins outright over `defaults.settings`, so a
+    // settings file written before a new field existed comes back with that
+    // field simply missing (`undefined`), not defaulted. Merge here so every
+    // consumer sees a fully-populated `Settings` with real booleans — a
+    // missing key falls back to `DEFAULT_SETTINGS`, while any key actually
+    // present on disk (including an explicit `false`) always wins.
+    return { ...DEFAULT_SETTINGS, ...this.backend.get('settings') }
   }
 
   updateSettings(patch: Partial<Settings>): void {
