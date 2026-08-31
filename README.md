@@ -16,21 +16,24 @@ You only do this once, and it takes about two minutes.
 2. Click **New OAuth App** and fill in:
    - **Application name** — `Pullover`
    - **Homepage URL** — anything valid; Device Flow never opens it.
-     `https://github.com/omgovich/pullover` is fine.
-   - **Authorization callback URL** — the form insists on one, but Device Flow
-     never uses it. `http://localhost` is fine.
-   - **Description** — optional, but it's what you'll read on the
+   - **Application description** — optional, and it's what shows on the
      authorization screen. Suggested:
 
      > A menu-bar inbox that shows only the pull requests waiting on you, and
      > hides the ones where you're waiting on someone else. Reads only — it
      > never comments, reviews, or merges anything.
-3. Click **Register application**.
-4. On the app's page, tick **Enable Device Flow** and click **Update
-   application**. This is the step that's easy to miss — without it sign-in
-   fails with `unauthorized_client`.
-5. Copy the **Client ID**. You do *not* need the client secret; Pullover is a
-   public client and never asks for one.
+
+   - **Redirect URI** — unused by Device Flow. `http://localhost` if you want
+     one at all. Leave **Allow wildcard matching** off.
+3. Tick **Enable Device Flow**. Easy to miss, and without it sign-in fails
+   with `unauthorized_client`.
+4. Leave **Expire user access tokens** OFF. It hands out an 8-hour token plus
+   a `refresh_token`, and Pullover doesn't implement refresh — you'd be
+   silently signed out every few hours, and because the app doesn't tell a
+   401 apart from a network blip it would sit there showing a stale list and
+   an error instead of sending you back to sign in.
+5. Click **Register application**, then copy the **Client ID**. You don't need
+   the client secret — Pullover is a public client and never asks for one.
 
 ### 2. Point Pullover at it
 
