@@ -21,12 +21,22 @@ export function chunk<T>(items: T[], size: number): T[][] {
  *
  * `review-requested:@me` already covers requests that reached the user through
  * a team, so team membership never has to be resolved separately.
+ *
+ * `repositories` has three meanings:
+ * - `null` — watch everything: exactly one query, with no `repo:` qualifier
+ *   at all, so GitHub searches every repository the user is involved in.
+ * - `[]` — no repositories selected: no queries at all.
+ * - a non-empty array — search only those repositories, chunked across
+ *   several queries if the list is long.
  */
 export function buildSearchQueries(
-  repositories: string[],
+  repositories: string[] | null,
   bucket: SearchBucket,
   chunkSize = 10,
 ): string[] {
+  if (repositories === null) {
+    return [['is:pr', 'is:open', BUCKET_QUALIFIERS[bucket]].join(' ')]
+  }
   if (repositories.length === 0) return []
   return chunk(repositories, chunkSize).map((group) =>
     [

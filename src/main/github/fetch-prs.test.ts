@@ -62,6 +62,20 @@ describe('fetchPullRequests', () => {
     expect(client).not.toHaveBeenCalled()
   })
 
+  it('issues unscoped search queries and returns pull requests when repositories is null', async () => {
+    const client = fakeClient(
+      { 'review-requested:@me': ['PR_1'] },
+      [detailNode('PR_1')],
+    )
+    const prs = await fetchPullRequests(client, null, 'vlad')
+    expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
+    const searchCalls = client.mock.calls.filter(([q]) => q === SEARCH_QUERY)
+    expect(searchCalls.length).toBeGreaterThan(0)
+    for (const [, variables] of searchCalls) {
+      expect(variables.q as string).not.toContain('repo:')
+    }
+  })
+
   it('records which buckets a PR came from', async () => {
     const client = fakeClient(
       { 'review-requested:@me': ['PR_1'], 'mentions:@me': ['PR_1'] },

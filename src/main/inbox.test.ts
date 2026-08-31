@@ -8,7 +8,7 @@ import { makePullRequest } from '@core/test-factory'
 
 class MemoryStore implements KeyValueStore {
   private state: PersistedState = {
-    settings: { ...DEFAULT_SETTINGS, repositories: ['acme/web'] },
+    settings: { ...DEFAULT_SETTINGS, repositories: ['acme/web'], watchAllRepositories: false },
     snoozes: {},
     seen: {},
   }
@@ -314,6 +314,30 @@ describe('Inbox.refresh', () => {
     expect(fetchPrs).toHaveBeenCalledTimes(2)
     expect(fetchPrs.mock.calls[0]?.[1]).toEqual(['acme/web'])
     expect(fetchPrs.mock.calls[1]?.[1]).toEqual(['acme/web', 'acme/api'])
+  })
+
+  it('passes null to fetchPrs when watchAllRepositories is on, regardless of the repository list', async () => {
+    store.updateSettings({ watchAllRepositories: true, repositories: ['acme/web'] })
+    const fetchPrs = vi.fn((_client: unknown, _repositories: string[] | null) =>
+      Promise.resolve([]),
+    )
+    const inbox = build([], { fetchPrs })
+
+    await inbox.refresh()
+
+    expect(fetchPrs.mock.calls[0]?.[1]).toBeNull()
+  })
+
+  it('passes the repository list to fetchPrs when watchAllRepositories is off', async () => {
+    store.updateSettings({ watchAllRepositories: false, repositories: ['acme/web'] })
+    const fetchPrs = vi.fn((_client: unknown, _repositories: string[] | null) =>
+      Promise.resolve([]),
+    )
+    const inbox = build([], { fetchPrs })
+
+    await inbox.refresh()
+
+    expect(fetchPrs.mock.calls[0]?.[1]).toEqual(['acme/web'])
   })
 
   it('coalesces several refreshes requested during one pass into a single follow-up pass', async () => {

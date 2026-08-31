@@ -36,6 +36,10 @@ describe('settings', () => {
     expect(store.getSettings().pollIntervalMinutes).toBe(15)
     expect(store.getSettings().repositories).toEqual([])
   })
+
+  it('defaults to watching every repo', () => {
+    expect(store.getSettings().watchAllRepositories).toBe(true)
+  })
 })
 
 describe('repositories', () => {

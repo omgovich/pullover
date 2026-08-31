@@ -125,9 +125,12 @@ export interface Snooze {
 export interface Settings {
   pollIntervalMinutes: number
   repositories: string[]
+  /** When true, search every repo the user is involved in and ignore `repositories`. */
+  watchAllRepositories: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   pollIntervalMinutes: 5,
   repositories: [],
+  watchAllRepositories: true,
 }

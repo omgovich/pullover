@@ -36,4 +36,19 @@ describe('buildSearchQueries', () => {
     expect(queries[1]).toContain('repo:acme/repo10')
     expect(queries[1]).toContain('author:@me')
   })
+
+  it('returns one unscoped query per bucket when watching everything', () => {
+    const queries = buildSearchQueries(null, 'review-requested')
+    expect(queries).toEqual(['is:pr is:open review-requested:@me'])
+    expect(queries[0]).not.toContain('repo:')
+  })
+
+  it('never emits a repo: qualifier for null, across every bucket', () => {
+    for (const bucket of ['review-requested', 'author', 'involves', 'mentions'] as const) {
+      const queries = buildSearchQueries(null, bucket)
+      expect(queries).toHaveLength(1)
+      expect(queries[0]).not.toContain('repo:')
+      expect(queries[0]).toContain('is:pr is:open')
+    }
+  })
 })
