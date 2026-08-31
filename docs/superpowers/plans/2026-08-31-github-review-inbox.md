@@ -1532,7 +1532,9 @@ export function classifyAll(
         VISIBLE_CATEGORIES.indexOf(a.category) -
         VISIBLE_CATEGORIES.indexOf(b.category)
       if (byCategory !== 0) return byCategory
-      return b.pr.updatedAt.localeCompare(a.pr.updatedAt)
+      // Plain string comparison: ISO 8601 UTC sorts correctly as text.
+      if (a.pr.updatedAt === b.pr.updatedAt) return 0
+      return a.pr.updatedAt > b.pr.updatedAt ? -1 : 1
     })
 }
 

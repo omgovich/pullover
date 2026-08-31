@@ -169,6 +169,16 @@ describe('myLatestReview', () => {
     expect(myLatestReview(pr, ME)?.submittedAt).toBe('2026-08-07T10:00:00Z')
   })
 
+  it('preserves the later review when my reviews share the same timestamp', () => {
+    const pr = makePullRequest({
+      reviews: [
+        { authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-03T10:00:00Z' },
+        { authorLogin: ME, state: 'CHANGES_REQUESTED', submittedAt: '2026-08-03T10:00:00Z' },
+      ],
+    })
+    expect(myLatestReview(pr, ME)?.state).toBe('CHANGES_REQUESTED')
+  })
+
   it('ignores my unsubmitted PENDING draft review', () => {
     const pr = makePullRequest({
       reviews: [

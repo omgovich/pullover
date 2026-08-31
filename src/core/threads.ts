@@ -51,7 +51,9 @@ export function myLatestReview(
 ): Review | null {
   const mine = pr.reviews
     .filter((r) => r.authorLogin === myLogin && r.state !== 'PENDING')
-    .sort((a, b) => (a.submittedAt < b.submittedAt ? -1 : 1))
+    .sort((a, b) =>
+      a.submittedAt < b.submittedAt ? -1 : a.submittedAt > b.submittedAt ? 1 : 0
+    )
   return mine.at(-1) ?? null
 }
 
