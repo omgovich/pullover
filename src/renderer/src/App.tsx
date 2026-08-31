@@ -5,10 +5,12 @@ import Header from './components/Header'
 import InboxSection from './components/InboxSection'
 import SettingsPanel from './components/SettingsPanel'
 import SignIn from './components/SignIn'
+import { useScrollMemory } from './useScrollMemory'
 import { useSnapshot } from './useSnapshot'
 
 export default function App(): React.JSX.Element {
   const snapshot = useSnapshot()
+  const scroll = useScrollMemory()
   const [showSettings, setShowSettings] = useState(false)
   const [now, setNow] = useState(() => new Date().toISOString())
 
@@ -45,7 +47,13 @@ export default function App(): React.JSX.Element {
         onOpenSettings={() => setShowSettings(true)}
       />
 
-      <View overflow="auto" grow padding={3} gap={4}>
+      <View
+        overflow="auto"
+        grow
+        padding={3}
+        gap={4}
+        attributes={{ ref: scroll.ref, onScroll: scroll.onScroll }}
+      >
         {snapshot.items.length === 0 ? (
           <View align="center" justify="center" grow gap={2}>
             <Text variant="body-2" color="neutral-faded">
