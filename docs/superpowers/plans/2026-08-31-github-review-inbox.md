@@ -8,6 +8,14 @@
 
 **Tech Stack:** Electron 44, electron-vite 5, React 19, Reshaped 4.1 (UI kit), TypeScript 7, Vitest 4, electron-store 11, `@octokit/graphql` 9, electron-builder 26.
 
+> **Note on divergence.** This plan was executed with a review gate after every
+> task, and review found real defects in some of the code blocks below. Where
+> the committed implementation differs from this document, the committed code
+> is correct and this document is the historical record. The running list of
+> what changed and why is in `.superpowers/sdd/progress.md`. The largest such
+> change is in Task 10, where `Inbox` gained clearing of the cached viewer
+> login on sign-out and a re-entrancy guard on `refresh()`.
+
 ## Global Constraints
 
 - Spec of record: `docs/superpowers/specs/2026-08-31-github-review-inbox-design.md`. Read it before Task 1.
@@ -1042,7 +1050,7 @@ This is the heart of the app. Everything else is plumbing around it.
 - Test: `src/core/classify.test.ts`
 
 **Interfaces:**
-- Consumes: all predicates from `@core/threads`; `isSnoozeActive` from `@core/snooze`.
+- Consumes: `compareIso` and all predicates from `@core/threads`; `isSnoozeActive` from `@core/snooze`.
 - Produces:
   - `interface ClassifyContext { myLogin: string; snoozes: Record<string, Snooze>; now: string }`
   - `classify(pr: PullRequest, ctx: ClassifyContext): ClassifiedPullRequest`
@@ -1398,6 +1406,7 @@ Expected: FAIL — `Failed to resolve import "@core/classify"`.
 ```ts
 import { isSnoozeActive } from '@core/snooze'
 import {
+  compareIso,
   hasParticipated,
   myLatestReview,
   threadsAwaitingMyReply,
@@ -1532,7 +1541,8 @@ export function classifyAll(
         VISIBLE_CATEGORIES.indexOf(a.category) -
         VISIBLE_CATEGORIES.indexOf(b.category)
       if (byCategory !== 0) return byCategory
-      return b.pr.updatedAt.localeCompare(a.pr.updatedAt)
+      // Newest first. compareIso is the project's one ISO comparator.
+      return compareIso(b.pr.updatedAt, a.pr.updatedAt)
     })
 }
 
@@ -2264,7 +2274,10 @@ const INFO: DeviceCodeInfo = {
 
 describe('requestDeviceCode', () => {
   it('posts the client id and returns the user code', async () => {
-    const fetchFn = vi.fn(async () =>
+    // vi.fn<typeof fetch> gives mock.calls the real [url, init] tuple shape.
+    // Without it Vitest infers a zero-arg signature and destructuring calls[0]
+    // fails to compile.
+    const fetchFn = vi.fn<typeof fetch>(async () =>
       jsonResponse({
         device_code: 'device-code-value',
         user_code: 'ABCD-1234',
