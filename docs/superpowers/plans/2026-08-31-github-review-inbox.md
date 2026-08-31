@@ -8,6 +8,14 @@
 
 **Tech Stack:** Electron 44, electron-vite 5, React 19, Reshaped 4.1 (UI kit), TypeScript 7, Vitest 4, electron-store 11, `@octokit/graphql` 9, electron-builder 26.
 
+> **Note on divergence.** This plan was executed with a review gate after every
+> task, and review found real defects in some of the code blocks below. Where
+> the committed implementation differs from this document, the committed code
+> is correct and this document is the historical record. The running list of
+> what changed and why is in `.superpowers/sdd/progress.md`. The largest such
+> change is in Task 10, where `Inbox` gained clearing of the cached viewer
+> login on sign-out and a re-entrancy guard on `refresh()`.
+
 ## Global Constraints
 
 - Spec of record: `docs/superpowers/specs/2026-08-31-github-review-inbox-design.md`. Read it before Task 1.
