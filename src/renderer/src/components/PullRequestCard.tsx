@@ -5,7 +5,6 @@ import SnoozeMenu from './SnoozeMenu'
 
 interface Props {
   item: ClassifiedPullRequest
-  seenAt: string | undefined
   now: string
 }
 
@@ -17,23 +16,19 @@ const CI_LABELS = {
 
 export default function PullRequestCard({
   item,
-  seenAt,
   now,
 }: Props): React.JSX.Element {
   const { pr } = item
-  const isNew = seenAt === undefined || seenAt < pr.updatedAt
   const ci = pr.ciStatus === 'none' ? null : CI_LABELS[pr.ciStatus]
 
   const open = (): void => {
     void window.api.openPr(pr.url)
-    void window.api.markSeen(pr.id)
   }
 
   return (
     <Card padding={3}>
       <View gap={2}>
         <View direction="row" gap={2} align="center">
-          {isNew && <Badge color="primary" size="small" rounded />}
           <Text variant="caption-1" color="neutral-faded">
             {pr.repository} #{pr.number}
           </Text>

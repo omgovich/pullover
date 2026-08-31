@@ -9,8 +9,6 @@ import {
 export interface PersistedState {
   settings: Settings
   snoozes: Record<string, Snooze>
-  /** PR id → ISO timestamp of when the user last marked it seen. */
-  seen: Record<string, string>
 }
 
 export interface KeyValueStore {
@@ -81,19 +79,12 @@ export class AppStore {
     this.backend.set('snoozes', next)
   }
 
-  getSeen(): Record<string, string> {
-    return this.backend.get('seen')
-  }
-
-  markSeen(prId: string, now: string): void {
-    this.backend.set('seen', { ...this.getSeen(), [prId]: now })
-  }
 }
 
 export function createAppStore(): AppStore {
   const backend = new Store<PersistedState>({
     name: 'pullover',
-    defaults: { settings: { ...DEFAULT_SETTINGS }, snoozes: {}, seen: {} },
+    defaults: { settings: { ...DEFAULT_SETTINGS }, snoozes: {} },
   })
   return new AppStore(backend)
 }

@@ -30,7 +30,6 @@ const api: RendererApi = {
   snooze: (prId: string, type: SnoozeType, hours?: number) =>
     ipcRenderer.invoke(IPC.snooze, prId, type, hours),
   unsnooze: (prId: string) => ipcRenderer.invoke(IPC.unsnooze, prId),
-  markSeen: (prId: string) => ipcRenderer.invoke(IPC.markSeen, prId),
   getSettings: () => ipcRenderer.invoke(IPC.getSettings),
   setSettings: (patch: Partial<Settings>) =>
     ipcRenderer.invoke(IPC.setSettings, patch),

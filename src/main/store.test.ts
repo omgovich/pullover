@@ -7,7 +7,6 @@ class MemoryStore implements KeyValueStore {
   private state: PersistedState = {
     settings: { ...DEFAULT_SETTINGS },
     snoozes: {},
-    seen: {},
   }
 
   get<K extends keyof PersistedState>(key: K): PersistedState[K] {
@@ -164,12 +163,5 @@ describe('snoozes', () => {
     store.snooze('PR_1', 'until-reply', NOW)
     store.unsnooze('PR_1')
     expect(store.getSnoozes()['PR_1']).toBeUndefined()
-  })
-})
-
-describe('seen marks', () => {
-  it('records when a PR was marked seen', () => {
-    store.markSeen('PR_1', NOW)
-    expect(store.getSeen()['PR_1']).toBe(NOW)
   })
 })

@@ -41,11 +41,6 @@ export function registerIpc(deps: IpcDeps): void {
     deps.inbox.reclassify()
   })
 
-  ipcMain.handle(IPC.markSeen, (_event, prId: string) => {
-    deps.store.markSeen(prId, now())
-    deps.inbox.reclassify()
-  })
-
   ipcMain.handle(IPC.getSettings, () => deps.store.getSettings())
 
   ipcMain.handle(IPC.setSettings, (_event, patch: Partial<Settings>) => {

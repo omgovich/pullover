@@ -7,8 +7,6 @@ export interface InboxSnapshot {
   lastUpdatedAt: string | null
   errorMessage: string | null
   myLogin: string | null
-  /** PR id → ISO timestamp of when the user last marked it seen. */
-  seen: Record<string, string>
   /** Repositories seen in the fetched pull requests, for the settings picker. */
   knownRepositories: string[]
 }
@@ -25,7 +23,6 @@ export const IPC = {
   openPr: 'inbox:open-pr',
   snooze: 'inbox:snooze',
   unsnooze: 'inbox:unsnooze',
-  markSeen: 'inbox:mark-seen',
   getSettings: 'settings:get',
   setSettings: 'settings:set',
   addRepository: 'settings:add-repository',
@@ -43,7 +40,6 @@ export interface RendererApi {
   openPr: (url: string) => Promise<void>
   snooze: (prId: string, type: SnoozeType, hours?: number) => Promise<void>
   unsnooze: (prId: string) => Promise<void>
-  markSeen: (prId: string) => Promise<void>
   getSettings: () => Promise<Settings>
   setSettings: (patch: Partial<Settings>) => Promise<void>
   addRepository: (fullName: string) => Promise<void>

@@ -8,7 +8,6 @@ const EMPTY: InboxSnapshot = {
   lastUpdatedAt: null,
   errorMessage: null,
   myLogin: null,
-  seen: {},
   knownRepositories: [],
 }
 

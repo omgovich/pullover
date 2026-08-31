@@ -10,7 +10,6 @@ class MemoryStore implements KeyValueStore {
   private state: PersistedState = {
     settings: { ...DEFAULT_SETTINGS, repositories: ['acme/web'], watchAllRepositories: false },
     snoozes: {},
-    seen: {},
   }
 
   get<K extends keyof PersistedState>(key: K): PersistedState[K] {

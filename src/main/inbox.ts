@@ -27,7 +27,6 @@ export class Inbox {
     lastUpdatedAt: null,
     errorMessage: null,
     myLogin: null,
-    seen: {},
     knownRepositories: [],
   }
 
@@ -83,7 +82,6 @@ export class Inbox {
     this.emit({
       items,
       attentionCount: countAttention(items),
-      seen: this.deps.store.getSeen(),
     })
   }
 
@@ -143,7 +141,6 @@ export class Inbox {
         lastUpdatedAt: null,
         errorMessage: null,
         myLogin: null,
-        seen: {},
         knownRepositories: [],
       })
       return
@@ -179,7 +176,6 @@ export class Inbox {
         lastUpdatedAt: now,
         errorMessage: null,
         myLogin: this.myLogin,
-        seen: this.deps.store.getSeen(),
         knownRepositories: collectRepositories(this.prs),
       })
     } catch (error) {

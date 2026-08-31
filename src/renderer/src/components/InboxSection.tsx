@@ -5,7 +5,6 @@ import PullRequestCard from './PullRequestCard'
 interface Props {
   category: Category
   items: ClassifiedPullRequest[]
-  seen: Record<string, string>
   now: string
   /** The waiting section starts collapsed; attention sections start open. */
   defaultCollapsed: boolean
@@ -14,7 +13,6 @@ interface Props {
 export default function InboxSection({
   category,
   items,
-  seen,
   now,
   defaultCollapsed,
 }: Props): React.JSX.Element | null {
@@ -41,12 +39,7 @@ export default function InboxSection({
 
       {open &&
         items.map((item) => (
-          <PullRequestCard
-            key={item.pr.id}
-            item={item}
-            seenAt={seen[item.pr.id]}
-            now={now}
-          />
+          <PullRequestCard key={item.pr.id} item={item} now={now} />
         ))}
     </View>
   )

@@ -67,7 +67,6 @@ export default function App(): React.JSX.Element {
               key={category}
               category={category}
               items={snapshot.items.filter((item) => item.category === category)}
-              seen={snapshot.seen}
               now={now}
               defaultCollapsed={category === 'waiting'}
             />
