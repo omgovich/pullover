@@ -7,10 +7,10 @@ interface Props {
 }
 
 const OPTIONS: Array<{ label: string; type: SnoozeType; hours?: number }> = [
-  { label: 'До ответа в моих тредах', type: 'until-reply' },
-  { label: 'До новых коммитов', type: 'until-new-commits' },
-  { label: 'На 4 часа', type: 'until-time', hours: 4 },
-  { label: 'До завтра', type: 'until-time', hours: 24 },
+  { label: 'Until someone replies', type: 'until-reply' },
+  { label: 'Until new commits', type: 'until-new-commits' },
+  { label: 'For 4 hours', type: 'until-time', hours: 4 },
+  { label: 'Until tomorrow', type: 'until-time', hours: 24 },
 ]
 
 export default function SnoozeMenu({ prId, isSnoozed }: Props): React.JSX.Element {
@@ -21,7 +21,7 @@ export default function SnoozeMenu({ prId, isSnoozed }: Props): React.JSX.Elemen
         variant="ghost"
         onClick={() => void window.api.unsnooze(prId)}
       >
-        Вернуть
+        Unsnooze
       </Button>
     )
   }
@@ -31,7 +31,7 @@ export default function SnoozeMenu({ prId, isSnoozed }: Props): React.JSX.Elemen
       <DropdownMenu.Trigger>
         {(attributes) => (
           <Button size="small" variant="ghost" attributes={attributes}>
-            Отложить
+            Snooze
           </Button>
         )}
       </DropdownMenu.Trigger>

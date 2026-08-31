@@ -4,10 +4,10 @@ const DAY = 24 * HOUR
 
 export function formatAge(iso: string, now: string): string {
   const elapsed = Date.parse(now) - Date.parse(iso)
-  if (elapsed < MINUTE) return 'только что'
-  if (elapsed < HOUR) return `${Math.floor(elapsed / MINUTE)} мин назад`
-  if (elapsed < DAY) return `${Math.floor(elapsed / HOUR)} ч назад`
-  return `${Math.floor(elapsed / DAY)} дн назад`
+  if (elapsed < MINUTE) return 'just now'
+  if (elapsed < HOUR) return `${Math.floor(elapsed / MINUTE)}m ago`
+  if (elapsed < DAY) return `${Math.floor(elapsed / HOUR)}h ago`
+  return `${Math.floor(elapsed / DAY)}d ago`
 }
 
 export function formatDiff(additions: number, deletions: number): string {

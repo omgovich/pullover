@@ -34,7 +34,7 @@ export class AppStore {
   addRepository(fullName: string): void {
     const normalised = fullName.trim().toLowerCase()
     if (!REPO_PATTERN.test(normalised)) {
-      throw new Error(`Репозиторий должен быть в формате owner/repo: "${fullName}"`)
+      throw new Error(`Repository needs to look like owner/repo — got "${fullName}"`)
     }
     const current = this.getSettings().repositories
     if (current.includes(normalised)) return
@@ -85,7 +85,7 @@ export class AppStore {
 
 export function createAppStore(): AppStore {
   const backend = new Store<PersistedState>({
-    name: 'github-review-inbox',
+    name: 'pullover',
     defaults: { settings: { ...DEFAULT_SETTINGS }, snoozes: {}, seen: {} },
   })
   return new AppStore(backend)

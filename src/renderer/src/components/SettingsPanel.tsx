@@ -54,18 +54,18 @@ export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
         borderBottom
       >
         <Text variant="body-2" weight="bold">
-          Настройки
+          Settings
         </Text>
         <View grow />
         <Button size="small" variant="ghost" onClick={onClose}>
-          Готово
+          Done
         </Button>
       </View>
 
       <View overflow="auto" grow padding={3} gap={5}>
         <View gap={2}>
           <Text variant="caption-1" weight="bold" color="neutral-faded">
-            РЕПОЗИТОРИИ
+            REPOS
           </Text>
 
           <View direction="row" gap={2}>
@@ -89,7 +89,7 @@ export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
               disabled={draft.trim() === ''}
               onClick={() => void addRepository()}
             >
-              Добавить
+              Add
             </Button>
           </View>
 
@@ -101,7 +101,7 @@ export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
 
           {settings.repositories.length === 0 ? (
             <Text variant="caption-1" color="neutral-faded">
-              Пока ни одного — инбокс будет пустым.
+              None yet — that's why the list is empty.
             </Text>
           ) : (
             settings.repositories.map((repo) => (
@@ -115,7 +115,7 @@ export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
                     color="critical"
                     onClick={() => void removeRepository(repo)}
                   >
-                    Убрать
+                    Remove
                   </Button>
                 </View>
               </Card>
@@ -125,7 +125,7 @@ export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
 
         <View gap={2}>
           <Text variant="caption-1" weight="bold" color="neutral-faded">
-            ЧАСТОТА ОБНОВЛЕНИЯ
+            REFRESH EVERY
           </Text>
           <View direction="row" gap={2}>
             {INTERVAL_OPTIONS.map((minutes) => (
@@ -137,7 +137,7 @@ export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
                 }
                 onClick={() => void setInterval(minutes)}
               >
-                {minutes} мин
+                {minutes} min
               </Button>
             ))}
           </View>
@@ -145,7 +145,7 @@ export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
 
         <View gap={2}>
           <Text variant="caption-1" weight="bold" color="neutral-faded">
-            АККАУНТ
+            ACCOUNT
           </Text>
           <View direction="row">
             <Button
@@ -154,7 +154,7 @@ export default function SettingsPanel({ onClose }: Props): React.JSX.Element {
               color="critical"
               onClick={() => void window.api.signOut()}
             >
-              Выйти из GitHub
+              Sign out
             </Button>
           </View>
         </View>

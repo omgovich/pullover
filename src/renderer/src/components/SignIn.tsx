@@ -25,28 +25,28 @@ export default function SignIn(): React.JSX.Element {
   return (
     <View padding={6} gap={4} align="center" justify="center" height="100%">
       <Text variant="featured-3" weight="bold">
-        GitHub Review Inbox
+        Pullover
       </Text>
 
       {code === null ? (
         <>
           <Text variant="body-2" color="neutral-faded" align="center">
-            Войди через GitHub, чтобы увидеть свои PRы.
+            Sign in with GitHub to see what needs you.
           </Text>
           <Button color="primary" loading={busy} onClick={() => void start()}>
-            Войти через GitHub
+            Sign in with GitHub
           </Button>
         </>
       ) : (
         <>
           <Text variant="body-2" color="neutral-faded" align="center">
-            Введи этот код на {code.verificationUri} — он уже скопирован в буфер.
+            Enter this code at {code.verificationUri} — it's already on your clipboard.
           </Text>
           <Text variant="featured-2" weight="bold" monospace>
             {code.userCode}
           </Text>
           <Text variant="caption-1" color="neutral-faded">
-            Ждём подтверждения…
+            Waiting for you to approve…
           </Text>
         </>
       )}

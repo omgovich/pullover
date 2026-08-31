@@ -95,12 +95,12 @@ export const VISIBLE_CATEGORIES: readonly Category[] = [
 ]
 
 export const CATEGORY_TITLES: Record<Category, string> = {
-  'needs-review': 'Нужно ревью',
-  'new-replies': 'Новые ответы тебе',
-  're-review': 'Re-review',
-  'my-pr-action': 'Твои PRы',
-  mentioned: 'Упоминания',
-  waiting: 'Ждёшь ответа',
+  'needs-review': 'Needs your review',
+  'new-replies': 'Replies to you',
+  're-review': 'Take another look',
+  'my-pr-action': 'Your PRs',
+  mentioned: 'Mentions',
+  waiting: 'Waiting on others',
   hidden: '',
 }
 

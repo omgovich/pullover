@@ -44,7 +44,7 @@ async function postJson<T>(
     body: JSON.stringify(body),
   })
   if (!response.ok) {
-    throw new Error(`GitHub вернул ${response.status} на ${url}`)
+    throw new Error(`GitHub returned ${response.status} from ${url}`)
   }
   return (await response.json()) as T
 }
@@ -67,7 +67,7 @@ export async function requestDeviceCode(
     throw new Error(describeError(data.error, data.error_description))
   }
   if (!data.device_code || !data.user_code || !data.verification_uri) {
-    throw new Error('GitHub вернул неполный ответ на запрос device code')
+    throw new Error('GitHub sent back an incomplete device code response')
   }
 
   return {
@@ -102,7 +102,7 @@ export async function pollForToken(
     elapsedMs += intervalMs
 
     if (elapsedMs >= expiresInMs) {
-      throw new Error('Время действия кода истекло. Пожалуйста, войдите снова.')
+      throw new Error('That code expired. Sign in again.')
     }
 
     const data = await postJson<TokenResponse>(

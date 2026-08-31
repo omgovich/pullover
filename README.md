@@ -1,28 +1,27 @@
-# GitHub Review Inbox
+# Pullover
 
-Menu-bar инбокс для code review: показывает только те PRы, которые сейчас ждут
-твоего действия, и прячет те, где ты ждёшь других.
+A menu-bar inbox for code review: it shows only the pull requests that
+currently need your action, and hides the ones where you're waiting on
+someone else.
 
-## Настройка
+## Setup
 
-1. Зарегистрируй OAuth App на https://github.com/settings/developers
-   и включи у него **Device Flow**.
-2. Скопируй `.env.example` в `.env` и вставь Client ID.
+1. Register an OAuth App at https://github.com/settings/developers
+   and turn on **Device Flow**.
+2. Copy `.env.example` to `.env` and paste in the Client ID.
 3. `npm install`
 4. `npm run dev`
 
-## Сборка
+## Build
 
 ```bash
 npm run dist
 ```
 
-Сборка не подписана, поэтому при первом запуске: правый клик по `.app` в
+The build isn't signed, so on first launch: right-click the `.app` in
 Finder → Open → Open.
 
-## Разработка
+## Development
 
-- `npm test` — юнит-тесты (вся логика классификации в `src/core/`)
-- `npm run typecheck` — проверка типов
-
-Спека: `docs/superpowers/specs/2026-08-31-github-review-inbox-design.md`
+- `npm test` — unit tests (all the classification logic lives in `src/core/`)
+- `npm run typecheck` — type checking
