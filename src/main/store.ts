@@ -88,5 +88,5 @@ export function createAppStore(): AppStore {
     name: 'github-review-inbox',
     defaults: { settings: { ...DEFAULT_SETTINGS }, snoozes: {}, seen: {} },
   })
-  return new AppStore(backend as unknown as KeyValueStore)
+  return new AppStore(backend)
 }

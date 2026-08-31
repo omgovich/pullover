@@ -59,6 +59,27 @@ describe('repositories', () => {
     expect(() => store.addRepository('acme')).toThrow(/owner\/repo/)
   })
 
+  it('rejects a value with more than one slash', () => {
+    expect(() => store.addRepository('acme/web/extra')).toThrow(/owner\/repo/)
+  })
+
+  it('rejects a value with a trailing slash', () => {
+    expect(() => store.addRepository('acme/')).toThrow(/owner\/repo/)
+  })
+
+  it('rejects a value with a leading slash', () => {
+    expect(() => store.addRepository('/web')).toThrow(/owner\/repo/)
+  })
+
+  it('rejects an empty string', () => {
+    expect(() => store.addRepository('')).toThrow(/owner\/repo/)
+  })
+
+  it('accepts owner/repo names with dots, hyphens and underscores', () => {
+    store.addRepository('acme-co/my_repo.js')
+    expect(store.getSettings().repositories).toEqual(['acme-co/my_repo.js'])
+  })
+
   it('removes a repository', () => {
     store.addRepository('acme/web')
     store.addRepository('acme/api')
