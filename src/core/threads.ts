@@ -45,15 +45,23 @@ export function unansweredThreads(
   })
 }
 
+/**
+ * Orders two ISO 8601 UTC timestamps. Plain string comparison is correct for
+ * that format, and returning 0 on equality keeps the sort stable — an
+ * inconsistent comparator would reorder same-second entries unpredictably.
+ */
+export function compareIso(a: string, b: string): number {
+  if (a === b) return 0
+  return a < b ? -1 : 1
+}
+
 export function myLatestReview(
   pr: PullRequest,
   myLogin: string,
 ): Review | null {
   const mine = pr.reviews
     .filter((r) => r.authorLogin === myLogin && r.state !== 'PENDING')
-    .sort((a, b) =>
-      a.submittedAt < b.submittedAt ? -1 : a.submittedAt > b.submittedAt ? 1 : 0
-    )
+    .sort((a, b) => compareIso(a.submittedAt, b.submittedAt))
   return mine.at(-1) ?? null
 }
 
