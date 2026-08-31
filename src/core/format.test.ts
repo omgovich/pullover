@@ -23,6 +23,18 @@ describe('formatAge', () => {
   it('clamps a future timestamp to "только что"', () => {
     expect(formatAge('2026-08-10T13:00:00Z', NOW)).toBe('только что')
   })
+
+  it('pins minute boundary at exactly 60 seconds', () => {
+    expect(formatAge('2026-08-10T11:59:00Z', NOW)).toBe('1 мин назад')
+  })
+
+  it('pins hour boundary at exactly 3600 seconds', () => {
+    expect(formatAge('2026-08-10T11:00:00Z', NOW)).toBe('1 ч назад')
+  })
+
+  it('pins day boundary at exactly 86400 seconds', () => {
+    expect(formatAge('2026-08-09T12:00:00Z', NOW)).toBe('1 дн назад')
+  })
 })
 
 describe('formatDiff', () => {
