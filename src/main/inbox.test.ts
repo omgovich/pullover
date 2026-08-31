@@ -281,63 +281,108 @@ describe('Inbox.refresh', () => {
     expect(inbox.getSnapshot().attentionCount).toBe(1)
   })
 
-  it('starts a follow-up pass that reads settings written after the first pass began', async () => {
-    const resolvers: Array<(prs: PullRequest[]) => void> = []
+  it('reflects a repository selection changed while the fetch is in flight, since filtering happens at classify time', async () => {
+    // The fetch itself never narrows, so what matters here is that the
+    // classify step — which runs after the fetch resolves — reads settings
+    // fresh rather than a value captured before the (possibly slow) fetch
+    // started.
+    const prs = [
+      makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
+      makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
+    ]
+    let resolveFetch: ((prs: PullRequest[]) => void) | undefined
     const fetchPrs = vi.fn(
-      (_client: unknown, _repositories: string[]) =>
+      () =>
         new Promise<PullRequest[]>((resolve) => {
-          resolvers.push(resolve)
+          resolveFetch = resolve
         }),
     )
     const inbox = build([], { fetchPrs })
 
-    const first = inbox.refresh()
-    while (resolvers.length === 0) {
+    const pass = inbox.refresh()
+    while (resolveFetch === undefined) {
       await Promise.resolve()
     }
 
-    // Mutate settings after the first pass already read them, exactly like
-    // addRepository()/removeRepository() in ipc.ts do, then ask for a
-    // refresh while that pass is still in flight.
+    // MemoryStore starts with repositories: ['acme/web']; widen it while the
+    // fetch for this very pass is still pending.
     store.addRepository('acme/api')
-    const second = inbox.refresh()
+    resolveFetch(prs)
+    await pass
 
-    resolvers[0]!([])
-    await first
-
-    while (resolvers.length < 2) {
-      await Promise.resolve()
-    }
-    resolvers[1]!([])
-    await second
-
-    expect(fetchPrs).toHaveBeenCalledTimes(2)
-    expect(fetchPrs.mock.calls[0]?.[1]).toEqual(['acme/web'])
-    expect(fetchPrs.mock.calls[1]?.[1]).toEqual(['acme/web', 'acme/api'])
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id).sort()).toEqual([
+      'PR_1',
+      'PR_2',
+    ])
   })
 
-  it('passes null to fetchPrs when watchAllRepositories is on, regardless of the repository list', async () => {
-    store.updateSettings({ watchAllRepositories: true, repositories: ['acme/web'] })
-    const fetchPrs = vi.fn((_client: unknown, _repositories: string[] | null) =>
-      Promise.resolve([]),
-    )
-    const inbox = build([], { fetchPrs })
-
-    await inbox.refresh()
-
-    expect(fetchPrs.mock.calls[0]?.[1]).toBeNull()
-  })
-
-  it('passes the repository list to fetchPrs when watchAllRepositories is off', async () => {
+  it('always calls fetchPrs unfiltered, regardless of the repository selection', async () => {
     store.updateSettings({ watchAllRepositories: false, repositories: ['acme/web'] })
-    const fetchPrs = vi.fn((_client: unknown, _repositories: string[] | null) =>
-      Promise.resolve([]),
-    )
+    const fetchPrs = vi.fn((_client: unknown, _myLogin: string) => Promise.resolve([]))
     const inbox = build([], { fetchPrs })
 
     await inbox.refresh()
 
-    expect(fetchPrs.mock.calls[0]?.[1]).toEqual(['acme/web'])
+    expect(fetchPrs).toHaveBeenCalledWith(expect.anything(), 'vlad')
+  })
+
+  it('narrows items to the selected repositories when watchAllRepositories is off, without narrowing the fetch', async () => {
+    store.updateSettings({ watchAllRepositories: false, repositories: ['acme/web'] })
+    const prs = [
+      makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
+      makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
+    ]
+    const inbox = build(prs)
+
+    await inbox.refresh()
+
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id)).toEqual(['PR_1'])
+  })
+
+  it('shows every fetched repository when watchAllRepositories is on, regardless of the repository list', async () => {
+    store.updateSettings({ watchAllRepositories: true, repositories: ['acme/web'] })
+    const prs = [
+      makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
+      makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
+    ]
+    const inbox = build(prs)
+
+    await inbox.refresh()
+
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id).sort()).toEqual([
+      'PR_1',
+      'PR_2',
+    ])
+  })
+
+  it('populates knownRepositories from every fetched pull request, even while a narrow filter is active', async () => {
+    store.updateSettings({ watchAllRepositories: false, repositories: ['acme/web'] })
+    const prs = [
+      makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
+      makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
+    ]
+    const inbox = build(prs)
+
+    await inbox.refresh()
+
+    // Filtered down to acme/web for display, but the picker must still
+    // offer acme/api as an option.
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id)).toEqual(['PR_1'])
+    expect(inbox.getSnapshot().knownRepositories).toEqual(['acme/api', 'acme/web'])
+  })
+
+  it('clears knownRepositories on sign-out', async () => {
+    let client: object | null = CLIENT
+    const prs = [makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })]
+    const inbox = build(prs, { getClient: () => client })
+
+    await inbox.refresh()
+    expect(inbox.getSnapshot().knownRepositories).toEqual(['acme/web'])
+
+    client = null
+    await inbox.refresh()
+
+    expect(inbox.getSnapshot().knownRepositories).toEqual([])
   })
 
   it('coalesces several refreshes requested during one pass into a single follow-up pass', async () => {
@@ -481,6 +526,78 @@ describe('Inbox.reclassify', () => {
 
     expect(inbox.getSnapshot().items[0]!.category).toBe('waiting')
     expect(inbox.getSnapshot().attentionCount).toBe(0)
+    expect(fetchPrs).toHaveBeenCalledTimes(1)
+  })
+
+  it('applies a changed repository selection without refetching', async () => {
+    // MemoryStore starts with repositories: ['acme/web'], watchAllRepositories: false.
+    const fetchPrs = vi.fn(async () => [
+      makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
+      makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
+    ])
+    const inbox = build([], { fetchPrs })
+    await inbox.refresh()
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id)).toEqual(['PR_1'])
+
+    store.addRepository('acme/api')
+    inbox.reclassify()
+
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id).sort()).toEqual([
+      'PR_1',
+      'PR_2',
+    ])
+    expect(fetchPrs).toHaveBeenCalledTimes(1)
+  })
+
+  it('narrows away a pull request when a repository is removed from the selection, without refetching', async () => {
+    // Start with both repositories selected so both PRs are in the initial
+    // snapshot, then narrow down to just one.
+    store.updateSettings({
+      watchAllRepositories: false,
+      repositories: ['acme/web', 'acme/api'],
+    })
+    const fetchPrs = vi.fn(async () => [
+      makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
+      makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
+    ])
+    const inbox = build([], { fetchPrs })
+    await inbox.refresh()
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id).sort()).toEqual([
+      'PR_1',
+      'PR_2',
+    ])
+
+    store.removeRepository('acme/api')
+    inbox.reclassify()
+
+    // PR_2 (acme/api) must disappear from the in-memory snapshot; PR_1
+    // (acme/web) must remain. A reclassify() that ignores narrowing would
+    // still show both.
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id)).toEqual(['PR_1'])
+    expect(fetchPrs).toHaveBeenCalledTimes(1)
+  })
+
+  it('narrows away a pull request when watchAllRepositories is switched off, without refetching', async () => {
+    // watchAllRepositories starts on, so both PRs show regardless of the
+    // (narrower) repositories list.
+    store.updateSettings({ watchAllRepositories: true, repositories: ['acme/web'] })
+    const fetchPrs = vi.fn(async () => [
+      makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
+      makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
+    ])
+    const inbox = build([], { fetchPrs })
+    await inbox.refresh()
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id).sort()).toEqual([
+      'PR_1',
+      'PR_2',
+    ])
+
+    store.updateSettings({ watchAllRepositories: false })
+    inbox.reclassify()
+
+    // PR_2 (acme/api) falls outside the now-active repositories list and
+    // must disappear; PR_1 (acme/web) must remain.
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id)).toEqual(['PR_1'])
     expect(fetchPrs).toHaveBeenCalledTimes(1)
   })
 })

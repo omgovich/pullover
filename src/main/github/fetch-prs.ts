@@ -1,6 +1,6 @@
 import { graphql } from '@octokit/graphql'
 import { mapPullRequest, type PullRequestNode } from '@core/map-pr'
-import { buildSearchQueries, chunk } from '@core/search-query'
+import { buildSearchQuery, chunk } from '@core/search-query'
 import { SEARCH_BUCKETS, type PullRequest, type SearchBucket } from '@shared/types'
 import { DETAILS_QUERY, SEARCH_QUERY, VIEWER_QUERY } from './queries'
 
@@ -26,21 +26,19 @@ export async function fetchViewerLogin(client: GraphQLClient): Promise<string> {
 /** PR id → the set of search buckets it turned up in. */
 async function collectIds(
   client: GraphQLClient,
-  repositories: string[] | null,
 ): Promise<Map<string, Set<SearchBucket>>> {
   const byId = new Map<string, Set<SearchBucket>>()
 
   for (const bucket of SEARCH_BUCKETS) {
-    for (const q of buildSearchQueries(repositories, bucket)) {
-      const data = (await client(SEARCH_QUERY, { q })) as {
-        search: { nodes: Array<{ id?: string } | null> }
-      }
-      for (const node of data.search.nodes) {
-        if (!node?.id) continue
-        const buckets = byId.get(node.id) ?? new Set<SearchBucket>()
-        buckets.add(bucket)
-        byId.set(node.id, buckets)
-      }
+    const q = buildSearchQuery(bucket)
+    const data = (await client(SEARCH_QUERY, { q })) as {
+      search: { nodes: Array<{ id?: string } | null> }
+    }
+    for (const node of data.search.nodes) {
+      if (!node?.id) continue
+      const buckets = byId.get(node.id) ?? new Set<SearchBucket>()
+      buckets.add(bucket)
+      byId.set(node.id, buckets)
     }
   }
 
@@ -49,12 +47,9 @@ async function collectIds(
 
 export async function fetchPullRequests(
   client: GraphQLClient,
-  repositories: string[] | null,
   myLogin: string,
 ): Promise<PullRequest[]> {
-  if (repositories !== null && repositories.length === 0) return []
-
-  const bucketsById = await collectIds(client, repositories)
+  const bucketsById = await collectIds(client)
   const prs: PullRequest[] = []
 
   for (const ids of chunk([...bucketsById.keys()], DETAIL_BATCH_SIZE)) {

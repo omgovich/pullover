@@ -51,16 +51,17 @@ export function registerIpc(deps: IpcDeps): void {
   ipcMain.handle(IPC.setSettings, (_event, patch: Partial<Settings>) => {
     deps.store.updateSettings(patch)
     if (patch.pollIntervalMinutes !== undefined) deps.restartPolling()
+    if (patch.watchAllRepositories !== undefined) deps.inbox.reclassify()
   })
 
-  ipcMain.handle(IPC.addRepository, async (_event, fullName: string) => {
+  ipcMain.handle(IPC.addRepository, (_event, fullName: string) => {
     deps.store.addRepository(fullName)
-    await deps.inbox.refresh()
+    deps.inbox.reclassify()
   })
 
-  ipcMain.handle(IPC.removeRepository, async (_event, fullName: string) => {
+  ipcMain.handle(IPC.removeRepository, (_event, fullName: string) => {
     deps.store.removeRepository(fullName)
-    await deps.inbox.refresh()
+    deps.inbox.reclassify()
   })
 
   ipcMain.handle(IPC.startAuth, () =>

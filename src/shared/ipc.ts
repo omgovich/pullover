@@ -9,6 +9,8 @@ export interface InboxSnapshot {
   myLogin: string | null
   /** PR id → ISO timestamp of when the user last marked it seen. */
   seen: Record<string, string>
+  /** Repositories seen in the fetched pull requests, for the settings picker. */
+  knownRepositories: string[]
 }
 
 export interface DeviceCodePayload {
