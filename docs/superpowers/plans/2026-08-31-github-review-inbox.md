@@ -1042,7 +1042,7 @@ This is the heart of the app. Everything else is plumbing around it.
 - Test: `src/core/classify.test.ts`
 
 **Interfaces:**
-- Consumes: all predicates from `@core/threads`; `isSnoozeActive` from `@core/snooze`.
+- Consumes: `compareIso` and all predicates from `@core/threads`; `isSnoozeActive` from `@core/snooze`.
 - Produces:
   - `interface ClassifyContext { myLogin: string; snoozes: Record<string, Snooze>; now: string }`
   - `classify(pr: PullRequest, ctx: ClassifyContext): ClassifiedPullRequest`
@@ -1398,6 +1398,7 @@ Expected: FAIL — `Failed to resolve import "@core/classify"`.
 ```ts
 import { isSnoozeActive } from '@core/snooze'
 import {
+  compareIso,
   hasParticipated,
   myLatestReview,
   threadsAwaitingMyReply,
@@ -1532,9 +1533,8 @@ export function classifyAll(
         VISIBLE_CATEGORIES.indexOf(a.category) -
         VISIBLE_CATEGORIES.indexOf(b.category)
       if (byCategory !== 0) return byCategory
-      // Plain string comparison: ISO 8601 UTC sorts correctly as text.
-      if (a.pr.updatedAt === b.pr.updatedAt) return 0
-      return a.pr.updatedAt > b.pr.updatedAt ? -1 : 1
+      // Newest first. compareIso is the project's one ISO comparator.
+      return compareIso(b.pr.updatedAt, a.pr.updatedAt)
     })
 }
 
