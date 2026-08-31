@@ -3,6 +3,7 @@ import { Loader, Text, View } from 'reshaped/bundle'
 import { VISIBLE_CATEGORIES } from '@shared/types'
 import Header from './components/Header'
 import InboxSection from './components/InboxSection'
+import SettingsPanel from './components/SettingsPanel'
 import SignIn from './components/SignIn'
 import { useSnapshot } from './useSnapshot'
 
@@ -18,6 +19,10 @@ export default function App(): React.JSX.Element {
   }, [])
 
   if (snapshot.status === 'signed-out') return <SignIn />
+
+  if (showSettings) {
+    return <SettingsPanel onClose={() => setShowSettings(false)} />
+  }
 
   if (snapshot.status === 'loading' && snapshot.items.length === 0) {
     return (
@@ -41,9 +46,16 @@ export default function App(): React.JSX.Element {
             <Text variant="body-2" color="neutral-faded">
               Нечего смотреть
             </Text>
-            <Text variant="caption-1" color="neutral-faded" align="center">
-              Добавь репозитории в настройках, если список должен быть не пустым.
-            </Text>
+            {snapshot.status === 'error' ? (
+              <Text variant="caption-1" color="neutral-faded" align="center">
+                Не удалось обновить список — данные могут быть неполными или
+                устаревшими.
+              </Text>
+            ) : (
+              <Text variant="caption-1" color="neutral-faded" align="center">
+                Добавь репозитории в настройках, если список должен быть не пустым.
+              </Text>
+            )}
           </View>
         ) : (
           VISIBLE_CATEGORIES.map((category) => (
