@@ -29,6 +29,7 @@ export default function SettingsPanel({
   onClose,
 }: Props): React.JSX.Element {
   const [settings, setSettings] = useState<Settings | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const reload = async (): Promise<void> => {
     setSettings(await window.api.getSettings())
@@ -39,12 +40,17 @@ export default function SettingsPanel({
   }, [])
 
   const toggleRepository = async (fullName: string, checked: boolean): Promise<void> => {
-    if (checked) {
-      await window.api.addRepository(fullName)
-    } else {
-      await window.api.removeRepository(fullName)
+    setError(null)
+    try {
+      if (checked) {
+        await window.api.addRepository(fullName)
+      } else {
+        await window.api.removeRepository(fullName)
+      }
+      await reload()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
     }
-    await reload()
   }
 
   const setInterval = async (minutes: number): Promise<void> => {
@@ -92,6 +98,12 @@ export default function SettingsPanel({
           >
             Watch every repo I'm involved in
           </Checkbox>
+
+          {error !== null && (
+            <Text variant="caption-1" color="critical">
+              {error}
+            </Text>
+          )}
 
           {!settings.watchAllRepositories && (
             <>

@@ -548,4 +548,56 @@ describe('Inbox.reclassify', () => {
     ])
     expect(fetchPrs).toHaveBeenCalledTimes(1)
   })
+
+  it('narrows away a pull request when a repository is removed from the selection, without refetching', async () => {
+    // Start with both repositories selected so both PRs are in the initial
+    // snapshot, then narrow down to just one.
+    store.updateSettings({
+      watchAllRepositories: false,
+      repositories: ['acme/web', 'acme/api'],
+    })
+    const fetchPrs = vi.fn(async () => [
+      makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
+      makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
+    ])
+    const inbox = build([], { fetchPrs })
+    await inbox.refresh()
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id).sort()).toEqual([
+      'PR_1',
+      'PR_2',
+    ])
+
+    store.removeRepository('acme/api')
+    inbox.reclassify()
+
+    // PR_2 (acme/api) must disappear from the in-memory snapshot; PR_1
+    // (acme/web) must remain. A reclassify() that ignores narrowing would
+    // still show both.
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id)).toEqual(['PR_1'])
+    expect(fetchPrs).toHaveBeenCalledTimes(1)
+  })
+
+  it('narrows away a pull request when watchAllRepositories is switched off, without refetching', async () => {
+    // watchAllRepositories starts on, so both PRs show regardless of the
+    // (narrower) repositories list.
+    store.updateSettings({ watchAllRepositories: true, repositories: ['acme/web'] })
+    const fetchPrs = vi.fn(async () => [
+      makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
+      makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
+    ])
+    const inbox = build([], { fetchPrs })
+    await inbox.refresh()
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id).sort()).toEqual([
+      'PR_1',
+      'PR_2',
+    ])
+
+    store.updateSettings({ watchAllRepositories: false })
+    inbox.reclassify()
+
+    // PR_2 (acme/api) falls outside the now-active repositories list and
+    // must disappear; PR_1 (acme/web) must remain.
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id)).toEqual(['PR_1'])
+    expect(fetchPrs).toHaveBeenCalledTimes(1)
+  })
 })
