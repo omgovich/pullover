@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { Divider, Icon, Text, View } from 'reshaped/bundle'
+import { Badge, Divider, Icon, Text, View } from 'reshaped/bundle'
 import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
 import PullRequestCard, { type PullRequestCardHandle } from './PullRequestCard'
 
@@ -69,18 +69,27 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
         direction="row"
         align="center"
         gap={2}
+        paddingTop={3}
+        paddingBottom={2}
+        paddingInline={2}
         position="sticky"
         insetTop={0}
         zIndex={2}
         backgroundColor="elevation-overlay"
         attributes={{ type: 'button', onClick: onToggle }}
       >
-        <Text as="span" weight="bold" color="neutral-faded" className="pv-section-label">
+        <Text
+          as="span"
+          variant="caption-1"
+          weight="bold"
+          color="neutral-faded"
+          className="pv-section-label"
+        >
           {CATEGORY_TITLES[category].toUpperCase()}
         </Text>
-        <Text as="span" weight="semibold" color="neutral-faded" className="pv-section-count">
+        <Badge variant="faded" color="neutral" size="small" rounded>
           {items.length}
-        </Text>
+        </Badge>
         <View.Item grow>
           <Divider />
         </View.Item>
@@ -90,7 +99,7 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
       </View>
 
       {open && (
-        <View className="pv-card-list" direction="column">
+        <View direction="column" gap={2}>
           {items.map((item) => (
             <PullRequestCard
               key={item.pr.id}

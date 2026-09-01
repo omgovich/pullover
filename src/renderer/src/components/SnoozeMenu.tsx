@@ -1,6 +1,6 @@
 import type { Ref } from 'react'
 import { Activity, Clock, Undo2 } from 'lucide-react'
-import { DropdownMenu, Icon, type DropdownMenuInstance } from 'reshaped/bundle'
+import { Button, DropdownMenu, type DropdownMenuInstance } from 'reshaped/bundle'
 import type { SnoozeType } from '@shared/types'
 
 interface Props {
@@ -18,10 +18,6 @@ const OPTIONS: Array<{ label: string; type: SnoozeType; hours?: number; icon: Re
   { label: 'Until tomorrow', type: 'until-time', hours: 24, icon: Clock },
 ]
 
-// Not `Button`: see the comment in Header.tsx — this button's resting
-// background is a real token (`elevation-raised`) but its hover overlay is a
-// literal `#ffffff14`, painted by an internal element `Button` doesn't expose
-// for retargeting via className.
 export default function SnoozeMenu({
   prId,
   isSnoozed,
@@ -30,18 +26,15 @@ export default function SnoozeMenu({
 }: Props): React.JSX.Element {
   if (isSnoozed) {
     return (
-      <button
-        type="button"
-        className="pv-snooze-btn"
-        onClick={(event) => {
-          event.stopPropagation()
-          void window.api.unsnooze(prId)
-        }}
-        title="Unsnooze"
-        aria-label="Unsnooze"
-      >
-        <Icon svg={Undo2} size={13} />
-      </button>
+      <Button
+        variant="outline"
+        color="neutral"
+        size="small"
+        icon={Undo2}
+        stopPropagation
+        onClick={() => void window.api.unsnooze(prId)}
+        attributes={{ title: 'Unsnooze', 'aria-label': 'Unsnooze' }}
+      />
     )
   }
 
@@ -49,19 +42,14 @@ export default function SnoozeMenu({
     <DropdownMenu position="bottom-end" instanceRef={instanceRef}>
       <DropdownMenu.Trigger>
         {(attributes) => (
-          <button
-            type="button"
-            className="pv-snooze-btn"
-            title="Snooze — S"
-            aria-label="Snooze"
-            {...attributes}
-            onClick={(event) => {
-              event.stopPropagation()
-              attributes.onClick?.()
-            }}
-          >
-            <Icon svg={Clock} size={13} />
-          </button>
+          <Button
+            variant="outline"
+            color="neutral"
+            size="small"
+            icon={Clock}
+            stopPropagation
+            attributes={{ ...attributes, title: 'Snooze — S', 'aria-label': 'Snooze' }}
+          />
         )}
       </DropdownMenu.Trigger>
       <DropdownMenu.Content>

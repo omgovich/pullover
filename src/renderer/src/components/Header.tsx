@@ -1,5 +1,5 @@
 import { RefreshCw, Settings } from 'lucide-react'
-import { Icon, Text, View } from 'reshaped/bundle'
+import { Button, Text, View } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { InboxSnapshot } from '@shared/ipc'
 
@@ -38,19 +38,33 @@ export default function Header({
 
   return (
     <View
-      className="pv-header"
       direction="row"
       align="start"
       justify="space-between"
       gap={3}
+      paddingTop={3}
+      paddingBottom={3}
+      paddingStart={4}
+      paddingEnd={3}
       backgroundColor="elevation-raised"
       borderColor="neutral"
       borderBottom
     >
-      <View className="pv-header-left" direction="row" align="baseline">
+      <View direction="row" align="baseline" gap={2} minWidth={0}>
         {snapshot.attentionCount > 0 ? (
           <>
-            <Text as="span" className="pv-header-count">
+            {/* 19px in the design, between `featured-6` (18px) and
+                `featured-5` (20px) — `featured-6` reads better here: its
+                24px line-height stays close to the "waiting on you" label's
+                own line-height, instead of opening up extra vertical space
+                the compact header doesn't have. */}
+            <Text
+              as="span"
+              variant="featured-6"
+              weight="extrabold"
+              numeric
+              attributes={{ style: { color: 'var(--pv-accent-text)' } }}
+            >
               {snapshot.attentionCount}
             </Text>
             <Text as="span" variant="body-2" weight="semibold" color="neutral">
@@ -62,52 +76,35 @@ export default function Header({
             All clear
           </Text>
         )}
-        <View className="pv-header-status" direction="row" align="center">
+        <View className="pv-header-status" direction="row" align="center" gap={1}>
           <View
             className={`pv-dot${hasError ? ' pv-dot--negative' : ''}`}
             borderRadius="circular"
           />
-          {/* No `variant`: this row is 11px, between caption-1 (12px) and
-              caption-2 (10px) — the size comes from the `.pv-header-status`
-              class instead. */}
-          <Text as="span" color="neutral-faded">
+          <Text as="span" variant="caption-1" color="neutral-faded">
             {statusText(snapshot, now)}
           </Text>
         </View>
       </View>
 
-      {/*
-       * Not `Button`: its hover/press feedback is painted by an internal
-       * overlay element whose color comes from a `--rs-button-highlight-color`
-       * set per variant/color combination (none of which is this exact
-       * transparent-resting, #ffffff14-hover, accent-tinted-busy treatment),
-       * and that overlay isn't reachable through `className` to retarget.
-       * `variant="outline"` also resolves to a real background
-       * (`--rs-color-background-elevation-base`, oklch 0.2) instead of this
-       * button's transparent rest state, which sits over the header's own
-       * `elevation-raised` (oklch 0.22) — a visibly different rectangle, not
-       * a token swap.
-       */}
-      <View className="pv-header-actions" direction="row" align="center">
-        <button
-          type="button"
-          className={`pv-icon-btn${refreshing ? ' pv-icon-btn--busy' : ''}`}
+      <View direction="row" align="center" gap={2}>
+        <Button
+          variant="outline"
+          color="neutral"
+          size="small"
+          icon={RefreshCw}
+          loading={refreshing}
           onClick={onRefresh}
-          disabled={refreshing}
-          title="Refresh — R"
-          aria-label="Refresh — R"
-        >
-          <Icon svg={RefreshCw} size={16} className={refreshing ? 'pv-spin' : undefined} />
-        </button>
-        <button
-          type="button"
-          className="pv-icon-btn"
+          attributes={{ title: 'Refresh — R', 'aria-label': 'Refresh — R' }}
+        />
+        <Button
+          variant="outline"
+          color="neutral"
+          size="small"
+          icon={Settings}
           onClick={onOpenSettings}
-          title="Settings"
-          aria-label="Settings"
-        >
-          <Icon svg={Settings} size={16} />
-        </button>
+          attributes={{ title: 'Settings', 'aria-label': 'Settings' }}
+        />
       </View>
     </View>
   )

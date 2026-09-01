@@ -265,40 +265,41 @@ export default function App(): React.JSX.Element {
         </ScrollArea>
 
         <View
-          className="pv-hints"
           direction="row"
           align="center"
           gap={3}
+          paddingBlock={2}
+          paddingInline={4}
           borderColor="neutral-faded"
           borderTop
           backgroundColor="elevation-base"
         >
-          <View className="pv-hint" direction="row" align="center">
-            <Text as="span" className="pv-keycap">
+          <View direction="row" align="center" gap={1}>
+            <Text as="span" variant="caption-1" weight="semibold" className="pv-keycap">
               ↑↓
             </Text>
             <Text as="span" variant="caption-1" color="neutral-faded">
               Move
             </Text>
           </View>
-          <View className="pv-hint" direction="row" align="center">
-            <Text as="span" className="pv-keycap">
+          <View direction="row" align="center" gap={1}>
+            <Text as="span" variant="caption-1" weight="semibold" className="pv-keycap">
               ⏎
             </Text>
             <Text as="span" variant="caption-1" color="neutral-faded">
               Review
             </Text>
           </View>
-          <View className="pv-hint" direction="row" align="center">
-            <Text as="span" className="pv-keycap">
+          <View direction="row" align="center" gap={1}>
+            <Text as="span" variant="caption-1" weight="semibold" className="pv-keycap">
               S
             </Text>
             <Text as="span" variant="caption-1" color="neutral-faded">
               Snooze
             </Text>
           </View>
-          <View className="pv-hint" direction="row" align="center">
-            <Text as="span" className="pv-keycap">
+          <View direction="row" align="center" gap={1}>
+            <Text as="span" variant="caption-1" weight="semibold" className="pv-keycap">
               R
             </Text>
             <Text as="span" variant="caption-1" color="neutral-faded">
@@ -321,6 +322,9 @@ export default function App(): React.JSX.Element {
         direction="column"
         overflow="hidden"
         backgroundColor="elevation-overlay"
+        borderRadius="large"
+        border
+        borderColor="neutral"
       >
         {body}
       </View>

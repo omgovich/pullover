@@ -1,4 +1,4 @@
-import { Text, View } from 'reshaped/bundle'
+import { Button, Text, View } from 'reshaped/bundle'
 
 export interface ToastState {
   prId: string
@@ -18,6 +18,13 @@ export default function Toast({ toast, onUndo }: Props): React.JSX.Element {
       align="center"
       gap={3}
       position="absolute"
+      insetInline="center"
+      insetBottom={13}
+      zIndex={3}
+      paddingTop={2}
+      paddingBottom={2}
+      paddingStart={4}
+      paddingEnd={3}
       borderRadius="large"
       border
       borderColor="neutral"
@@ -26,10 +33,9 @@ export default function Toast({ toast, onUndo }: Props): React.JSX.Element {
       <Text as="span" variant="caption-1" color="neutral">
         #{toast.number} snoozed
       </Text>
-      {/* Not `Button`: same reasoning as the header's icon buttons — see Header.tsx. */}
-      <button type="button" className="pv-toast-undo" onClick={onUndo}>
+      <Button variant="outline" color="primary" size="small" onClick={onUndo}>
         Undo
-      </button>
+      </Button>
     </View>
   )
 }

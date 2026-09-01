@@ -1,6 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import type { CSSProperties } from 'react'
-import { Avatar, Text, View } from 'reshaped/bundle'
+import { Avatar, Badge, Button, Text, View } from 'reshaped/bundle'
 import type { DropdownMenuInstance } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { ClassifiedPullRequest } from '@shared/types'
@@ -22,10 +21,13 @@ export interface PullRequestCardHandle {
   activateSnooze: () => void
 }
 
+// The design's nine hand-picked hexes (three states × text/background/border)
+// were approximating exactly the three semantic colors `Badge` already has —
+// so the CI pill is a `Badge` now and only the labels survive.
 const CI_LABELS = {
-  success: { label: 'CI green', text: '#18ab66', bg: '#1f2a23', border: '#264431' },
-  failure: { label: 'CI failing', text: '#f36a6a', bg: '#3e1f1f', border: '#5a2e29' },
-  pending: { label: 'CI running', text: '#b4920c', bg: '#2c271f', border: '#453c1e' },
+  success: { label: 'CI green', color: 'positive' },
+  failure: { label: 'CI failing', color: 'critical' },
+  pending: { label: 'CI running', color: 'warning' },
 } as const
 
 function initialsOf(login: string): string {
@@ -52,7 +54,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
     },
   }))
 
-  const openPr = (event: React.MouseEvent): void => {
+  const openPr = (event: React.MouseEvent | React.KeyboardEvent): void => {
     event.stopPropagation()
     void window.api.openPr(pr.url)
   }
@@ -73,11 +75,14 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
       className="pv-card"
       direction="row"
       align="start"
+      gap={3}
       position="relative"
       borderRadius="large"
       border
       borderColor="neutral-faded"
       backgroundColor="elevation-raised"
+      paddingBlock={3}
+      paddingInline={3}
       attributes={{
         ref: cardRef,
         onClick: () => onSelect(pr.id),
@@ -85,13 +90,16 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
         onMouseLeave: () => onHover(null),
       }}
     >
+      {/* The selection ring: driven by React state (`isActive`), not
+          `:hover`/`:focus`, and tinted with the accent purple the header
+          count and PR number use — not `borderColor="primary"` (Reshaped's
+          blue), which is a different color entirely, not a near-miss of it. */}
       <View
         className={`pv-card-ring${isActive ? ' pv-card-ring--active' : ''}`}
         position="absolute"
         inset={0}
         borderRadius="large"
         border
-        borderColor="primary"
       />
 
       <Avatar
@@ -99,46 +107,42 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
         src={pr.authorAvatarUrl !== '' ? pr.authorAvatarUrl : undefined}
         initials={initialsOf(pr.authorLogin)}
         size={8}
+        variant="faded"
+        color="primary"
       />
 
       <View.Item grow>
-        <View className="pv-card-body" direction="column">
-          {/* No `variant` on the children below: this row is 11px, between
-              caption-1 (12px) and caption-2 (10px) — the size comes from the
-              `.pv-meta-row` class instead. */}
-          <View className="pv-meta-row" direction="row" align="center" gap={1}>
-            <Text as="span" className="pv-meta-repo">
+        <View direction="column" gap={1} minWidth={0}>
+          <View direction="row" align="center" gap={1}>
+            <Text as="span" variant="caption-1" color="neutral-faded" className="pv-meta-repo">
               {pr.repository}
             </Text>
-            <Text as="span" weight="semibold" className="pv-meta-number">
+            <Text
+              as="span"
+              variant="caption-1"
+              weight="semibold"
+              numeric
+              className="pv-meta-number"
+            >
               #{pr.number}
             </Text>
-            <Text as="span" className="pv-meta-dot">
+            <Text as="span" variant="caption-1" color="neutral-faded" className="pv-meta-dot">
               ·
             </Text>
-            <Text as="span" className="pv-meta-age">
+            <Text
+              as="span"
+              variant="caption-1"
+              color="neutral-faded"
+              numeric
+              className="pv-meta-age"
+            >
               {formatAge(pr.updatedAt, now)}
             </Text>
             <View.Item grow />
             {ci !== null && (
-              <View
-                className="pv-ci-pill"
-                direction="row"
-                align="center"
-                borderRadius="circular"
-                attributes={{
-                  style: {
-                    '--pv-ci-text': ci.text,
-                    '--pv-ci-bg': ci.bg,
-                    '--pv-ci-border': ci.border,
-                  } as CSSProperties,
-                }}
-              >
-                <span className="pv-ci-dot" />
-                <Text as="span" variant="caption-2" weight="semibold">
-                  {ci.label}
-                </Text>
-              </View>
+              <Badge variant="faded" color={ci.color} size="small">
+                {ci.label}
+              </Badge>
             )}
           </View>
 
@@ -146,27 +150,45 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
             {pr.title}
           </Text>
 
-          <View
-            className="pv-footer-row"
-            direction="row"
-            align="center"
-            gap={2}
-            minHeight={6}
-          >
-            <Text as="span" className="pv-diff">
-              <Text as="span" className="pv-diff-add">
+          <View direction="row" align="center" gap={2} minHeight={6}>
+            <Text as="span" variant="caption-1" weight="semibold" numeric>
+              <Text as="span" color="positive">
                 +{pr.additions}
               </Text>
-              <Text as="span" className="pv-diff-del">
+              <Text as="span" color="critical" className="pv-diff-del">
                 {'−'}
                 {pr.deletions}
               </Text>
             </Text>
-            {/* No `variant`: 11px, no token (see the meta row above). */}
+            {/*
+             * Stays a plain `View`/`Text` rather than a `Badge`: the row
+             * shrinks this pill and ellipsises its text rather than letting
+             * it push the Review/snooze buttons out of the row, which needs
+             * `min-width: 0` plus `white-space`/`text-overflow` on the
+             * element holding the text itself. `Badge` wraps its children in
+             * an internal `Text` inside a flex `.content` span that isn't
+             * reachable via `className`, so those three properties would
+             * land on `Badge`'s flex *root* instead — which clips the text
+             * abruptly with no "…" rather than ellipsising it, since
+             * `text-overflow` doesn't apply to a flex container's overflow.
+             * Everything else about it (color, background, radius, padding)
+             * is real tokens/props now, and the accent purple is dropped in
+             * favor of Reshaped's own `primary` per the same scoping as the
+             * avatar and Review button below.
+             */}
             {item.reason !== '' && (
-              <Text as="span" className="pv-reason-pill">
-                {item.reason}
-              </Text>
+              <View
+                as="span"
+                className="pv-reason-pill"
+                backgroundColor="primary-faded"
+                borderRadius="circular"
+                paddingInline={2}
+                maxWidth="200px"
+              >
+                <Text as="span" variant="caption-1" color="primary">
+                  {item.reason}
+                </Text>
+              </View>
             )}
 
             {/*
@@ -185,10 +207,15 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                 instanceRef={snoozeInstanceRef}
                 onSnoozed={() => onSnoozed(item)}
               />
-              {/* Not `Button`: same reasoning as the header's icon buttons — see Header.tsx. */}
-              <button type="button" className="pv-review-btn" onClick={openPr} title="Review — ⏎">
+              <Button
+                variant="solid"
+                color="primary"
+                size="small"
+                onClick={openPr}
+                attributes={{ title: 'Review — ⏎' }}
+              >
                 Review
-              </button>
+              </Button>
             </View>
           </View>
         </View>

@@ -1,5 +1,5 @@
 import { Check, Clock, RefreshCw } from 'lucide-react'
-import { Icon, Text, View } from 'reshaped/bundle'
+import { Badge, Button, Icon, Text, View } from 'reshaped/bundle'
 
 interface Props {
   /** True when the empty state is empty because a refresh failed, not because there's nothing to do. */
@@ -32,22 +32,25 @@ export default function EmptyState({
 
       <View
         className="pv-empty-badge"
-        width={19}
-        height={19}
+        width={5}
+        height={5}
         position="relative"
         align="center"
         justify="center"
         borderRadius="circular"
+        backgroundColor="primary-faded"
         border
         borderColor="primary-faded"
       >
-        <Icon svg={Check} size={32} />
+        <Icon svg={Check} size={32} color="primary" />
       </View>
 
       <Text as="div" variant="featured-5" weight="bold" className="pv-empty-heading">
         {isError ? "Couldn't refresh" : 'Inbox zero'}
       </Text>
-      <Text as="div" color="neutral-faded" className="pv-empty-body">
+      {/* 13px in the design — between `caption-1` (12px) and `body-2` (14px);
+          `body-2` reads better as a subtitle under a `featured-5` heading. */}
+      <Text as="div" variant="body-2" color="neutral-faded" className="pv-empty-body">
         {isError
           ? 'What you see may be stale or incomplete.'
           : 'You have reviewed everything waiting on you. New pull requests will land here.'}
@@ -55,29 +58,27 @@ export default function EmptyState({
 
       {snoozedCount > 0 && (
         <View className="pv-empty-stats" direction="row" align="center" position="relative">
-          <View className="pv-stat-pill" direction="row" align="center" borderRadius="circular">
-            <Icon svg={Clock} size={12} />
+          <Badge variant="faded" color="neutral" size="small" icon={Clock} rounded>
             {snoozedCount} snoozed
-          </View>
+          </Badge>
         </View>
       )}
 
-      {/* Not `Button`: same reasoning as the header's icon buttons — see Header.tsx. */}
       <View className="pv-empty-actions" direction="row" align="center" gap={2} position="relative">
         {snoozedCount > 0 && (
-          <button type="button" className="pv-btn pv-btn-ghost" onClick={onShowSnoozed}>
+          <Button variant="outline" color="neutral" onClick={onShowSnoozed}>
             Show snoozed
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
-          className="pv-btn pv-btn-accent"
+        <Button
+          variant="solid"
+          color="primary"
+          icon={RefreshCw}
+          loading={refreshing}
           onClick={onRefresh}
-          disabled={refreshing}
         >
-          <Icon svg={RefreshCw} size={13} className={refreshing ? 'pv-spin' : undefined} />
           Check again
-        </button>
+        </Button>
       </View>
     </View>
   )
