@@ -158,25 +158,6 @@ export default function App(): React.JSX.Element {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [visibleItems, selectedId, showSettings, snapshot.items, refreshing, refresh])
 
-  if (snapshot.status === 'signed-out') return <SignIn />
-
-  if (showSettings) {
-    return (
-      <SettingsPanel
-        knownRepositories={snapshot.knownRepositories}
-        onClose={() => setShowSettings(false)}
-      />
-    )
-  }
-
-  if (snapshot.status === 'loading' && snapshot.items.length === 0) {
-    return (
-      <View height="100%" align="center" justify="center" backgroundColor="elevation-overlay">
-        <Loader size="medium" />
-      </View>
-    )
-  }
-
   const snoozedCount = snapshot.items.filter((item) => item.isSnoozed).length
   const activeId = hoveredId ?? selectedId
   const showEmptyState = snapshot.attentionCount === 0
@@ -186,14 +167,43 @@ export default function App(): React.JSX.Element {
   // that transparent area — a click there should dismiss the popup like any
   // popover, rather than silently doing nothing. Checking that the click
   // target is this wrapper itself (not a descendant) means a click on the
-  // card doesn't have to stop its own propagation to be exempt.
+  // card doesn't have to stop its own propagation to be exempt. This wrapper
+  // surrounds the shell in every state, so the dismiss behavior is the same
+  // whether the card holds the inbox, sign-in, loading, or settings.
   const dismissIfPadding = (event: React.MouseEvent): void => {
     if (event.target === event.currentTarget) void window.api.hidePopup()
   }
 
-  return (
-    <div className="pv-window-padding" onClick={dismissIfPadding}>
-      <div className="pv-shell">
+  // `App` always renders the one `.pv-shell` card (see pullover.css); only
+  // what goes inside it changes between states, so the window's silhouette
+  // never changes when signing in or opening settings.
+  let body: React.JSX.Element
+  if (snapshot.status === 'signed-out') {
+    body = (
+      <div className="pv-shell-fill">
+        <SignIn />
+      </div>
+    )
+  } else if (showSettings) {
+    body = (
+      <div className="pv-shell-fill">
+        <SettingsPanel
+          knownRepositories={snapshot.knownRepositories}
+          onClose={() => setShowSettings(false)}
+        />
+      </div>
+    )
+  } else if (snapshot.status === 'loading' && snapshot.items.length === 0) {
+    body = (
+      <div className="pv-shell-fill">
+        <View height="100%" minHeight={0} align="center" justify="center">
+          <Loader size="medium" />
+        </View>
+      </div>
+    )
+  } else {
+    body = (
+      <>
         <Header
           snapshot={snapshot}
           now={now}
@@ -247,7 +257,13 @@ export default function App(): React.JSX.Element {
         </div>
 
         {toast !== null && <Toast toast={toast} onUndo={undoToast} />}
-      </div>
+      </>
+    )
+  }
+
+  return (
+    <div className="pv-window-padding" onClick={dismissIfPadding}>
+      <div className="pv-shell">{body}</div>
     </div>
   )
 }

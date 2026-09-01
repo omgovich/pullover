@@ -52,10 +52,9 @@ body {
 /*
  * Fills the window and reserves the transparent padding the shell's drop
  * shadow renders into — scoped to this wrapper (rather than the shell
- * itself, or #root) so the other screens — sign-in, loading, settings —
- * keep filling the window edge-to-edge as before, and so a click landing in
- * the padding has an element of its own to dismiss the popup from (see
- * App.tsx) without also catching clicks meant for those other screens.
+ * itself, or #root) so a click landing in the padding has an element of its
+ * own to dismiss the popup from (see App.tsx), distinct from the shell that
+ * must never dismiss on click.
  */
 .pv-window-padding {
   height: 100%;
@@ -64,6 +63,13 @@ body {
     var(--pv-window-padding-bottom) var(--pv-window-padding-left);
 }
 
+/*
+ * The one floating card every screen renders into — sign-in, loading,
+ * settings, and the inbox all share these visual values so the window's
+ * silhouette never changes between states. Only the contents differ: the
+ * inbox uses the header/scroll/hints layout below directly as children,
+ * while the other screens wrap a single full-height child in `.pv-shell-fill`.
+ */
 .pv-shell {
   position: relative;
   display: flex;
@@ -79,6 +85,21 @@ body {
   overflow: hidden;
   font-family: var(--rs-font-family-body);
   color: var(--rs-color-foreground-neutral);
+}
+
+/*
+ * Wraps a single full-height screen (sign-in, loading, settings) so it fills
+ * whatever the header/scroll/hints trio would otherwise occupy. `min-height:
+ * 0` overrides the flex item's automatic minimum size so the wrapped screen
+ * is actually constrained to the shell's remaining height (and can scroll
+ * internally, as settings does) rather than stretching the shell to fit its
+ * content.
+ */
+.pv-shell-fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Header */
