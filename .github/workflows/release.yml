@@ -74,21 +74,27 @@ jobs:
         with:
           fetch-depth: 0 # full history + tags, for the changelog
 
+      # Claude Code CLI directly, not anthropics/claude-code-action — the
+      # action refuses tag pushes ("Unsupported event type: push").
       - name: Write release notes and publish the draft
-        uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          claude_args: --allowedTools "Bash(git:*),Bash(gh release:*)"
-          prompt: |
-            You are running inside GitHub Actions — the `publish` job of Pullover's release workflow, non-interactive, nobody to ask questions. Your only task is to finish the release for tag ${{ github.ref_name }}.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude -p \
+            --allowedTools 'Bash(git:*),Bash(gh:*),Write' \
+            "$(cat <<'PROMPT'
+          You are running inside GitHub Actions — the `publish` job of Pullover's release workflow, non-interactive, nobody to ask questions. Your only task is to finish the release for tag ${{ github.ref_name }}.
 
-            Ignore the release playbook in AGENTS.md — it is for the local agent, and its part is already done: the version is bumped, the tag is pushed, and the build job has attached the dmgs to a DRAFT GitHub release for this tag. You are the CI half. Your job:
+          Ignore the release playbook in AGENTS.md — it is for the local agent, and its part is already done: the version is bumped, the tag is pushed, and the build job has attached the dmgs to a DRAFT GitHub release for this tag. You are the CI half. Your job:
 
-            1. Verify the draft holds both `Pullover-*-arm64.dmg` and `Pullover-*-x64.dmg`: `gh release view ${{ github.ref_name }}`. If either is missing, print what's wrong and exit with `exit 1` — do NOT publish a broken release.
-            2. Write user-facing release notes from the commits since the previous tag: find it with `git describe --tags --abbrev=0 ${{ github.ref_name }}^` (if the command fails, this is the first release — write a 2-3 sentence introduction of the app from README.md instead of a changelog). Notes style: a flat bullet list, no headings — one short bullet per user-visible change, present tense, no commit hashes, skip internal refactors/CI/docs changes users can't feel.
-            3. Publish: write the notes to a file and run `gh release edit ${{ github.ref_name }} --notes-file <file> --draft=false`.
+          1. List every release for this tag: `gh api repos/${{ github.repository }}/releases --jq '.[] | select(.tag_name == "${{ github.ref_name }}") | {id, draft, assets: [.assets[].name]}'`. electron-builder sometimes races itself and leaves TWO drafts for the same tag with the assets split between them. If that happened, consolidate: for each stray asset, download it (`gh api -H "Accept: application/octet-stream" repos/${{ github.repository }}/releases/assets/<asset-id> > <name>`) and re-upload it to the draft that holds the dmgs (`curl -sS -f -X POST -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/octet-stream" --data-binary @<name> "https://uploads.github.com/repos/${{ github.repository }}/releases/<id>/assets?name=<name>"`), then delete the now-empty extra draft (`gh api -X DELETE repos/${{ github.repository }}/releases/<id>`).
+          2. Verify the single remaining draft holds both `Pullover-*-arm64.dmg` and `Pullover-*-x64.dmg`. If either is missing, print what's wrong and exit with `exit 1` — do NOT publish a broken release.
+          3. Write user-facing release notes from the commits since the previous tag: find it with `git describe --tags --abbrev=0 ${{ github.ref_name }}^` (if the command fails, this is the first release — write a 2-3 sentence introduction of the app from README.md instead of a changelog). Notes style: a flat bullet list, no headings — one short bullet per user-visible change, present tense, no commit hashes, skip internal refactors/CI/docs changes users can't feel.
+          4. Publish: write the notes to a file and run `gh release edit ${{ github.ref_name }} --notes-file <file> --draft=false`.
+          PROMPT
+          )"
 
       - name: Verify the release is published
         env:
