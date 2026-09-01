@@ -1,6 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
 import { Avatar, Text, View } from 'reshaped/bundle'
-import type { DropdownMenuInstance } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { ClassifiedPullRequest } from '@shared/types'
 import SnoozeMenu from './SnoozeMenu'
@@ -17,8 +16,8 @@ interface Props {
 /** Imperative surface App needs for keyboard navigation. */
 export interface PullRequestCardHandle {
   element: HTMLElement | null
-  /** Opens the snooze menu, or triggers unsnooze directly if already snoozed. */
-  activateSnooze: () => void
+  /** Moves real DOM focus onto the card, without also scrolling (App handles that itself). */
+  focus: () => void
 }
 
 // The status pill's colors, keyed off the exact reason strings
@@ -66,17 +65,10 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
   const ci = pr.ciStatus === 'none' ? null : CI_PILL_COLORS[pr.ciStatus]
   const status = item.reason !== '' ? statusPillColor(item.reason) : null
   const cardRef = useRef<HTMLDivElement>(null)
-  const snoozeInstanceRef = useRef<DropdownMenuInstance>(null)
 
   useImperativeHandle(ref, () => ({
     element: cardRef.current,
-    activateSnooze: () => {
-      if (item.isSnoozed) {
-        void window.api.unsnooze(pr.id)
-      } else {
-        snoozeInstanceRef.current?.open()
-      }
-    },
+    focus: () => cardRef.current?.focus({ preventScroll: true }),
   }))
 
   // The Review button is gone from the design, so the card body itself is
@@ -95,14 +87,14 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
   // into, satisfiable or not. Everything visual still lives on the `View`
   // inside it — this wrapper carries no styling of its own.
   //
-  // It's deliberately not focusable (no `tabIndex`): keyboard navigation
-  // already runs entirely through App's arrow-key/Enter hotkeys against
-  // `selectedId`, not DOM focus, and making this row Tab-focusable would
-  // give it its own native Enter-to-click behavior on top of that global
-  // handler — double-opening the PR when the row happens to hold focus.
-  // `role="button"` stays, for assistive tech, without `tabIndex`.
+  // `tabIndex={-1}` makes it programmatically focusable (via the handle's
+  // `focus()`, driven by App's `selectedId`) without adding it to the Tab
+  // order. That's safe from the double-activation worry a Tab-reachable row
+  // would raise: this is a plain `div` with an `onClick`, so there's no
+  // native Enter-to-click behavior for focus to trigger on top of App's own
+  // `enter` hotkey. `role="button"` stays, for assistive tech.
   return (
-    <div ref={cardRef}>
+    <div ref={cardRef} tabIndex={-1}>
       <View
         direction="row"
         align="start"
@@ -267,7 +259,6 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   <SnoozeMenu
                     prId={pr.id}
                     isSnoozed={item.isSnoozed}
-                    instanceRef={snoozeInstanceRef}
                     onSnoozed={() => onSnoozed(item)}
                   />
                 </View>

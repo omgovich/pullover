@@ -136,10 +136,45 @@ export default function App(): React.JSX.Element {
       const nextId = visibleItems[nextIndex].pr.id
       setSelectedId(nextId)
       setHoveredId(null)
-      cardHandles.current.get(nextId)?.element?.scrollIntoView({ block: 'nearest' })
     },
     [visibleItems, selectedId],
   )
+
+  // Selects the first visible card as soon as there's something to select —
+  // this is what puts focus on a card the moment the popup opens (see the
+  // effect below), rather than leaving it on the header's refresh button.
+  useEffect(() => {
+    if (selectedId === null && visibleItems.length > 0) {
+      setSelectedId(visibleItems[0].pr.id)
+    }
+  }, [visibleItems, selectedId])
+
+  // Keeps real DOM focus in lockstep with `selectedId`, whatever moved it
+  // (arrow keys, a click, or the auto-select above) — the highlight and the
+  // focus ring must always land on the same card. `scrollIntoView` moves
+  // here too, alongside `focus()`, so both fire together off the one source
+  // of truth instead of being duplicated at every call site that can change
+  // the selection.
+  useEffect(() => {
+    if (selectedId === null) return
+    const handle = cardHandles.current.get(selectedId)
+    handle?.element?.scrollIntoView({ block: 'nearest' })
+    handle?.focus()
+  }, [selectedId])
+
+  // The popup hides rather than unmounts, so when it's shown again the
+  // window regains focus but the DOM's own focus state was never touched —
+  // it's still sitting on whatever had it when the window lost focus, which
+  // the browser doesn't restore visibly on its own. Re-focus the selected
+  // card explicitly.
+  useEffect(() => {
+    const handleWindowFocus = (): void => {
+      if (selectedId === null) return
+      cardHandles.current.get(selectedId)?.focus()
+    }
+    window.addEventListener('focus', handleWindowFocus)
+    return () => window.removeEventListener('focus', handleWindowFocus)
+  }, [selectedId])
 
   // `useHotkeys` (from `reshaped/bundle`) replaces the manual `window`
   // keydown listener. It has no built-in "ignore while typing" guard, so
@@ -175,7 +210,17 @@ export default function App(): React.JSX.Element {
       s: (event?: KeyboardEvent) => {
         if (isTypingTarget(event?.target ?? null)) return
         if (selectedId === null) return
-        cardHandles.current.get(selectedId)?.activateSnooze()
+        const item = snapshot.items.find((i) => i.pr.id === selectedId)
+        if (item === undefined) return
+        if (item.isSnoozed) {
+          void window.api.unsnooze(selectedId)
+        } else {
+          // Skips the dropdown the mouse path uses and snoozes straight
+          // away with "until something changes" — the keyboard shortcut is
+          // for speed, not for picking a duration. Still raises the same
+          // toast as the mouse path so Undo keeps working.
+          void window.api.snooze(selectedId, 'until-activity').then(() => showToast(item))
+        }
       },
       r: (event?: KeyboardEvent) => {
         if (isTypingTarget(event?.target ?? null)) return
@@ -183,7 +228,7 @@ export default function App(): React.JSX.Element {
         void refresh()
       },
     },
-    [selectedId, snapshot.items, refreshing, refresh],
+    [selectedId, snapshot.items, refreshing, refresh, showToast],
     { disabled: showSettings },
   )
 
