@@ -41,7 +41,7 @@ xattr -dr com.apple.quarantine /Applications/Pullover.app
 
 Alternatively, launch it once, let macOS refuse, then approve it under System Settings → Privacy & Security → "Open Anyway".
 
-Sign in with GitHub when it asks, then open **Settings** and add the repos you want watched, as `owner/repo`. That's it.
+Sign in with GitHub and you're done — out of the box Pullover watches every repo you're involved in. If that's too much, narrow it down to specific repos in **Settings**.
 
 <details>
 <summary><b>🛠️ Running from source</b></summary>
