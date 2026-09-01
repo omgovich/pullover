@@ -1,10 +1,12 @@
 import type { ThemePreference } from '@shared/types'
-import { useState } from 'react'
-import { Button, Checkbox, Link, Text, View } from 'reshaped/bundle'
+import { User } from 'lucide-react'
+import { Avatar, Button, Divider, Link, Tabs, Text, View } from 'reshaped/bundle'
 import { useSettings } from '../useSettings'
+import RepositoryPicker from './RepositoryPicker'
 
 interface Props {
   knownRepositories: string[]
+  myLogin: string | null
   onClose: () => void
 }
 
@@ -16,44 +18,15 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: 'dark', label: 'Dark' },
 ]
 
-/**
- * Options to render = the union of `knownRepositories` and
- * `settings.repositories`, sorted, unique, and deduped case-insensitively.
- * Stored repository names are lowercased, while GitHub returns them in
- * their original case — prefer the original casing when a name shows up in
- * both, since it reads better.
- */
-function repositoryOptions(known: string[], selected: string[]): string[] {
-  const byLower = new Map<string, string>()
-  for (const repo of [...known, ...selected]) {
-    if (!byLower.has(repo.toLowerCase())) byLower.set(repo.toLowerCase(), repo)
-  }
-  return [...byLower.values()].sort((a, b) => a.localeCompare(b))
-}
-
-export default function SettingsPanel({ knownRepositories, onClose }: Props): React.JSX.Element {
+export default function SettingsPanel({
+  knownRepositories,
+  myLogin,
+  onClose,
+}: Props): React.JSX.Element {
   const settings = useSettings()
-  const [error, setError] = useState<string | null>(null)
-
-  const toggleRepository = async (fullName: string, checked: boolean): Promise<void> => {
-    setError(null)
-    try {
-      if (checked) {
-        await window.api.addRepository(fullName)
-      } else {
-        await window.api.removeRepository(fullName)
-      }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
-    }
-  }
 
   const setInterval = async (minutes: number): Promise<void> => {
     await window.api.setSettings({ pollIntervalMinutes: minutes })
-  }
-
-  const setWatchAll = async (checked: boolean): Promise<void> => {
-    await window.api.setSettings({ watchAllRepositories: checked })
   }
 
   const setTheme = async (theme: ThemePreference): Promise<void> => {
@@ -61,8 +34,6 @@ export default function SettingsPanel({ knownRepositories, onClose }: Props): Re
   }
 
   if (settings === null) return <View padding={4} height="100%" minHeight={0} />
-
-  const options = repositoryOptions(knownRepositories, settings.repositories)
 
   return (
     <View height="100%" minHeight={0}>
@@ -76,67 +47,36 @@ export default function SettingsPanel({ knownRepositories, onClose }: Props): Re
         </Button>
       </View>
 
-      <View overflow="auto" grow padding={3} gap={5}>
-        <View gap={2}>
-          <Text variant="caption-1" weight="bold" color="neutral-faded">
-            REPOS
-          </Text>
+      <View overflow="hidden" grow minHeight="0px" paddingTop={3} paddingInline={3} gap={4}>
+        <RepositoryPicker
+          knownRepositories={knownRepositories}
+          selected={settings.repositories}
+          watchAll={settings.watchAllRepositories}
+        />
 
-          <Checkbox
-            name="watch-all"
-            checked={settings.watchAllRepositories}
-            onChange={({ checked }) => void setWatchAll(checked)}
-          >
-            Watch every repo I'm involved in
-          </Checkbox>
-
-          {error !== null && (
-            <Text variant="caption-1" color="critical">
-              {error}
-            </Text>
-          )}
-
-          {!settings.watchAllRepositories &&
-            (options.length === 0 ? (
-              <Text variant="caption-1" color="neutral-faded">
-                Nothing in your inbox yet, so there's nothing to narrow.
-              </Text>
-            ) : (
-              <>
-                {settings.repositories.length === 0 && (
-                  <Text variant="caption-1" color="neutral-faded">
-                    Nothing ticked, so nothing shows. Tick the repos you care about.
-                  </Text>
-                )}
-                {options.map((repo) => (
-                  <Checkbox
-                    key={repo}
-                    name={`repository-${repo}`}
-                    checked={settings.repositories.includes(repo.toLowerCase())}
-                    onChange={({ checked }) => void toggleRepository(repo, checked)}
-                  >
-                    {repo}
-                  </Checkbox>
-                ))}
-              </>
-            ))}
-        </View>
+        <Divider />
 
         <View gap={2}>
           <Text variant="caption-1" weight="bold" color="neutral-faded">
             REFRESH EVERY
           </Text>
-          <View direction="row" gap={2}>
-            {INTERVAL_OPTIONS.map((minutes) => (
-              <Button
-                key={minutes}
-                size="small"
-                variant={settings.pollIntervalMinutes === minutes ? 'solid' : 'outline'}
-                onClick={() => void setInterval(minutes)}
-              >
-                {minutes} min
-              </Button>
-            ))}
+          {/* Tabs, not a row of buttons: one track, one highlight that slides. */}
+          <View className="pv-segmented">
+            <Tabs
+              variant="pills-raised"
+              itemWidth="equal"
+              size="small"
+              value={String(settings.pollIntervalMinutes)}
+              onChange={({ value }) => void setInterval(Number(value))}
+            >
+              <Tabs.List>
+                {INTERVAL_OPTIONS.map((minutes) => (
+                  <Tabs.Item key={minutes} value={String(minutes)}>
+                    {minutes} min
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+            </Tabs>
           </View>
         </View>
 
@@ -144,38 +84,56 @@ export default function SettingsPanel({ knownRepositories, onClose }: Props): Re
           <Text variant="caption-1" weight="bold" color="neutral-faded">
             APPEARANCE
           </Text>
-          <View direction="row" gap={2}>
-            {THEME_OPTIONS.map(({ value, label }) => (
-              <Button
-                key={value}
-                size="small"
-                variant={settings.theme === value ? 'solid' : 'outline'}
-                onClick={() => void setTheme(value)}
-              >
-                {label}
-              </Button>
-            ))}
-          </View>
-        </View>
-
-        <View gap={2}>
-          <Text variant="caption-1" weight="bold" color="neutral-faded">
-            ACCOUNT
-          </Text>
-          <View direction="row">
-            <Button
+          <View className="pv-segmented">
+            <Tabs
+              variant="pills-raised"
+              itemWidth="equal"
               size="small"
-              variant="outline"
-              color="critical"
-              onClick={() => void window.api.signOut()}
+              value={settings.theme}
+              onChange={({ value }) => void setTheme(value as ThemePreference)}
             >
-              Sign out
-            </Button>
+              <Tabs.List>
+                {THEME_OPTIONS.map(({ value, label }) => (
+                  <Tabs.Item key={value} value={value}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+            </Tabs>
           </View>
         </View>
 
-        <View grow />
+        <Divider />
 
+        <View direction="row" align="center" gap={3}>
+          {/* `myLogin` lands with the first snapshot, so the icon is the pre-fetch stand-in. */}
+          <Avatar
+            color="primary"
+            size={10}
+            initials={myLogin === null ? undefined : myLogin.slice(0, 2).toUpperCase()}
+            icon={myLogin === null ? User : undefined}
+          />
+          <View minWidth={0}>
+            <Text variant="body-3" weight="semibold" maxLines={1}>
+              {myLogin ?? 'Signed in'}
+            </Text>
+            <Text variant="caption-1" color="neutral-faded">
+              Signed in with GitHub
+            </Text>
+          </View>
+          <View grow />
+          <Button
+            size="small"
+            variant="outline"
+            color="critical"
+            onClick={() => void window.api.signOut()}
+          >
+            Sign out
+          </Button>
+        </View>
+      </View>
+
+      <View padding={3}>
         <Text variant="caption-1" color="neutral-faded">
           Pullover {__APP_VERSION__} · MIT © 2026 Vlad Shilov ·{' '}
           <Link

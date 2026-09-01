@@ -145,6 +145,7 @@ export default function App(): React.JSX.Element {
       <View grow minHeight={0} direction="column">
         <SettingsPanel
           knownRepositories={snapshot.knownRepositories}
+          myLogin={snapshot.myLogin}
           onClose={() => setShowSettings(false)}
         />
       </View>
