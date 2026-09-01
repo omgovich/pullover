@@ -1,6 +1,6 @@
-import { BrowserWindow, ipcMain, shell } from 'electron'
-import { IPC, type DeviceCodePayload } from '@shared/ipc'
+import { type DeviceCodePayload, IPC } from '@shared/ipc'
 import type { Settings, SnoozeType } from '@shared/types'
+import { type BrowserWindow, ipcMain, shell } from 'electron'
 import type { Inbox } from './inbox'
 import { isSafeExternalUrl } from './safe-url'
 import type { AppStore } from './store'
@@ -28,13 +28,10 @@ export function registerIpc(deps: IpcDeps): void {
     return shell.openExternal(url)
   })
 
-  ipcMain.handle(
-    IPC.snooze,
-    (_event, prId: string, type: SnoozeType, hours?: number) => {
-      deps.store.snooze(prId, type, now(), hours)
-      deps.inbox.reclassify()
-    },
-  )
+  ipcMain.handle(IPC.snooze, (_event, prId: string, type: SnoozeType, hours?: number) => {
+    deps.store.snooze(prId, type, now(), hours)
+    deps.inbox.reclassify()
+  })
 
   ipcMain.handle(IPC.unsnooze, (_event, prId: string) => {
     deps.store.unsnooze(prId)
