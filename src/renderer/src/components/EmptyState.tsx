@@ -15,7 +15,7 @@ export default function EmptyState({ isError }: Props): React.JSX.Element {
       paddingBottom={15}
       paddingInline={6}
     >
-      <Icon svg={Check} size="28px" attributes={{ style: { color: 'var(--pv-green)' } }} />
+      <Icon svg={Check} size="28px" color="positive" />
 
       <View.Item gapBefore={3.5}>
         <Text as="div" variant="body-2" weight="semibold" color="neutral">

@@ -22,18 +22,8 @@ function isTypingTarget(target: EventTarget | null): boolean {
 // borderless variant swaps in a solid background instead of this faint wash.
 function KeyCap({ children }: { children: string }): React.JSX.Element {
   return (
-    <View
-      paddingBlock={0.25}
-      paddingInline={1.25}
-      borderRadius="small"
-      attributes={{ style: { background: 'var(--pv-overlay)' } }}
-    >
-      <Text
-        as="span"
-        variant="caption-1"
-        weight="semibold"
-        attributes={{ style: { color: '#c0c6d6' } }}
-      >
+    <View paddingBlock={0.25} paddingInline={1.25} borderRadius="small" backgroundColor="neutral-faded">
+      <Text as="span" variant="caption-1" weight="semibold" color="neutral-faded">
         {children}
       </Text>
     </View>

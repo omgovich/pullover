@@ -87,7 +87,7 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
             align="center"
             justify="center"
             borderRadius="circular"
-            attributes={{ style: { background: 'var(--pv-overlay)' } }}
+            backgroundColor="neutral-faded"
           >
             <Text as="span" variant="caption-1" weight="semibold" color="neutral-faded" numeric>
               {items.length}

@@ -25,7 +25,7 @@ const pillStyle = {
   minHeight: '21px',
   padding: '0 9px',
   borderRadius: '9999px',
-  backgroundColor: 'var(--pv-overlay)',
+  backgroundColor: 'var(--rs-color-background-neutral-faded)',
   color: 'var(--rs-color-foreground-neutral-faded)',
   fontSize: '11px',
   fontWeight: 600,

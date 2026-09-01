@@ -70,7 +70,7 @@ export default function Header({
             align="center"
             justify="center"
             borderRadius="medium"
-            attributes={{ style: { background: 'var(--pv-overlay-weak)' } }}
+            backgroundColor="neutral-faded"
           >
             <Text as="span" variant="caption-1" weight="bold" numeric color="neutral-faded">
               {snapshot.attentionCount}
