@@ -1,0 +1,52 @@
+name: Release
+
+# Builds macOS dmgs and attaches them to a draft GitHub release.
+# Trigger: push a tag matching the version in package.json, e.g. `v0.1.0`.
+#
+# Needs one piece of repository configuration:
+#   Settings → Secrets and variables → Actions → Variables →
+#   PULLOVER_GITHUB_CLIENT_ID — the client ID of the official Pullover
+#   OAuth App (a Device Flow public client; the client ID is not a secret).
+#   It is baked into the build so released binaries can sign in out of
+#   the box.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Ensure the OAuth client ID is configured
+        if: ${{ vars.PULLOVER_GITHUB_CLIENT_ID == '' }}
+        run: |
+          echo "::error::Set the PULLOVER_GITHUB_CLIENT_ID repository variable (Settings → Secrets and variables → Actions → Variables) to the client ID of the official Pullover OAuth App."
+          exit 1
+
+      - run: npm run build
+        env:
+          MAIN_VITE_GITHUB_CLIENT_ID: ${{ vars.PULLOVER_GITHUB_CLIENT_ID }}
+
+      # Unsigned for now. To sign + notarize once an Apple Developer
+      # account exists, follow the comment in electron-builder.yml and add
+      # these env vars here (all from repository secrets):
+      #   CSC_LINK, CSC_KEY_PASSWORD           — Developer ID cert (.p12, base64)
+      #   APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID — notarization
+      - name: Build dmgs and attach to a draft release
+        run: npx electron-builder --mac dmg --arm64 --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

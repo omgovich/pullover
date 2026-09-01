@@ -4,7 +4,29 @@ A menu-bar inbox for code review: it shows only the pull requests that
 currently need your action, and hides the ones where you're waiting on
 someone else.
 
-## Setup
+## Install
+
+Download the `.dmg` for your Mac from the
+[latest release](https://github.com/omgovich/pullover/releases/latest) —
+`arm64` for Apple Silicon, `x64` for Intel — and drag Pullover into
+Applications.
+
+The builds aren't signed or notarized (there's no Apple Developer account
+behind the project yet), so macOS quarantines them on download. Clear the
+flag once and it launches normally from then on:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Pullover.app
+```
+
+Alternatively, launch it once, let macOS refuse, then approve it under
+System Settings → Privacy & Security → "Open Anyway".
+
+Release builds ship with a built-in GitHub OAuth client ID, so you can skip
+straight to signing in. The OAuth App registration below is only needed when
+running from source.
+
+## Running from source
 
 ### 1. Register a GitHub OAuth App
 
@@ -79,10 +101,31 @@ its pull requests won't appear until an org owner approves Pullover under
 npm run dist
 ```
 
-The build isn't signed, so on first launch: right-click the `.app` in
-Finder → Open → Open.
+The build isn't signed, so clear the quarantine flag before the first
+launch (see [Install](#install)) if you move it out of `dist/`.
 
 ## Development
 
 - `npm test` — unit tests (all the classification logic lives in `src/core/`)
 - `npm run typecheck` — type checking
+
+## Releasing
+
+Releases are built by [release.yml](.github/workflows/release.yml). It needs
+the `PULLOVER_GITHUB_CLIENT_ID` repository variable (Settings → Secrets and
+variables → Actions → Variables) set to the client ID of the official
+Pullover OAuth App — it's baked into the binaries so they can sign in out of
+the box.
+
+To cut a release: bump `version` in `package.json`, commit, then
+
+```bash
+git tag v0.1.0 && git push origin main --tags
+```
+
+CI builds arm64 and x64 dmgs and attaches them to a **draft** GitHub
+release — write the release notes and publish it.
+
+## License
+
+[MIT](LICENSE)
