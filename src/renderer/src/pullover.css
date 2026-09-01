@@ -65,7 +65,14 @@ body {
  * snapped to Reshaped's 4px steps.
  */
 .pv-scroll-content {
-  padding: 0 8px 10px;
+  /*
+   * The design says 10px, but it never shows the case that exposes: a
+   * collapsed section header landing last, right above the keyboard hints
+   * bar. Its own 6px bottom padding is sized for cards following it, so 10
+   * here left the two nearly touching. 16 gives the last row air whether it
+   * is a header or a card.
+   */
+  padding: 0 8px 16px;
 }
 
 /* Card list */
