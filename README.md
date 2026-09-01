@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshot.png" width="360" alt="Pullover's menu-bar window: an inbox of pull requests grouped into 'Needs your review' and 'Your PRs', each with the reason it needs you" />
+  <img src="docs/screenshot.png" width="718" alt="Pullover's menu-bar window: an inbox of pull requests grouped into 'Needs your review' and 'Your PRs', each with the reason it needs you" />
 </p>
 
 ---
