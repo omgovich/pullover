@@ -66,11 +66,18 @@ export default function Header({
             All clear
           </Text>
         )}
-        {/* An empty `Badge` is Reshaped's dot: `rounded` makes it circular,
-            and dropping `variant` gives the solid color fill. It's a plain
-            neutral bullet now, not a status light — the error state reads
-            through `statusText` below instead. */}
-        <Badge color="neutral" size="small" rounded />
+        {/* A plain bullet between two pieces of text, not a status light — the
+            error state reads through `statusText` below instead. An empty
+            `Badge` would be Reshaped's dot, but its smallest size is 8px of
+            solid neutral, which reads as a blob beside 12px text rather than a
+            separator; a sized `View` gets the design's 3px without any CSS. */}
+        <View
+          width="3px"
+          height="3px"
+          borderRadius="circular"
+          backgroundColor="neutral-faded"
+          attributes={{ style: { flexShrink: 0, opacity: 0.6 } }}
+        />
         {/* Wrapping in its own `minWidth={0}` `View` is what lets `Text`'s
             `maxLines={1}` actually truncate instead of overflowing: a flex
             child's min-width defaults to its content size otherwise. */}
