@@ -124,9 +124,7 @@ export async function pollForToken(
         intervalMs += 5000
         break
       default:
-        throw new Error(
-          describeError(data.error ?? 'unknown_error', data.error_description),
-        )
+        throw new Error(describeError(data.error ?? 'unknown_error', data.error_description))
     }
   }
 }

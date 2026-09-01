@@ -1,7 +1,7 @@
-import { RefreshCw, Settings } from 'lucide-react'
-import { Button, Text, View } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { InboxSnapshot } from '@shared/ipc'
+import { RefreshCw, Settings } from 'lucide-react'
+import { Button, Text, View } from 'reshaped/bundle'
 
 interface Props {
   snapshot: InboxSnapshot

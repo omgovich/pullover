@@ -2,11 +2,7 @@ import { classifyAll, countAttention } from '@core/classify'
 import { collectRepositories, filterByRepositories } from '@core/repo-filter'
 import type { InboxSnapshot } from '@shared/ipc'
 import type { PullRequest } from '@shared/types'
-import {
-  fetchPullRequests,
-  fetchViewerLogin,
-  type GraphQLClient,
-} from './github/fetch-prs'
+import { fetchPullRequests, fetchViewerLogin, type GraphQLClient } from './github/fetch-prs'
 import type { AppStore } from './store'
 
 export interface InboxDeps {

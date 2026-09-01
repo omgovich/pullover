@@ -9,11 +9,11 @@ import {
 } from '@core/threads'
 import {
   ATTENTION_CATEGORIES,
-  VISIBLE_CATEGORIES,
   type Category,
   type ClassifiedPullRequest,
   type PullRequest,
   type Snooze,
+  VISIBLE_CATEGORIES,
 } from '@shared/types'
 
 export interface ClassifyContext {
@@ -102,10 +102,7 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
   return { category: 'waiting', reason: 'Waiting on reviewers' }
 }
 
-export function classify(
-  pr: PullRequest,
-  ctx: ClassifyContext,
-): ClassifiedPullRequest {
+export function classify(pr: PullRequest, ctx: ClassifyContext): ClassifiedPullRequest {
   if (pr.isDraft) {
     return { pr, category: 'hidden', reason: '', isSnoozed: false }
   }
@@ -127,17 +124,13 @@ export function classify(
   return { pr, ...verdict, isSnoozed: false }
 }
 
-export function classifyAll(
-  prs: PullRequest[],
-  ctx: ClassifyContext,
-): ClassifiedPullRequest[] {
+export function classifyAll(prs: PullRequest[], ctx: ClassifyContext): ClassifiedPullRequest[] {
   return prs
     .map((pr) => classify(pr, ctx))
     .filter((item) => item.category !== 'hidden')
     .sort((a, b) => {
       const byCategory =
-        VISIBLE_CATEGORIES.indexOf(a.category) -
-        VISIBLE_CATEGORIES.indexOf(b.category)
+        VISIBLE_CATEGORIES.indexOf(a.category) - VISIBLE_CATEGORIES.indexOf(b.category)
       if (byCategory !== 0) return byCategory
       // Newest first. compareIso is the project's one ISO comparator.
       return compareIso(b.pr.updatedAt, a.pr.updatedAt)
@@ -145,6 +138,5 @@ export function classifyAll(
 }
 
 export function countAttention(items: ClassifiedPullRequest[]): number {
-  return items.filter((item) => ATTENTION_CATEGORIES.includes(item.category))
-    .length
+  return items.filter((item) => ATTENTION_CATEGORIES.includes(item.category)).length
 }

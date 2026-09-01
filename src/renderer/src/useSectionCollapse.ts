@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react'
 import type { Category } from '@shared/types'
+import { useCallback, useState } from 'react'
 
 export interface SectionCollapse {
   collapsed: Set<Category>

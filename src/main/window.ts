@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { BrowserWindow, screen, shell, type Rectangle } from 'electron'
+import { BrowserWindow, type Rectangle, screen, shell } from 'electron'
 import { isSafeExternalUrl } from './safe-url'
 
 // The window is exactly the size of the popup's visible card — must match
@@ -67,10 +67,7 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
   })
   const x = Math.round(
     Math.min(
-      Math.max(
-        trayBounds.x + trayBounds.width / 2 - CARD_WIDTH / 2,
-        display.workArea.x,
-      ),
+      Math.max(trayBounds.x + trayBounds.width / 2 - CARD_WIDTH / 2, display.workArea.x),
       display.workArea.x + display.workArea.width - CARD_WIDTH,
     ),
   )

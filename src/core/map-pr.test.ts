@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { mapCiStatus, mapPullRequest, mentionsUser } from '@core/map-pr'
 import type { PullRequestNode } from '@core/map-pr'
+import { mapCiStatus, mapPullRequest, mentionsUser } from '@core/map-pr'
+import { describe, expect, it } from 'vitest'
 
 function node(overrides: Partial<PullRequestNode> = {}): PullRequestNode {
   return {
@@ -91,7 +91,11 @@ describe('mapPullRequest', () => {
         reviews: {
           nodes: [
             { author: { login: 'first' }, state: 'APPROVED', submittedAt: '2026-08-01T09:00:00Z' },
-            { author: { login: 'second' }, state: 'CHANGES_REQUESTED', submittedAt: '2026-08-02T09:00:00Z' },
+            {
+              author: { login: 'second' },
+              state: 'CHANGES_REQUESTED',
+              submittedAt: '2026-08-02T09:00:00Z',
+            },
             { author: { login: 'third' }, state: 'COMMENTED', submittedAt: '2026-08-03T09:00:00Z' },
           ],
         },
@@ -100,9 +104,24 @@ describe('mapPullRequest', () => {
       'vlad',
     )
     expect(pr.reviews).toEqual([
-      { authorLogin: 'first', state: 'APPROVED', submittedAt: '2026-08-01T09:00:00Z', bodyText: '' },
-      { authorLogin: 'second', state: 'CHANGES_REQUESTED', submittedAt: '2026-08-02T09:00:00Z', bodyText: '' },
-      { authorLogin: 'third', state: 'COMMENTED', submittedAt: '2026-08-03T09:00:00Z', bodyText: '' },
+      {
+        authorLogin: 'first',
+        state: 'APPROVED',
+        submittedAt: '2026-08-01T09:00:00Z',
+        bodyText: '',
+      },
+      {
+        authorLogin: 'second',
+        state: 'CHANGES_REQUESTED',
+        submittedAt: '2026-08-02T09:00:00Z',
+        bodyText: '',
+      },
+      {
+        authorLogin: 'third',
+        state: 'COMMENTED',
+        submittedAt: '2026-08-03T09:00:00Z',
+        bodyText: '',
+      },
     ])
   })
 
@@ -134,9 +153,7 @@ describe('mapPullRequest', () => {
       {
         id: 'RT_1',
         isResolved: true,
-        comments: [
-          { authorLogin: 'vlad', createdAt: '2026-08-02T10:00:00Z', bodyText: '' },
-        ],
+        comments: [{ authorLogin: 'vlad', createdAt: '2026-08-02T10:00:00Z', bodyText: '' }],
       },
     ])
   })

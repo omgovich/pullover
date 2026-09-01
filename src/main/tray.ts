@@ -1,5 +1,5 @@
-import { Menu, Tray, nativeImage, type Rectangle } from 'electron'
 import type { InboxSnapshot } from '@shared/ipc'
+import { Menu, nativeImage, type Rectangle, Tray } from 'electron'
 
 /**
  * Pure string-building for the tray title, kept separate so it can be unit

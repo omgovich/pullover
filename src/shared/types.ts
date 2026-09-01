@@ -21,12 +21,7 @@ export interface ReviewThread {
   comments: ThreadComment[]
 }
 
-export type ReviewState =
-  | 'APPROVED'
-  | 'CHANGES_REQUESTED'
-  | 'COMMENTED'
-  | 'DISMISSED'
-  | 'PENDING'
+export type ReviewState = 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED' | 'PENDING'
 
 export interface Review {
   authorLogin: string
@@ -39,11 +34,7 @@ export interface Review {
   bodyText?: string
 }
 
-export type ReviewDecision =
-  | 'APPROVED'
-  | 'CHANGES_REQUESTED'
-  | 'REVIEW_REQUIRED'
-  | null
+export type ReviewDecision = 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null
 
 export interface PullRequest {
   id: string
@@ -89,10 +80,7 @@ export const ATTENTION_CATEGORIES: readonly Category[] = [
 ]
 
 /** All visible categories, in display order. `waiting` renders last, collapsed. */
-export const VISIBLE_CATEGORIES: readonly Category[] = [
-  ...ATTENTION_CATEGORIES,
-  'waiting',
-]
+export const VISIBLE_CATEGORIES: readonly Category[] = [...ATTENTION_CATEGORIES, 'waiting']
 
 export const CATEGORY_TITLES: Record<Category, string> = {
   'needs-review': 'Needs your review',
