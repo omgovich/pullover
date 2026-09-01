@@ -28,12 +28,6 @@ export function createPopupWindow(): BrowserWindow {
     },
   })
 
-  // Without this the window belongs to whichever Space it was created on, so
-  // clicking the tray item on any other Space drags the user over to that one.
-  // A menu-bar popup should appear where the user already is — including on
-  // top of a fullscreen app, which is its own kind of Space.
-  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
-
   // Links inside the renderer always open in the user's browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (isSafeExternalUrl(url)) {
@@ -83,6 +77,14 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
   const y = Math.round(trayBounds.y + trayBounds.height)
 
   win.setPosition(x, y, false)
+
+  // Re-applied on every show, not once at creation: macOS resets a window's
+  // collection behaviour when it is hidden, so a flag set at startup stops
+  // applying after the first dismiss and the popup starts dragging the user
+  // back to the Space it was last shown on. Setting it here keeps the popup
+  // appearing wherever the user already is, including over a fullscreen app.
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+
   win.show()
   win.focus()
 }
