@@ -10,6 +10,10 @@ publish:
   provider: github
   owner: omgovich
   repo: pullover
+  # The release workflow runs `electron-builder --publish always`, which
+  # makes electron-builder itself create the GitHub release for the pushed
+  # tag and upload the dmgs into it — as a draft, per this setting.
+  releaseType: draft
 mac:
   target:
     - dmg
