@@ -6,6 +6,11 @@ directories:
 files:
   - out/**/*
   - package.json
+dmg:
+  # The app has no auto-update (no electron-updater), so don't generate the
+  # update artifacts (*.blockmap, latest-mac.yml) — releases stay just the
+  # dmgs. Flip back to true if auto-update ever lands.
+  writeUpdateInfo: false
 publish:
   provider: github
   owner: omgovich
@@ -18,7 +23,8 @@ mac:
   target:
     - dmg
     - dir
-  artifactName: ${productName}-${version}-${arch}.${ext}
+  # Releases ship one universal dmg (see release.yml), so no arch suffix.
+  artifactName: ${productName}-${version}.${ext}
   category: public.app-category.developer-tools
   # A menu-bar-only app: no Dock icon, no app switcher entry.
   extendInfo:

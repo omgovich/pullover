@@ -31,7 +31,7 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 
 ## 📦 Install
 
-Download the `.dmg` for your Mac from the [latest release](https://github.com/omgovich/pullover/releases/latest) — `arm64` for Apple Silicon, `x64` for Intel — and drag Pullover into Applications.
+Download the `.dmg` from the [latest release](https://github.com/omgovich/pullover/releases/latest) and drag Pullover into Applications — one build, works on both Apple Silicon and Intel Macs.
 
 The builds aren't signed or notarized (there's no Apple Developer account behind the project yet), so macOS quarantines them on download. Clear the flag once and it launches normally from then on:
 
