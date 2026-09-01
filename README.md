@@ -12,6 +12,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license" /></a>
 </p>
 
+<p align="center">
+  <img src="docs/screenshot.png" width="360" alt="Pullover's menu-bar window: an inbox of pull requests grouped into 'Needs your review' and 'Your PRs', each with the reason it needs you" />
+</p>
+
 ---
 
 GitHub notifications bury the one thing that matters — *whose move is it?* Pullover answers exactly that. It watches the repos you review in and keeps a short, honest inbox: if a PR shows up, it's waiting on you; if it doesn't, you're free.
