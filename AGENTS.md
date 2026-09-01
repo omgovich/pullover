@@ -54,7 +54,7 @@ If the maintainer names a version, that wins. First release ever (no tags yet): 
    gh release edit v<X.Y.Z> --notes-file <notes> --draft=false
    ```
 
-   Notes are for users, not a commit dump: a few bullets under **Features** and **Fixes**, present tense, no hashes, no internal refactors unless the user can feel them. Skip a heading with nothing under it. First release ever: a 2-3 sentence introduction of the app instead of a changelog.
+   Notes are for users, not a commit dump: a flat bullet list, no headings — one short bullet per user-visible change, present tense, no hashes, no internal refactors unless the user can feel them. First release ever: a 2-3 sentence introduction of the app instead of a changelog.
 7. Confirm `gh release view v<X.Y.Z>` shows it published with both dmgs, sanity-check the notes CI wrote, and report the release URL.
 
 ### Hard rules

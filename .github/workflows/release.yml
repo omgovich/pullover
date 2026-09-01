@@ -87,7 +87,7 @@ jobs:
             The build job has already attached the dmgs to a DRAFT GitHub release for this tag. Your job:
 
             1. Verify the draft holds both `Pullover-*-arm64.dmg` and `Pullover-*-x64.dmg`: `gh release view ${{ github.ref_name }}`. If either is missing, print what's wrong and exit with `exit 1` — do NOT publish a broken release.
-            2. Write user-facing release notes from the commits since the previous tag: find it with `git describe --tags --abbrev=0 ${{ github.ref_name }}^` (if the command fails, this is the first release — write a 2-3 sentence introduction of the app from README.md instead of a changelog). Notes style: a few short bullets under `## Features` and `## Fixes`, present tense, no commit hashes, skip internal refactors/CI/docs changes users can't feel; drop a heading with nothing under it.
+            2. Write user-facing release notes from the commits since the previous tag: find it with `git describe --tags --abbrev=0 ${{ github.ref_name }}^` (if the command fails, this is the first release — write a 2-3 sentence introduction of the app from README.md instead of a changelog). Notes style: a flat bullet list, no headings — one short bullet per user-visible change, present tense, no commit hashes, skip internal refactors/CI/docs changes users can't feel.
             3. Publish: write the notes to a file and run `gh release edit ${{ github.ref_name }} --notes-file <file> --draft=false`.
 
       - name: Verify the release is published
