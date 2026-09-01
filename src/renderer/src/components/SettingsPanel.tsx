@@ -1,6 +1,7 @@
-import type { Settings } from '@shared/types'
-import { useEffect, useState } from 'react'
+import type { ThemePreference } from '@shared/types'
+import { useState } from 'react'
 import { Button, Checkbox, Text, View } from 'reshaped/bundle'
+import { useSettings } from '../useSettings'
 
 interface Props {
   knownRepositories: string[]
@@ -8,6 +9,12 @@ interface Props {
 }
 
 const INTERVAL_OPTIONS = [1, 5, 15, 30]
+
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+]
 
 /**
  * Options to render = the union of `knownRepositories` and
@@ -25,19 +32,8 @@ function repositoryOptions(known: string[], selected: string[]): string[] {
 }
 
 export default function SettingsPanel({ knownRepositories, onClose }: Props): React.JSX.Element {
-  const [settings, setSettings] = useState<Settings | null>(null)
+  const settings = useSettings()
   const [error, setError] = useState<string | null>(null)
-
-  const reload = async (): Promise<void> => {
-    setSettings(await window.api.getSettings())
-  }
-
-  // Settings only need pulling once, when the panel opens. `reload` is a fresh
-  // function on every render, so listing it as a dependency would re-fetch in a loop.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally mount-only
-  useEffect(() => {
-    void reload()
-  }, [])
 
   const toggleRepository = async (fullName: string, checked: boolean): Promise<void> => {
     setError(null)
@@ -47,7 +43,6 @@ export default function SettingsPanel({ knownRepositories, onClose }: Props): Re
       } else {
         await window.api.removeRepository(fullName)
       }
-      await reload()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     }
@@ -55,12 +50,14 @@ export default function SettingsPanel({ knownRepositories, onClose }: Props): Re
 
   const setInterval = async (minutes: number): Promise<void> => {
     await window.api.setSettings({ pollIntervalMinutes: minutes })
-    await reload()
   }
 
   const setWatchAll = async (checked: boolean): Promise<void> => {
     await window.api.setSettings({ watchAllRepositories: checked })
-    await reload()
+  }
+
+  const setTheme = async (theme: ThemePreference): Promise<void> => {
+    await window.api.setSettings({ theme })
   }
 
   if (settings === null) return <View padding={4} height="100%" minHeight={0} />
@@ -138,6 +135,24 @@ export default function SettingsPanel({ knownRepositories, onClose }: Props): Re
                 onClick={() => void setInterval(minutes)}
               >
                 {minutes} min
+              </Button>
+            ))}
+          </View>
+        </View>
+
+        <View gap={2}>
+          <Text variant="caption-1" weight="bold" color="neutral-faded">
+            APPEARANCE
+          </Text>
+          <View direction="row" gap={2}>
+            {THEME_OPTIONS.map(({ value, label }) => (
+              <Button
+                key={value}
+                size="small"
+                variant={settings.theme === value ? 'solid' : 'outline'}
+                onClick={() => void setTheme(value)}
+              >
+                {label}
               </Button>
             ))}
           </View>

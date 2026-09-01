@@ -6,22 +6,33 @@ import 'reshaped/bundle.css'
 import './pullover.css'
 import App from './App'
 import { systemColorMode, useColorMode } from './useColorMode'
+import { useSettings } from './useSettings'
 
 /**
- * Keeps Reshaped's colour mode on the system appearance.
+ * Keeps Reshaped's colour mode on the resolved theme: the preference when
+ * it's `light` or `dark`, the live system appearance when it's `system` (or
+ * while settings haven't arrived yet).
  *
  * Its `colorMode` prop is not enough on its own: the root provider puts that
  * value in React context but never writes `data-rs-color-mode` on `<html>`,
  * and every colour token is scoped by that attribute. Only the imperative
  * `setColorMode` writes it, so the sync has to run through that.
+ *
+ * `useColorMode` stays subscribed unconditionally — even while an explicit
+ * preference is in force — so switching the preference back to `system` is
+ * immediate rather than waiting on the next system-appearance change.
  */
-function SystemColorMode(): null {
-  const mode = useColorMode()
+function ColorModeSync(): null {
+  const systemMode = useColorMode()
+  const settings = useSettings()
   const { setColorMode } = useTheme()
 
+  const resolvedMode =
+    settings !== null && settings.theme !== 'system' ? settings.theme : systemMode
+
   useEffect(() => {
-    setColorMode(mode)
-  }, [mode, setColorMode])
+    setColorMode(resolvedMode)
+  }, [resolvedMode, setColorMode])
 
   return null
 }
@@ -37,7 +48,7 @@ document.documentElement.setAttribute('data-rs-color-mode', initialMode)
 createRoot(container).render(
   <StrictMode>
     <Reshaped theme="slate" defaultColorMode={initialMode}>
-      <SystemColorMode />
+      <ColorModeSync />
       <App />
     </Reshaped>
   </StrictMode>,

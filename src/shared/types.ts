@@ -110,15 +110,19 @@ export interface Snooze {
   until?: string
 }
 
+export type ThemePreference = 'system' | 'light' | 'dark'
+
 export interface Settings {
   pollIntervalMinutes: number
   repositories: string[]
   /** When true, search every repo the user is involved in and ignore `repositories`. */
   watchAllRepositories: boolean
+  theme: ThemePreference
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   pollIntervalMinutes: 5,
   repositories: [],
   watchAllRepositories: true,
+  theme: 'system',
 }

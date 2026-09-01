@@ -23,6 +23,7 @@ const api: RendererApi = {
   unsnooze: (prId: string) => ipcRenderer.invoke(IPC.unsnooze, prId),
   getSettings: () => ipcRenderer.invoke(IPC.getSettings),
   setSettings: (patch: Partial<Settings>) => ipcRenderer.invoke(IPC.setSettings, patch),
+  onSettings: (listener: (settings: Settings) => void) => subscribe(IPC.settingsChanged, listener),
   addRepository: (fullName: string) => ipcRenderer.invoke(IPC.addRepository, fullName),
   removeRepository: (fullName: string) => ipcRenderer.invoke(IPC.removeRepository, fullName),
   startAuth: () => ipcRenderer.invoke(IPC.startAuth),

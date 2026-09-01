@@ -25,6 +25,7 @@ export const IPC = {
   unsnooze: 'inbox:unsnooze',
   getSettings: 'settings:get',
   setSettings: 'settings:set',
+  settingsChanged: 'settings:changed',
   addRepository: 'settings:add-repository',
   removeRepository: 'settings:remove-repository',
   startAuth: 'auth:start',
@@ -42,6 +43,7 @@ export interface RendererApi {
   unsnooze: (prId: string) => Promise<void>
   getSettings: () => Promise<Settings>
   setSettings: (patch: Partial<Settings>) => Promise<void>
+  onSettings: (listener: (settings: Settings) => void) => () => void
   addRepository: (fullName: string) => Promise<void>
   removeRepository: (fullName: string) => Promise<void>
   startAuth: () => Promise<void>
