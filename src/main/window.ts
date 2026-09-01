@@ -2,8 +2,20 @@ import { join } from 'node:path'
 import { BrowserWindow, screen, shell, type Rectangle } from 'electron'
 import { isSafeExternalUrl } from './safe-url'
 
-const WIDTH = 452
-const HEIGHT = 620
+// The visible card — must match `.pv-shell`'s width/height in pullover.css.
+const CARD_WIDTH = 452
+const CARD_HEIGHT = 620
+
+// Transparent space around the card so its `0 28px 64px rgba(0,0,0,0.62)`
+// shadow has room to render instead of being clipped at the window edge.
+// That shadow's blur radius (64px) plus its vertical offset (28px) reach
+// 92px past the card's bottom edge — the single largest reach of either
+// shadow layer — so a uniform padding needs to clear at least that on every
+// side to stay symmetric. Must match `--pv-window-padding` in pullover.css.
+const WINDOW_PADDING = 96
+
+const WIDTH = CARD_WIDTH + WINDOW_PADDING * 2
+const HEIGHT = CARD_HEIGHT + WINDOW_PADDING * 2
 
 export function createPopupWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -11,6 +23,12 @@ export function createPopupWindow(): BrowserWindow {
     height: HEIGHT,
     show: false,
     frame: false,
+    // Transparent so the shell's rounded corners and drop shadow composite
+    // over the desktop instead of painting as an opaque rectangle. A
+    // transparent BrowserWindow can't be resized on macOS, which is fine
+    // since resizable is already false below.
+    transparent: true,
+    backgroundColor: '#00000000',
     resizable: false,
     fullscreenable: false,
     skipTaskbar: true,

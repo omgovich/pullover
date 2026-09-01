@@ -171,7 +171,7 @@ export default function App(): React.JSX.Element {
 
   if (snapshot.status === 'loading' && snapshot.items.length === 0) {
     return (
-      <View height="100%" align="center" justify="center">
+      <View height="100%" align="center" justify="center" backgroundColor="elevation-overlay">
         <Loader size="medium" />
       </View>
     )

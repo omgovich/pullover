@@ -38,8 +38,14 @@ export default function Header({
   return (
     <div className="pv-header">
       <div className="pv-header-left">
-        <span className="pv-header-count">{snapshot.attentionCount}</span>
-        <span className="pv-header-label">waiting on you</span>
+        {snapshot.attentionCount > 0 ? (
+          <>
+            <span className="pv-header-count">{snapshot.attentionCount}</span>
+            <span className="pv-header-label">waiting on you</span>
+          </>
+        ) : (
+          <span className="pv-header-label">All clear</span>
+        )}
         <span className="pv-header-status">
           <span className={`pv-dot${hasError ? ' pv-dot--negative' : ''}`} />
           {statusText(snapshot, now)}

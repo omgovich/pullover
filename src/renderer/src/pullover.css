@@ -16,6 +16,11 @@
   --pv-positive: #18ab66;
   --pv-negative: #f36a6a;
   --pv-warning: #b4920c;
+
+  /* Transparent margin around the shell, matching `WINDOW_PADDING` in
+   * src/main/window.ts, that gives the shell's drop shadow room to render
+   * without being clipped by the (now larger) BrowserWindow bounds. */
+  --pv-window-padding: 96px;
 }
 
 html,
@@ -26,20 +31,38 @@ body,
 }
 
 /*
- * The BrowserWindow itself isn't transparent — only its width is in scope
- * for this redesign — so the shell's rounded corners are carved out of an
- * otherwise-square window. Matching the body to the shell's own background
- * keeps whatever peeks past the radius dark instead of default white.
+ * Establishes its own block-formatting context so a margin on a full-bleed
+ * child (the shell's inset from the window edge, below) can never collapse
+ * through into #root/body/html and shift the whole page.
  */
+#root {
+  display: flow-root;
+}
+
+/*
+ * The BrowserWindow is transparent (see src/main/window.ts) so that the
+ * shell's rounded corners and drop shadow composite over the desktop. That
+ * only works if the document itself stays transparent too — any opaque
+ * background here would again paint a solid rectangle behind the shell.
+ */
+html,
 body {
-  background: var(--rs-color-background-elevation-overlay);
+  background: transparent;
 }
 
 .pv-shell {
+  /*
+   * Inset from every edge of the now-oversized window by the same amount,
+   * leaving transparent room for the drop shadow below to render into.
+   * Scoped to the shell itself (rather than padding on #root) so the other
+   * screens — sign-in, loading, settings — keep filling the window
+   * edge-to-edge as before.
+   */
+  margin: var(--pv-window-padding);
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - (var(--pv-window-padding) * 2));
   width: 452px;
   border-radius: 14px;
   background: var(--rs-color-background-elevation-overlay);
