@@ -98,3 +98,7 @@ At sign-in Pullover requests two scopes:
 Pullover only ever reads. It never writes a comment, review, or anything else.
 
 If a repo belongs to an organisation that restricts third-party OAuth Apps, its pull requests won't appear until an org owner approves Pullover under **Settings → Third-party Actions Access** for that org.
+
+## 🔐 Privacy
+
+Pullover has no backend. There's no server in the middle, no account to create, no analytics, no telemetry, no crash reporting — the app talks to exactly one place, GitHub's API, straight from your Mac. Your OAuth token never leaves the machine: it's encrypted via the macOS Keychain (Electron's `safeStorage`) and stored locally. And you don't have to take anyone's word for any of this — the entire app is open source, right here in this repo.
