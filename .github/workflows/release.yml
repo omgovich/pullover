@@ -1,0 +1,100 @@
+name: Release
+
+# The whole release happens in CI — locally you only push a tag:
+#   git tag v0.1.1 && git push origin v0.1.1
+# The `build` job builds unsigned arm64/x64 dmgs and attaches them to a
+# draft GitHub release (electron-builder's publisher, see the `publish`
+# section of electron-builder.yml). The `publish` job then runs Claude,
+# which writes user-facing release notes from the commit log, verifies the
+# assets, and publishes the draft.
+#
+# Needs two pieces of repository configuration:
+#   Settings → Secrets and variables → Actions →
+#   - Variables → PULLOVER_GITHUB_CLIENT_ID — the client ID of the official
+#     Pullover OAuth App (a Device Flow public client; the client ID is not
+#     a secret). It is baked into the build so released binaries can sign
+#     in out of the box.
+#   - Secrets → ANTHROPIC_API_KEY — for the release-notes step.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Ensure the OAuth client ID is configured
+        if: ${{ vars.PULLOVER_GITHUB_CLIENT_ID == '' }}
+        run: |
+          echo "::error::Set the PULLOVER_GITHUB_CLIENT_ID repository variable (Settings → Secrets and variables → Actions → Variables) to the client ID of the official Pullover OAuth App."
+          exit 1
+
+      - run: npm run build
+        env:
+          MAIN_VITE_GITHUB_CLIENT_ID: ${{ vars.PULLOVER_GITHUB_CLIENT_ID }}
+
+      # Unsigned for now. To sign + notarize once an Apple Developer
+      # account exists, follow the comment in electron-builder.yml and add
+      # these env vars here (all from repository secrets):
+      #   CSC_LINK, CSC_KEY_PASSWORD           — Developer ID cert (.p12, base64)
+      #   APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID — notarization
+      - name: Build dmgs and attach to a draft release
+        run: npx electron-builder --mac dmg --arm64 --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure ANTHROPIC_API_KEY is configured
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::Set the ANTHROPIC_API_KEY repository secret — the publish job uses Claude to write the release notes. The draft release with the dmgs is ready; you can also write notes and publish it by hand."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history + tags, for the changelog
+
+      - name: Write release notes and publish the draft
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: --allowedTools "Bash(git:*),Bash(gh release:*)"
+          prompt: |
+            You are running inside GitHub Actions — the `publish` job of Pullover's release workflow, non-interactive, nobody to ask questions. Your only task is to finish the release for tag ${{ github.ref_name }}.
+
+            Ignore the release playbook in AGENTS.md — it is for the local agent, and its part is already done: the version is bumped, the tag is pushed, and the build job has attached the dmgs to a DRAFT GitHub release for this tag. You are the CI half. Your job:
+
+            1. Verify the draft holds both `Pullover-*-arm64.dmg` and `Pullover-*-x64.dmg`: `gh release view ${{ github.ref_name }}`. If either is missing, print what's wrong and exit with `exit 1` — do NOT publish a broken release.
+            2. Write user-facing release notes from the commits since the previous tag: find it with `git describe --tags --abbrev=0 ${{ github.ref_name }}^` (if the command fails, this is the first release — write a 2-3 sentence introduction of the app from README.md instead of a changelog). Notes style: a flat bullet list, no headings — one short bullet per user-visible change, present tense, no commit hashes, skip internal refactors/CI/docs changes users can't feel.
+            3. Publish: write the notes to a file and run `gh release edit ${{ github.ref_name }} --notes-file <file> --draft=false`.
+
+      - name: Verify the release is published
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "$(gh release view '${{ github.ref_name }}' --repo '${{ github.repository }}' --json isDraft --jq .isDraft)" != "false" ]; then
+            echo "::error::The release is still a draft — Claude did not publish it. Check the step above; the dmgs are attached, so you can publish it by hand."
+            exit 1
+          fi

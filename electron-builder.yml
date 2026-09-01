@@ -6,12 +6,30 @@ directories:
 files:
   - out/**/*
   - package.json
+publish:
+  provider: github
+  owner: omgovich
+  repo: pullover
+  # The release workflow runs `electron-builder --publish always`, which
+  # makes electron-builder itself create the GitHub release for the pushed
+  # tag and upload the dmgs into it — as a draft, per this setting.
+  releaseType: draft
 mac:
   target:
     - dmg
     - dir
+  artifactName: ${productName}-${version}-${arch}.${ext}
   category: public.app-category.developer-tools
   # A menu-bar-only app: no Dock icon, no app switcher entry.
   extendInfo:
     LSUIElement: true
+  # Unsigned for now — there is no Apple Developer account behind the
+  # project yet. To ship signed + notarized builds: delete `identity: null`,
+  # uncomment the four lines below, and give the release workflow the
+  # secrets it lists (CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID,
+  # APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID).
   identity: null
+  # hardenedRuntime: true
+  # entitlements: build/entitlements.mac.plist
+  # entitlementsInherit: build/entitlements.mac.plist
+  # notarize: true

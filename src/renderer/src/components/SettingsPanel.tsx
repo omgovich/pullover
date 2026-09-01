@@ -1,6 +1,6 @@
 import type { ThemePreference } from '@shared/types'
 import { useState } from 'react'
-import { Button, Checkbox, Text, View } from 'reshaped/bundle'
+import { Button, Checkbox, Link, Text, View } from 'reshaped/bundle'
 import { useSettings } from '../useSettings'
 
 interface Props {
@@ -173,6 +173,19 @@ export default function SettingsPanel({ knownRepositories, onClose }: Props): Re
             </Button>
           </View>
         </View>
+
+        <View grow />
+
+        <Text variant="caption-1" color="neutral-faded">
+          Pullover {__APP_VERSION__} · MIT © 2026 Vlad Shilov ·{' '}
+          <Link
+            variant="plain"
+            color="inherit"
+            onClick={() => void window.api.openPr('https://github.com/omgovich/pullover')}
+          >
+            GitHub
+          </Link>
+        </Text>
       </View>
     </View>
   )
