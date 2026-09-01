@@ -40,7 +40,6 @@ export default function App(): React.JSX.Element {
   const scroll = useScrollMemory()
   const [showSettings, setShowSettings] = useState(false)
   const [now, setNow] = useState(() => new Date().toISOString())
-  const [refreshing, setRefreshing] = useState(false)
   const { collapsed, toggleCategory } = useSectionCollapse()
   const { toast, showToast, undoToast } = useToast()
 
@@ -50,13 +49,8 @@ export default function App(): React.JSX.Element {
     return () => clearInterval(timer)
   }, [])
 
-  const refresh = useCallback(async (): Promise<void> => {
-    setRefreshing(true)
-    try {
-      await window.api.refresh()
-    } finally {
-      setRefreshing(false)
-    }
+  const refresh = useCallback((): void => {
+    void window.api.refresh()
   }, [])
 
   // The order the keyboard cursor travels: visual order, skipping collapsed sections.
@@ -120,11 +114,10 @@ export default function App(): React.JSX.Element {
       },
       r: (event?: KeyboardEvent) => {
         if (isTypingTarget(event?.target ?? null)) return
-        if (refreshing) return
-        void refresh()
+        refresh()
       },
     },
-    [selectedId, snapshot.items, refreshing, refresh, showToast],
+    [selectedId, snapshot.items, refresh, showToast],
     { disabled: showSettings },
   )
 
@@ -164,8 +157,7 @@ export default function App(): React.JSX.Element {
         <Header
           snapshot={snapshot}
           now={now}
-          refreshing={refreshing}
-          onRefresh={() => void refresh()}
+          onRefresh={refresh}
           onOpenSettings={() => setShowSettings(true)}
         />
 

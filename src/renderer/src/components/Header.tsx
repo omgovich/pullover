@@ -6,7 +6,6 @@ import { Button, Text, View } from 'reshaped/bundle'
 interface Props {
   snapshot: InboxSnapshot
   now: string
-  refreshing: boolean
   onRefresh: () => void
   onOpenSettings: () => void
 }
@@ -41,7 +40,6 @@ const iconButtonStyle = {
 export default function Header({
   snapshot,
   now,
-  refreshing,
   onRefresh,
   onOpenSettings,
 }: Props): React.JSX.Element {
@@ -93,7 +91,7 @@ export default function Header({
           color="neutral"
           size="small"
           icon={RefreshCw}
-          loading={refreshing}
+          loading={snapshot.status === 'loading'}
           onClick={onRefresh}
           attributes={{
             title: 'Refresh — R',
