@@ -26,6 +26,7 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 - 🧑‍💻 **Your own PRs, too.** They surface only when there's something for you to do: changes requested, a comment you haven't answered, red CI, or approved and ready to merge.
 - 💤 **Snooze that un-snoozes itself.** Park a PR for a while — it wakes up on its own when something actually happens: new commits or a new reply.
 - 📌 **Lives in the menu bar.** A quiet count of PRs waiting on you; no Dock icon, no window to manage.
+- 🌗 **Light and dark themes.** Follows your macOS appearance out of the box, or pick one in Settings.
 - 👀 **Read-only by design.** Pullover never comments, approves, or merges. Clicking a PR opens it on github.com — you act where you always did.
 - 🔒 **Private repos and team review requests** work out of the box (that's what the `repo` and `read:org` scopes are for — details below).
 
