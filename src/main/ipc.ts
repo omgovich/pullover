@@ -66,8 +66,4 @@ export function registerIpc(deps: IpcDeps): void {
   )
 
   ipcMain.handle(IPC.signOut, () => deps.signOut())
-
-  ipcMain.handle(IPC.hidePopup, () => {
-    deps.getWindow()?.hide()
-  })
 }

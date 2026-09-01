@@ -1,19 +1,16 @@
 import { join } from 'node:path'
 import { BrowserWindow, screen, shell, type Rectangle } from 'electron'
-import { CARD_HEIGHT, CARD_WIDTH, WINDOW_PADDING } from '@shared/geometry'
 import { isSafeExternalUrl } from './safe-url'
 
-// Transparent space around the card so its `0 28px 64px rgba(0,0,0,0.62)`
-// shadow has room to render instead of being clipped at the window edge.
-// See src/shared/geometry.ts for why each side gets a different amount, and
-// for how the renderer stays in agreement with these numbers.
-const WIDTH = CARD_WIDTH + WINDOW_PADDING.left + WINDOW_PADDING.right
-const HEIGHT = CARD_HEIGHT + WINDOW_PADDING.top + WINDOW_PADDING.bottom
+// The window is exactly the size of the popup's visible card — must match
+// `.pv-shell`'s width/height in src/renderer/src/pullover.css.
+const CARD_WIDTH = 452
+const CARD_HEIGHT = 620
 
 export function createPopupWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: WIDTH,
-    height: HEIGHT,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
     show: false,
     frame: false,
     // Transparent so the shell's rounded corners and drop shadow composite
@@ -61,10 +58,8 @@ export function createPopupWindow(): BrowserWindow {
 }
 
 /**
- * Centres the popup's visible card under the tray item, clamped to the
- * display. The card, not the (larger, transparent) window, is what has to
- * meet the menu bar and stay on screen — the padding around it is free to
- * overhang the display edge since nothing is drawn there.
+ * Centres the popup window under the tray item, its top at the tray item's
+ * bottom, clamped horizontally so it stays inside the display's work area.
  */
 export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
   if (win.isVisible()) {
@@ -76,7 +71,7 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
     x: trayBounds.x,
     y: trayBounds.y,
   })
-  const cardX = Math.round(
+  const x = Math.round(
     Math.min(
       Math.max(
         trayBounds.x + trayBounds.width / 2 - CARD_WIDTH / 2,
@@ -85,9 +80,9 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
       display.workArea.x + display.workArea.width - CARD_WIDTH,
     ),
   )
-  const cardY = Math.round(trayBounds.y + trayBounds.height)
+  const y = Math.round(trayBounds.y + trayBounds.height)
 
-  win.setPosition(cardX - WINDOW_PADDING.left, cardY - WINDOW_PADDING.top, false)
+  win.setPosition(x, y, false)
   win.show()
   win.focus()
 }

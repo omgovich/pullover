@@ -30,7 +30,6 @@ export const IPC = {
   startAuth: 'auth:start',
   deviceCode: 'auth:device-code',
   signOut: 'auth:sign-out',
-  hidePopup: 'window:hide-popup',
 } as const
 
 export interface RendererApi {
@@ -47,5 +46,4 @@ export interface RendererApi {
   removeRepository: (fullName: string) => Promise<void>
   startAuth: () => Promise<void>
   signOut: () => Promise<void>
-  hidePopup: () => Promise<void>
 }

@@ -179,18 +179,6 @@ export default function App(): React.JSX.Element {
   const activeId = hoveredId ?? selectedId
   const showEmptyState = snapshot.attentionCount === 0
 
-  // The window is transparent padding around the card (see
-  // src/shared/geometry.ts), and Electron still delivers clicks anywhere in
-  // that transparent area — a click there should dismiss the popup like any
-  // popover, rather than silently doing nothing. Checking that the click
-  // target is this wrapper itself (not a descendant) means a click on the
-  // card doesn't have to stop its own propagation to be exempt. This wrapper
-  // surrounds the shell in every state, so the dismiss behavior is the same
-  // whether the card holds the inbox, sign-in, loading, or settings.
-  const dismissIfPadding = (event: React.MouseEvent): void => {
-    if (event.target === event.currentTarget) void window.api.hidePopup()
-  }
-
   // `App` always renders the one `.pv-shell` card (see pullover.css); only
   // what goes inside it changes between states, so the window's silhouette
   // never changes when signing in or opening settings.
@@ -315,20 +303,17 @@ export default function App(): React.JSX.Element {
   }
 
   return (
-    <View height="100%" className="pv-window-padding" attributes={{ onClick: dismissIfPadding }}>
-      <View
-        className="pv-shell"
-        width="452px"
-        height="620px"
-        direction="column"
-        overflow="hidden"
-        backgroundColor="elevation-overlay"
-        borderRadius="large"
-        border
-        borderColor="neutral"
-      >
-        {body}
-      </View>
+    <View
+      className="pv-shell"
+      height="100%"
+      direction="column"
+      overflow="hidden"
+      backgroundColor="elevation-overlay"
+      borderRadius="large"
+      border
+      borderColor="neutral"
+    >
+      {body}
     </View>
   )
 }
