@@ -11,16 +11,18 @@ export function formatBadgeTitle(count: number): string {
 }
 
 /**
- * The context menu's refresh entry, derived from the inbox's current status so
- * it explains itself instead of silently doing nothing. Pure, so it can be
- * tested without a running Electron.
+ * The context menu's refresh entry. Only signing out disables it: `refresh()`
+ * coalesces a call made during an in-flight pass into a single follow-up, so
+ * clicking mid-refresh is harmless — and refusing the click was worse than
+ * accepting it, since opening the popup already kicks off a refresh whenever
+ * the data is over a minute old, which meant the entry read "Refreshing…" for
+ * most of the moments somebody would reach for it.
  */
 export function formatRefreshItem(status: InboxSnapshot['status']): {
   label: string
   enabled: boolean
 } {
   if (status === 'signed-out') return { label: 'Sign in to refresh', enabled: false }
-  if (status === 'loading') return { label: 'Refreshing…', enabled: false }
   return { label: 'Refresh now', enabled: true }
 }
 

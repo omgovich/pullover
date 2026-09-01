@@ -26,8 +26,8 @@ describe('formatRefreshItem', () => {
     expect(formatRefreshItem('error')).toEqual({ label: 'Refresh now', enabled: true })
   })
 
-  it('reports progress instead of queueing a second refresh', () => {
-    expect(formatRefreshItem('loading')).toEqual({ label: 'Refreshing…', enabled: false })
+  it('stays available mid-refresh, since a second call just queues one follow-up', () => {
+    expect(formatRefreshItem('loading')).toEqual({ label: 'Refresh now', enabled: true })
   })
 
   it('explains why refreshing is unavailable when signed out', () => {
