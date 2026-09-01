@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { Avatar, Text, View } from 'reshaped/bundle'
+import { Avatar, Text, View, type TextProps, type ViewProps } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { ClassifiedPullRequest } from '@shared/types'
 import SnoozeMenu from './SnoozeMenu'
@@ -20,30 +20,35 @@ export interface PullRequestCardHandle {
   focus: () => void
 }
 
+interface PillColor {
+  text: NonNullable<TextProps['color']>
+  background: NonNullable<ViewProps['backgroundColor']>
+}
+
 // Keyed off the exact reason strings `src/core/classify.ts` produces. The
 // counted reasons ("3 new replies", "2 open threads") aren't listed here on
 // purpose — they fall through to the default accent pair below.
-const STATUS_PILL_COLORS: Record<string, { text: string; background: string }> = {
-  'CI is red': { text: 'var(--pv-red)', background: '#3a2020' },
-  'Changes requested': { text: 'var(--pv-red)', background: '#3a2020' },
-  'Ready to merge': { text: 'var(--pv-green)', background: '#1d2b23' },
-  'Waiting on author': { text: 'var(--pv-muted)', background: 'var(--pv-overlay-weak)' },
-  'Waiting on reviewers': { text: 'var(--pv-muted)', background: 'var(--pv-overlay-weak)' },
-  Snoozed: { text: 'var(--pv-muted)', background: 'var(--pv-overlay-weak)' },
-  Mentioned: { text: '#f1c512', background: '#2e2818' },
+const STATUS_PILL_COLORS: Record<string, PillColor> = {
+  'CI is red': { text: 'critical', background: 'critical-faded' },
+  'Changes requested': { text: 'critical', background: 'critical-faded' },
+  'Ready to merge': { text: 'positive', background: 'positive-faded' },
+  'Waiting on author': { text: 'neutral-faded', background: 'neutral-faded' },
+  'Waiting on reviewers': { text: 'neutral-faded', background: 'neutral-faded' },
+  Snoozed: { text: 'neutral-faded', background: 'neutral-faded' },
+  Mentioned: { text: 'warning', background: 'warning-faded' },
 }
 
-const DEFAULT_STATUS_PILL_COLOR = { text: 'var(--pv-accent-text)', background: '#252544' }
+const DEFAULT_STATUS_PILL_COLOR: PillColor = { text: 'primary', background: 'primary-faded' }
 
-function statusPillColor(reason: string): { text: string; background: string } {
+function statusPillColor(reason: string): PillColor {
   return STATUS_PILL_COLORS[reason] ?? DEFAULT_STATUS_PILL_COLOR
 }
 
-const CI_PILL_COLORS = {
-  success: { text: 'var(--pv-green)', background: '#1f2a23', label: 'CI green' },
-  failure: { text: 'var(--pv-red)', background: '#3e1f1f', label: 'CI failing' },
-  pending: { text: '#b4920c', background: '#2c271f', label: 'CI running' },
-} as const
+const CI_PILL_COLORS: Record<'success' | 'failure' | 'pending', PillColor & { label: string }> = {
+  success: { text: 'positive', background: 'positive-faded', label: 'CI green' },
+  failure: { text: 'critical', background: 'critical-faded', label: 'CI failing' },
+  pending: { text: 'warning', background: 'warning-faded', label: 'CI running' },
+}
 
 function initialsOf(login: string): string {
   return login.slice(0, 1).toUpperCase()
@@ -85,6 +90,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
         paddingInline={2.5}
         paddingBottom={2.5}
         borderRadius="large"
+        backgroundColor={isActive ? 'neutral-faded' : undefined}
         attributes={{
           role: 'button',
           onClick: handleOpen,
@@ -92,7 +98,6 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           onMouseLeave: () => onHover(null),
           style: {
             cursor: 'pointer',
-            background: isActive ? 'var(--pv-overlay-weak)' : 'transparent',
             transition: 'background 140ms',
           },
         }}
@@ -118,12 +123,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   {pr.repository}
                 </Text>
               </View>
-              <Text
-                as="span"
-                variant="caption-1"
-                numeric
-                attributes={{ style: { color: 'var(--pv-accent-text)' } }}
-              >
+              <Text as="span" variant="caption-1" numeric color="primary">
                 #{pr.number}
               </Text>
               <Text
@@ -172,15 +172,9 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   paddingBlock={0.5}
                   paddingInline={2.25}
                   borderRadius="circular"
-                  attributes={{ style: { background: status.background } }}
+                  backgroundColor={status.background}
                 >
-                  <Text
-                    as="span"
-                    variant="caption-1"
-                    weight="semibold"
-                    maxLines={1}
-                    attributes={{ style: { color: status.text } }}
-                  >
+                  <Text as="span" variant="caption-1" weight="semibold" maxLines={1} color={status.text}>
                     {item.reason}
                   </Text>
                 </View>
@@ -194,21 +188,16 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   paddingBlock={0.5}
                   paddingInline={2.25}
                   borderRadius="circular"
-                  attributes={{ style: { background: ci.background } }}
+                  backgroundColor={ci.background}
                 >
                   <View
                     width="5px"
                     height="5px"
                     borderRadius="circular"
-                    attributes={{ style: { background: ci.text, flexShrink: 0 } }}
+                    backgroundColor={ci.text}
+                    attributes={{ style: { flexShrink: 0 } }}
                   />
-                  <Text
-                    as="span"
-                    variant="caption-1"
-                    weight="semibold"
-                    maxLines={1}
-                    attributes={{ style: { color: ci.text } }}
-                  >
+                  <Text as="span" variant="caption-1" weight="semibold" maxLines={1} color={ci.text}>
                     {ci.label}
                   </Text>
                 </View>

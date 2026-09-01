@@ -1,23 +1,10 @@
 /*
  * Pullover's inbox screen, built on Reshaped's standard components. What's
- * left here is only what has no Reshaped equivalent: colors and effects with
- * no token, one piece of state Reshaped has no prop for ("hidden but still
- * holding its layout space"), and a couple of structural declarations that
- * don't correspond to any design value.
+ * left here is only what has no Reshaped equivalent: one piece of state
+ * Reshaped has no prop for ("hidden but still holding its layout space"),
+ * and a couple of structural declarations that don't correspond to any
+ * design value. Colors all come from Reshaped's tokens via component props.
  */
-
-:root {
-  /* The app's purple identity — Reshaped's own `primary` token is blue. */
-  --pv-accent-text: #8b8af7;
-
-  /* Subtle on-dark overlays, shared by hover/active washes and count pills. */
-  --pv-overlay-weak: #ffffff12;
-  --pv-overlay: #ffffff14;
-
-  --pv-green: #18ab66;
-  --pv-red: #f36a6a;
-  --pv-muted: #9aa4b8;
-}
 
 html,
 body,
