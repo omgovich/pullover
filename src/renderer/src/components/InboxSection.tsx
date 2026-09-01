@@ -96,7 +96,8 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
           <View.Item grow>
             <Divider />
           </View.Item>
-          <Icon svg={open ? ChevronDown : ChevronRight} size={14} color="neutral-faded" />
+          {/* `size` is a multiple of the 4px unit, not pixels — 4 is 16px. */}
+          <Icon svg={open ? ChevronDown : ChevronRight} size={4} color="neutral-faded" />
         </View>
       </Actionable>
 

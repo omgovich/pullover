@@ -48,7 +48,8 @@ export default function EmptyState({
         border
         borderColor="primary-faded"
       >
-        <Icon svg={Check} size={32} color="primary" />
+        {/* `size` is a multiple of the 4px unit, not pixels — 8 is 32px. */}
+        <Icon svg={Check} size={8} color="primary" />
       </View>
 
       <View.Item gapBefore={5}>
