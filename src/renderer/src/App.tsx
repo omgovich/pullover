@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Loader, View } from 'reshaped/bundle'
+import { Badge, Loader, ScrollArea, Text, View, useHotkeys } from 'reshaped/bundle'
 import { VISIBLE_CATEGORIES, type Category, type ClassifiedPullRequest } from '@shared/types'
 import EmptyState from './components/EmptyState'
 import Header from './components/Header'
@@ -111,52 +111,69 @@ export default function App(): React.JSX.Element {
     return result
   }, [snapshot.items, collapsed])
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent): void {
-      if (showSettings) return
-      if (isTypingTarget(event.target)) return
+  const moveSelection = useCallback(
+    (delta: 1 | -1): void => {
+      if (visibleItems.length === 0) return
+      const currentIndex = visibleItems.findIndex((item) => item.pr.id === selectedId)
+      const nextIndex =
+        currentIndex === -1
+          ? delta === 1
+            ? 0
+            : visibleItems.length - 1
+          : (currentIndex + delta + visibleItems.length) % visibleItems.length
+      const nextId = visibleItems[nextIndex].pr.id
+      setSelectedId(nextId)
+      setHoveredId(null)
+      cardHandles.current.get(nextId)?.element?.scrollIntoView({ block: 'nearest' })
+    },
+    [visibleItems, selectedId],
+  )
 
-      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-        if (visibleItems.length === 0) return
-        event.preventDefault()
-        const delta = event.key === 'ArrowDown' ? 1 : -1
-        const currentIndex = visibleItems.findIndex((item) => item.pr.id === selectedId)
-        const nextIndex =
-          currentIndex === -1
-            ? delta === 1
-              ? 0
-              : visibleItems.length - 1
-            : (currentIndex + delta + visibleItems.length) % visibleItems.length
-        const nextId = visibleItems[nextIndex].pr.id
-        setSelectedId(nextId)
-        setHoveredId(null)
-        cardHandles.current.get(nextId)?.element?.scrollIntoView({ block: 'nearest' })
-        return
-      }
+  // `useHotkeys` (from `reshaped/bundle`) replaces the manual `window`
+  // keydown listener. It has no built-in "ignore while typing" guard, so
+  // that check moves inside each callback instead — same effect, since the
+  // callback still receives the raw `KeyboardEvent`. It's split into two
+  // calls rather than one because `preventDefault` applies to every key in
+  // a single `useHotkeys` call: only the arrow keys need it (so they don't
+  // scroll anything natively), while Enter/S/R must not risk swallowing a
+  // keystroke a future text field might want.
+  useHotkeys(
+    {
+      arrowdown: (event?: KeyboardEvent) => {
+        if (isTypingTarget(event?.target ?? null)) return
+        moveSelection(1)
+      },
+      arrowup: (event?: KeyboardEvent) => {
+        if (isTypingTarget(event?.target ?? null)) return
+        moveSelection(-1)
+      },
+    },
+    [moveSelection],
+    { disabled: showSettings, preventDefault: true },
+  )
 
-      if (event.key === 'Enter') {
+  useHotkeys(
+    {
+      enter: (event?: KeyboardEvent) => {
+        if (isTypingTarget(event?.target ?? null)) return
         if (selectedId === null) return
         const item = snapshot.items.find((i) => i.pr.id === selectedId)
         if (item !== undefined) void window.api.openPr(item.pr.url)
-        return
-      }
-
-      if (event.key === 's' || event.key === 'S') {
+      },
+      s: (event?: KeyboardEvent) => {
+        if (isTypingTarget(event?.target ?? null)) return
         if (selectedId === null) return
         cardHandles.current.get(selectedId)?.activateSnooze()
-        return
-      }
-
-      if (event.key === 'r' || event.key === 'R') {
+      },
+      r: (event?: KeyboardEvent) => {
+        if (isTypingTarget(event?.target ?? null)) return
         if (refreshing) return
         void refresh()
-        return
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [visibleItems, selectedId, showSettings, snapshot.items, refreshing, refresh])
+      },
+    },
+    [selectedId, snapshot.items, refreshing, refresh],
+    { disabled: showSettings },
+  )
 
   const snoozedCount = snapshot.items.filter((item) => item.isSnoozed).length
   const activeId = hoveredId ?? selectedId
@@ -180,26 +197,26 @@ export default function App(): React.JSX.Element {
   let body: React.JSX.Element
   if (snapshot.status === 'signed-out') {
     body = (
-      <div className="pv-shell-fill">
+      <View grow minHeight={0} direction="column">
         <SignIn />
-      </div>
+      </View>
     )
   } else if (showSettings) {
     body = (
-      <div className="pv-shell-fill">
+      <View grow minHeight={0} direction="column">
         <SettingsPanel
           knownRepositories={snapshot.knownRepositories}
           onClose={() => setShowSettings(false)}
         />
-      </div>
+      </View>
     )
   } else if (snapshot.status === 'loading' && snapshot.items.length === 0) {
     body = (
-      <div className="pv-shell-fill">
+      <View grow minHeight={0} direction="column">
         <View height="100%" minHeight={0} align="center" justify="center">
           <Loader size="medium" />
         </View>
-      </div>
+      </View>
     )
   } else {
     body = (
@@ -212,7 +229,13 @@ export default function App(): React.JSX.Element {
           onOpenSettings={() => setShowSettings(true)}
         />
 
-        <div className="pv-scroll" ref={scroll.ref} onScroll={scroll.onScroll}>
+        <ScrollArea
+          ref={scroll.ref}
+          onScroll={scroll.onScroll}
+          maxHeight="560px"
+          className="pv-scroll"
+          scrollableClassName="pv-scroll-content"
+        >
           {showEmptyState && (
             <EmptyState
               isError={snapshot.status === 'error'}
@@ -239,22 +262,52 @@ export default function App(): React.JSX.Element {
               registerCard={registerCard}
             />
           ))}
-        </div>
+        </ScrollArea>
 
-        <div className="pv-hints">
-          <span className="pv-hint">
-            <span className="pv-keycap">↑↓</span>Move
-          </span>
-          <span className="pv-hint">
-            <span className="pv-keycap">⏎</span>Review
-          </span>
-          <span className="pv-hint">
-            <span className="pv-keycap">S</span>Snooze
-          </span>
-          <span className="pv-hint">
-            <span className="pv-keycap">R</span>Refresh
-          </span>
-        </div>
+        <View
+          direction="row"
+          align="center"
+          gap={3}
+          paddingBlock={2}
+          paddingInline={4}
+          borderColor="neutral-faded"
+          borderTop
+          backgroundColor="elevation-base"
+        >
+          {/* Keycaps are `Badge`s now — small pills, per the owner's call. */}
+          <View direction="row" align="center" gap={1}>
+            <Badge variant="faded" color="neutral" size="small">
+              ↑↓
+            </Badge>
+            <Text as="span" variant="caption-1" color="neutral-faded">
+              Move
+            </Text>
+          </View>
+          <View direction="row" align="center" gap={1}>
+            <Badge variant="faded" color="neutral" size="small">
+              ⏎
+            </Badge>
+            <Text as="span" variant="caption-1" color="neutral-faded">
+              Review
+            </Text>
+          </View>
+          <View direction="row" align="center" gap={1}>
+            <Badge variant="faded" color="neutral" size="small">
+              S
+            </Badge>
+            <Text as="span" variant="caption-1" color="neutral-faded">
+              Snooze
+            </Text>
+          </View>
+          <View direction="row" align="center" gap={1}>
+            <Badge variant="faded" color="neutral" size="small">
+              R
+            </Badge>
+            <Text as="span" variant="caption-1" color="neutral-faded">
+              Refresh
+            </Text>
+          </View>
+        </View>
 
         {toast !== null && <Toast toast={toast} onUndo={undoToast} />}
       </>
@@ -262,8 +315,20 @@ export default function App(): React.JSX.Element {
   }
 
   return (
-    <div className="pv-window-padding" onClick={dismissIfPadding}>
-      <div className="pv-shell">{body}</div>
-    </div>
+    <View height="100%" className="pv-window-padding" attributes={{ onClick: dismissIfPadding }}>
+      <View
+        className="pv-shell"
+        width="452px"
+        height="620px"
+        direction="column"
+        overflow="hidden"
+        backgroundColor="elevation-overlay"
+        borderRadius="large"
+        border
+        borderColor="neutral"
+      >
+        {body}
+      </View>
+    </View>
   )
 }
