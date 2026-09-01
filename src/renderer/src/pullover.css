@@ -71,3 +71,25 @@ body {
   visibility: visible;
   opacity: 1;
 }
+
+/* Segmented controls */
+
+/*
+ * `Tabs variant="pills-raised"` gives the segmented look the settings panel
+ * wants — a faded track with one raised pill — but paints the active pill in
+ * the raised elevation colour, which on this panel reads as "a slightly
+ * different grey". The button row it replaced marked the active option with
+ * the primary accent, and Reshaped has no prop for the pill's colour, so the
+ * two layers that draw it are repainted here: the sliding highlight (the one
+ * non-button child of the tablist) and the static `:before` Reshaped falls
+ * back to before the highlight has measured itself.
+ */
+.pv-segmented [role="tablist"] > div::before,
+.pv-segmented [role="tab"][aria-selected="true"]::before {
+  background: var(--rs-color-background-primary);
+  border-color: transparent;
+}
+
+.pv-segmented [role="tab"][aria-selected="true"] {
+  color: var(--rs-color-on-background-primary);
+}
