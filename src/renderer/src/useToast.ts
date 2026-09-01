@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ClassifiedPullRequest } from '@shared/types'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ToastState } from './components/Toast'
 
 const TOAST_DURATION_MS = 4000

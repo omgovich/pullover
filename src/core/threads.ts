@@ -1,9 +1,4 @@
-import type {
-  PullRequest,
-  Review,
-  ReviewThread,
-  ThreadComment,
-} from '@shared/types'
+import type { PullRequest, Review, ReviewThread, ThreadComment } from '@shared/types'
 
 export function lastComment(thread: ReviewThread): ThreadComment | null {
   return thread.comments.at(-1) ?? null
@@ -19,10 +14,7 @@ export function unresolvedThreads(pr: PullRequest): ReviewThread[] {
 }
 
 /** Unresolved threads I commented in, where somebody else spoke last. */
-export function threadsAwaitingMyReply(
-  pr: PullRequest,
-  myLogin: string,
-): ReviewThread[] {
+export function threadsAwaitingMyReply(pr: PullRequest, myLogin: string): ReviewThread[] {
   return unresolvedThreads(pr).filter((thread) => {
     const iCommented = thread.comments.some((c) => c.authorLogin === myLogin)
     const last = lastComment(thread)
@@ -35,10 +27,7 @@ export function threadsAwaitingMyReply(
  * them. Used for my own PRs, where a reviewer's brand-new thread still needs
  * my answer.
  */
-export function unansweredThreads(
-  pr: PullRequest,
-  myLogin: string,
-): ReviewThread[] {
+export function unansweredThreads(pr: PullRequest, myLogin: string): ReviewThread[] {
   return unresolvedThreads(pr).filter((thread) => {
     const last = lastComment(thread)
     return last !== null && last.authorLogin !== myLogin
@@ -55,10 +44,7 @@ export function compareIso(a: string, b: string): number {
   return a < b ? -1 : 1
 }
 
-export function myLatestReview(
-  pr: PullRequest,
-  myLogin: string,
-): Review | null {
+export function myLatestReview(pr: PullRequest, myLogin: string): Review | null {
   const mine = pr.reviews
     .filter((r) => r.authorLogin === myLogin && r.state !== 'PENDING')
     .sort((a, b) => compareIso(a.submittedAt, b.submittedAt))
@@ -67,11 +53,7 @@ export function myLatestReview(
 
 export function hasParticipated(pr: PullRequest, myLogin: string): boolean {
   if (myLatestReview(pr, myLogin) !== null) return true
-  if (
-    pr.reviewThreads.some((thread) =>
-      thread.comments.some((c) => c.authorLogin === myLogin),
-    )
-  ) {
+  if (pr.reviewThreads.some((thread) => thread.comments.some((c) => c.authorLogin === myLogin))) {
     return true
   }
   return pr.conversationComments.some((c) => c.authorLogin === myLogin)
@@ -81,10 +63,7 @@ export function hasParticipated(pr: PullRequest, myLogin: string): boolean {
  * When the user last did anything on this PR — reviewed, replied in a thread,
  * or commented in the conversation. Null if they never have.
  */
-export function myLastActivityAt(
-  pr: PullRequest,
-  myLogin: string,
-): string | null {
+export function myLastActivityAt(pr: PullRequest, myLogin: string): string | null {
   const dates: string[] = []
 
   const myReview = myLatestReview(pr, myLogin)
@@ -112,8 +91,6 @@ export function hasNewReplyInMyThreadsSince(
   return unresolvedThreads(pr).some((thread) => {
     const iCommented = thread.comments.some((c) => c.authorLogin === myLogin)
     if (!iCommented) return false
-    return thread.comments.some(
-      (c) => c.authorLogin !== myLogin && c.createdAt > since,
-    )
+    return thread.comments.some((c) => c.authorLogin !== myLogin && c.createdAt > since)
   })
 }

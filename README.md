@@ -86,3 +86,5 @@ Finder → Open → Open.
 
 - `npm test` — unit tests (all the classification logic lives in `src/core/`)
 - `npm run typecheck` — type checking
+- `npm run lint` — lint + formatting check ([Biome](https://biomejs.dev), config in `biome.json`)
+- `npm run lint:fix` — apply every safe lint fix and reformat

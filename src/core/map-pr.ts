@@ -72,16 +72,11 @@ export interface PullRequestNode {
  */
 export function mentionsUser(text: string, login: string): boolean {
   const escaped = login.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const pattern = new RegExp(
-    `(?<![A-Za-z0-9-])@${escaped}(?![A-Za-z0-9-])`,
-    'i',
-  )
+  const pattern = new RegExp(`(?<![A-Za-z0-9-])@${escaped}(?![A-Za-z0-9-])`, 'i')
   return pattern.test(text)
 }
 
-function flattenComments(
-  nodes: Array<CommentNode | null>,
-): ThreadComment[] {
+function flattenComments(nodes: Array<CommentNode | null>): ThreadComment[] {
   return nodes.flatMap((comment) =>
     comment?.author
       ? [

@@ -1,6 +1,6 @@
+import type { Settings } from '@shared/types'
 import { useEffect, useState } from 'react'
 import { Button, Checkbox, Text, View } from 'reshaped/bundle'
-import type { Settings } from '@shared/types'
 
 interface Props {
   knownRepositories: string[]
@@ -24,10 +24,7 @@ function repositoryOptions(known: string[], selected: string[]): string[] {
   return [...byLower.values()].sort((a, b) => a.localeCompare(b))
 }
 
-export default function SettingsPanel({
-  knownRepositories,
-  onClose,
-}: Props): React.JSX.Element {
+export default function SettingsPanel({ knownRepositories, onClose }: Props): React.JSX.Element {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -35,6 +32,9 @@ export default function SettingsPanel({
     setSettings(await window.api.getSettings())
   }
 
+  // Settings only need pulling once, when the panel opens. `reload` is a fresh
+  // function on every render, so listing it as a dependency would re-fetch in a loop.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally mount-only
   useEffect(() => {
     void reload()
   }, [])
@@ -69,13 +69,7 @@ export default function SettingsPanel({
 
   return (
     <View height="100%" minHeight={0}>
-      <View
-        direction="row"
-        align="center"
-        padding={3}
-        borderColor="neutral-faded"
-        borderBottom
-      >
+      <View direction="row" align="center" padding={3} borderColor="neutral-faded" borderBottom>
         <Text variant="body-2" weight="bold">
           Settings
         </Text>
@@ -105,33 +99,30 @@ export default function SettingsPanel({
             </Text>
           )}
 
-          {!settings.watchAllRepositories && (
-            <>
-              {options.length === 0 ? (
-                <Text variant="caption-1" color="neutral-faded">
-                  Nothing in your inbox yet, so there's nothing to narrow.
-                </Text>
-              ) : (
-                <>
-                  {settings.repositories.length === 0 && (
-                    <Text variant="caption-1" color="neutral-faded">
-                      Nothing ticked, so nothing shows. Tick the repos you care about.
-                    </Text>
-                  )}
-                  {options.map((repo) => (
-                    <Checkbox
-                      key={repo}
-                      name={`repository-${repo}`}
-                      checked={settings.repositories.includes(repo.toLowerCase())}
-                      onChange={({ checked }) => void toggleRepository(repo, checked)}
-                    >
-                      {repo}
-                    </Checkbox>
-                  ))}
-                </>
-              )}
-            </>
-          )}
+          {!settings.watchAllRepositories &&
+            (options.length === 0 ? (
+              <Text variant="caption-1" color="neutral-faded">
+                Nothing in your inbox yet, so there's nothing to narrow.
+              </Text>
+            ) : (
+              <>
+                {settings.repositories.length === 0 && (
+                  <Text variant="caption-1" color="neutral-faded">
+                    Nothing ticked, so nothing shows. Tick the repos you care about.
+                  </Text>
+                )}
+                {options.map((repo) => (
+                  <Checkbox
+                    key={repo}
+                    name={`repository-${repo}`}
+                    checked={settings.repositories.includes(repo.toLowerCase())}
+                    onChange={({ checked }) => void toggleRepository(repo, checked)}
+                  >
+                    {repo}
+                  </Checkbox>
+                ))}
+              </>
+            ))}
         </View>
 
         <View gap={2}>
@@ -143,9 +134,7 @@ export default function SettingsPanel({
               <Button
                 key={minutes}
                 size="small"
-                variant={
-                  settings.pollIntervalMinutes === minutes ? 'solid' : 'outline'
-                }
+                variant={settings.pollIntervalMinutes === minutes ? 'solid' : 'outline'}
                 onClick={() => void setInterval(minutes)}
               >
                 {minutes} min

@@ -1,7 +1,7 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { Avatar, Text, View, type TextProps, type ViewProps } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { ClassifiedPullRequest } from '@shared/types'
+import { forwardRef, useImperativeHandle, useRef } from 'react'
+import { Avatar, Text, type TextProps, View, type ViewProps } from 'reshaped/bundle'
 import SnoozeMenu from './SnoozeMenu'
 
 interface Props {
@@ -174,7 +174,13 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   borderRadius="circular"
                   backgroundColor={status.background}
                 >
-                  <Text as="span" variant="caption-1" weight="semibold" maxLines={1} color={status.text}>
+                  <Text
+                    as="span"
+                    variant="caption-1"
+                    weight="semibold"
+                    maxLines={1}
+                    color={status.text}
+                  >
                     {item.reason}
                   </Text>
                 </View>
@@ -197,7 +203,13 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                     backgroundColor={ci.text}
                     attributes={{ style: { flexShrink: 0 } }}
                   />
-                  <Text as="span" variant="caption-1" weight="semibold" maxLines={1} color={ci.text}>
+                  <Text
+                    as="span"
+                    variant="caption-1"
+                    weight="semibold"
+                    maxLines={1}
+                    color={ci.text}
+                  >
                     {ci.label}
                   </Text>
                 </View>

@@ -1,10 +1,10 @@
+import { makePullRequest } from '@core/test-factory'
+import type { InboxSnapshot } from '@shared/ipc'
+import { DEFAULT_SETTINGS, type PullRequest } from '@shared/types'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Inbox } from './inbox'
-import { AppStore } from './store'
 import type { KeyValueStore, PersistedState } from './store'
-import { DEFAULT_SETTINGS, type PullRequest } from '@shared/types'
-import type { InboxSnapshot } from '@shared/ipc'
-import { makePullRequest } from '@core/test-factory'
+import { AppStore } from './store'
 
 class MemoryStore implements KeyValueStore {
   private state: PersistedState = {
@@ -126,10 +126,7 @@ describe('Inbox.refresh', () => {
 
   it('clears the cached login and PRs on sign-out so a subsequent sign-in reclassifies against the new user', async () => {
     let client: object | null = CLIENT
-    const fetchLogin = vi
-      .fn()
-      .mockResolvedValueOnce('vlad')
-      .mockResolvedValueOnce('other-user')
+    const fetchLogin = vi.fn().mockResolvedValueOnce('vlad').mockResolvedValueOnce('other-user')
     // Authored by 'other-user' with changes requested: a clear attention
     // item for 'other-user', invisible to 'vlad'.
     const pr = makePullRequest({
@@ -225,10 +222,7 @@ describe('Inbox.refresh', () => {
 
   it('clears the cached login when signing out while a refresh is in flight, so a later sign-in as a different user classifies against the new login', async () => {
     let client: object | null = CLIENT
-    const fetchLogin = vi
-      .fn()
-      .mockResolvedValueOnce('vlad')
-      .mockResolvedValueOnce('other-user')
+    const fetchLogin = vi.fn().mockResolvedValueOnce('vlad').mockResolvedValueOnce('other-user')
     // Authored by 'other-user' with changes requested: a clear attention
     // item for 'other-user', invisible to 'vlad'.
     const pr = makePullRequest({
@@ -309,10 +303,12 @@ describe('Inbox.refresh', () => {
     resolveFetch(prs)
     await pass
 
-    expect(inbox.getSnapshot().items.map((item) => item.pr.id).sort()).toEqual([
-      'PR_1',
-      'PR_2',
-    ])
+    expect(
+      inbox
+        .getSnapshot()
+        .items.map((item) => item.pr.id)
+        .sort(),
+    ).toEqual(['PR_1', 'PR_2'])
   })
 
   it('always calls fetchPrs unfiltered, regardless of the repository selection', async () => {
@@ -348,10 +344,12 @@ describe('Inbox.refresh', () => {
 
     await inbox.refresh()
 
-    expect(inbox.getSnapshot().items.map((item) => item.pr.id).sort()).toEqual([
-      'PR_1',
-      'PR_2',
-    ])
+    expect(
+      inbox
+        .getSnapshot()
+        .items.map((item) => item.pr.id)
+        .sort(),
+    ).toEqual(['PR_1', 'PR_2'])
   })
 
   it('populates knownRepositories from every fetched pull request, even while a narrow filter is active', async () => {
@@ -541,10 +539,12 @@ describe('Inbox.reclassify', () => {
     store.addRepository('acme/api')
     inbox.reclassify()
 
-    expect(inbox.getSnapshot().items.map((item) => item.pr.id).sort()).toEqual([
-      'PR_1',
-      'PR_2',
-    ])
+    expect(
+      inbox
+        .getSnapshot()
+        .items.map((item) => item.pr.id)
+        .sort(),
+    ).toEqual(['PR_1', 'PR_2'])
     expect(fetchPrs).toHaveBeenCalledTimes(1)
   })
 
@@ -561,10 +561,12 @@ describe('Inbox.reclassify', () => {
     ])
     const inbox = build([], { fetchPrs })
     await inbox.refresh()
-    expect(inbox.getSnapshot().items.map((item) => item.pr.id).sort()).toEqual([
-      'PR_1',
-      'PR_2',
-    ])
+    expect(
+      inbox
+        .getSnapshot()
+        .items.map((item) => item.pr.id)
+        .sort(),
+    ).toEqual(['PR_1', 'PR_2'])
 
     store.removeRepository('acme/api')
     inbox.reclassify()
@@ -586,10 +588,12 @@ describe('Inbox.reclassify', () => {
     ])
     const inbox = build([], { fetchPrs })
     await inbox.refresh()
-    expect(inbox.getSnapshot().items.map((item) => item.pr.id).sort()).toEqual([
-      'PR_1',
-      'PR_2',
-    ])
+    expect(
+      inbox
+        .getSnapshot()
+        .items.map((item) => item.pr.id)
+        .sort(),
+    ).toEqual(['PR_1', 'PR_2'])
 
     store.updateSettings({ watchAllRepositories: false })
     inbox.reclassify()

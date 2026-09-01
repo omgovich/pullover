@@ -9,6 +9,9 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "format": "biome format --write",
     "test": "vitest run",
     "test:watch": "vitest",
     "dist": "npm run build && electron-builder --mac"
@@ -22,6 +25,7 @@
     "reshaped": "^4.1.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.11",
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

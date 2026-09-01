@@ -8,13 +8,7 @@ interface Props {
 
 export default function EmptyState({ isError }: Props): React.JSX.Element {
   return (
-    <View
-      align="center"
-      textAlign="center"
-      paddingTop={16}
-      paddingBottom={15}
-      paddingInline={6}
-    >
+    <View align="center" textAlign="center" paddingTop={16} paddingBottom={15} paddingInline={6}>
       <Icon svg={Check} size="28px" color="positive" />
 
       <View.Item gapBefore={3.5}>

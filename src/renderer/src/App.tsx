@@ -1,6 +1,6 @@
+import { type ClassifiedPullRequest, VISIBLE_CATEGORIES } from '@shared/types'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader, ScrollArea, Text, View, useHotkeys } from 'reshaped/bundle'
-import { VISIBLE_CATEGORIES, type ClassifiedPullRequest } from '@shared/types'
+import { Loader, ScrollArea, Text, useHotkeys, View } from 'reshaped/bundle'
 import EmptyState from './components/EmptyState'
 import Header from './components/Header'
 import InboxSection from './components/InboxSection'
@@ -22,7 +22,12 @@ function isTypingTarget(target: EventTarget | null): boolean {
 // borderless variant swaps in a solid background instead of this faint wash.
 function KeyCap({ children }: { children: string }): React.JSX.Element {
   return (
-    <View paddingBlock={0.25} paddingInline={1.25} borderRadius="small" backgroundColor="neutral-faded">
+    <View
+      paddingBlock={0.25}
+      paddingInline={1.25}
+      borderRadius="small"
+      backgroundColor="neutral-faded"
+    >
       <Text as="span" variant="caption-1" weight="semibold" color="neutral-faded">
         {children}
       </Text>

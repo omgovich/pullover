@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { AppStore } from './store'
-import type { KeyValueStore, PersistedState } from './store'
 import { DEFAULT_SETTINGS } from '@shared/types'
+import { beforeEach, describe, expect, it } from 'vitest'
+import type { KeyValueStore, PersistedState } from './store'
+import { AppStore } from './store'
 
 class MemoryStore implements KeyValueStore {
   private state: PersistedState = {

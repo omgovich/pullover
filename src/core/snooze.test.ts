@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
 import { isSnoozeActive } from '@core/snooze'
 import type { Snooze } from '@shared/types'
+import { describe, expect, it } from 'vitest'
 import { makeComment, makePullRequest, makeThread } from './test-factory'
 
 const ME = 'vlad'

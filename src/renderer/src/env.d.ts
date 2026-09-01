@@ -7,5 +7,3 @@ declare global {
     api: RendererApi
   }
 }
-
-export {}

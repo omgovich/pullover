@@ -1,13 +1,10 @@
-import { graphql } from '@octokit/graphql'
 import { mapPullRequest, type PullRequestNode } from '@core/map-pr'
 import { buildSearchQuery, chunk } from '@core/search-query'
-import { SEARCH_BUCKETS, type PullRequest, type SearchBucket } from '@shared/types'
+import { graphql } from '@octokit/graphql'
+import { type PullRequest, SEARCH_BUCKETS, type SearchBucket } from '@shared/types'
 import { DETAILS_QUERY, SEARCH_QUERY, VIEWER_QUERY } from './queries'
 
-export type GraphQLClient = (
-  query: string,
-  variables: Record<string, unknown>,
-) => Promise<unknown>
+export type GraphQLClient = (query: string, variables: Record<string, unknown>) => Promise<unknown>
 
 const DETAIL_BATCH_SIZE = 25
 
@@ -24,9 +21,7 @@ export async function fetchViewerLogin(client: GraphQLClient): Promise<string> {
 }
 
 /** PR id → the set of search buckets it turned up in. */
-async function collectIds(
-  client: GraphQLClient,
-): Promise<Map<string, Set<SearchBucket>>> {
+async function collectIds(client: GraphQLClient): Promise<Map<string, Set<SearchBucket>>> {
   const byId = new Map<string, Set<SearchBucket>>()
 
   for (const bucket of SEARCH_BUCKETS) {
@@ -58,9 +53,7 @@ export async function fetchPullRequests(
     }
     for (const node of data.nodes) {
       if (!node) continue
-      prs.push(
-        mapPullRequest(node, [...(bucketsById.get(node.id) ?? [])], myLogin),
-      )
+      prs.push(mapPullRequest(node, [...(bucketsById.get(node.id) ?? [])], myLogin))
     }
   }
 
