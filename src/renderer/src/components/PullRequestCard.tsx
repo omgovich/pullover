@@ -94,7 +94,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
   // native Enter-to-click behavior for focus to trigger on top of App's own
   // `enter` hotkey. `role="button"` stays, for assistive tech.
   return (
-    <div ref={cardRef} tabIndex={-1}>
+    <div ref={cardRef} tabIndex={-1} className="pv-card-focus">
       <View
         direction="row"
         align="start"

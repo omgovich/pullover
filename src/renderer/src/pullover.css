@@ -85,6 +85,17 @@ body {
  * flow or scale them to 0, neither of which reserves the space — so this
  * stays custom.
  */
+/*
+ * Cards are focusable only so the keyboard cursor can carry real focus with
+ * it — never reached by Tab. The selected card already reads as selected
+ * through its background tint, so the browser's focus ring on top of that is
+ * redundant, and it clips oddly against the card's rounded corners.
+ */
+.pv-card-focus:focus,
+.pv-card-focus:focus-visible {
+  outline: none;
+}
+
 .pv-card-actions {
   visibility: hidden;
   opacity: 0;
