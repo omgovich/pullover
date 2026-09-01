@@ -57,10 +57,7 @@ describe('fetchViewerLogin', () => {
 
 describe('fetchPullRequests', () => {
   it('issues one unscoped search query per bucket and returns pull requests', async () => {
-    const client = fakeClient(
-      { 'review-requested:@me': ['PR_1'] },
-      [detailNode('PR_1')],
-    )
+    const client = fakeClient({ 'review-requested:@me': ['PR_1'] }, [detailNode('PR_1')])
     const prs = await fetchPullRequests(client, 'vlad')
     expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
     const searchCalls = client.mock.calls.filter(([q]) => q === SEARCH_QUERY)
@@ -71,10 +68,9 @@ describe('fetchPullRequests', () => {
   })
 
   it('records which buckets a PR came from', async () => {
-    const client = fakeClient(
-      { 'review-requested:@me': ['PR_1'], 'mentions:@me': ['PR_1'] },
-      [detailNode('PR_1')],
-    )
+    const client = fakeClient({ 'review-requested:@me': ['PR_1'], 'mentions:@me': ['PR_1'] }, [
+      detailNode('PR_1'),
+    ])
     const prs = await fetchPullRequests(client, 'vlad')
     expect(prs).toHaveLength(1)
     expect(prs[0]!.buckets.sort()).toEqual(['mentions', 'review-requested'])
@@ -107,9 +103,7 @@ describe('fetchPullRequests', () => {
     const detailCalls = client.mock.calls.filter(([q]) => q === DETAILS_QUERY)
     expect(detailCalls).toHaveLength(3)
 
-    const idsPerCall = detailCalls.map(
-      ([, variables]) => (variables as { ids: string[] }).ids,
-    )
+    const idsPerCall = detailCalls.map(([, variables]) => (variables as { ids: string[] }).ids)
     for (const batch of idsPerCall) {
       expect(batch.length).toBeLessThanOrEqual(DETAIL_BATCH_SIZE)
     }
@@ -125,9 +119,7 @@ describe('fetchPullRequests', () => {
   })
 
   it('skips ids the details query could not resolve', async () => {
-    const client = fakeClient({ 'author:@me': ['PR_1', 'PR_missing'] }, [
-      detailNode('PR_1'),
-    ])
+    const client = fakeClient({ 'author:@me': ['PR_1', 'PR_missing'] }, [detailNode('PR_1')])
     const prs = await fetchPullRequests(client, 'vlad')
     expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
   })
@@ -153,10 +145,9 @@ describe('fetchPullRequests', () => {
   })
 
   it('passes myLogin through to mapPullRequest so mentions of that login are detected', async () => {
-    const client = fakeClient(
-      { 'mentions:@me': ['PR_1'] },
-      [detailNode('PR_1', { bodyText: 'Hey @vlad, take a look' })],
-    )
+    const client = fakeClient({ 'mentions:@me': ['PR_1'] }, [
+      detailNode('PR_1', { bodyText: 'Hey @vlad, take a look' }),
+    ])
     const prs = await fetchPullRequests(client, 'vlad')
     expect(prs[0]!.lastMentionAt).not.toBeNull()
   })

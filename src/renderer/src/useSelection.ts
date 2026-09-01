@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ClassifiedPullRequest } from '@shared/types'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PullRequestCardHandle } from './components/PullRequestCard'
 
 export interface Selection {
@@ -17,13 +17,10 @@ export function useSelection(visibleItems: ClassifiedPullRequest[]): Selection {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const cardHandles = useRef(new Map<string, PullRequestCardHandle>())
 
-  const registerCard = useCallback(
-    (prId: string, handle: PullRequestCardHandle | null): void => {
-      if (handle === null) cardHandles.current.delete(prId)
-      else cardHandles.current.set(prId, handle)
-    },
-    [],
-  )
+  const registerCard = useCallback((prId: string, handle: PullRequestCardHandle | null): void => {
+    if (handle === null) cardHandles.current.delete(prId)
+    else cardHandles.current.set(prId, handle)
+  }, [])
 
   const moveSelection = useCallback(
     (delta: 1 | -1): void => {

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
 import { buildSearchQuery, chunk } from '@core/search-query'
+import { describe, expect, it } from 'vitest'
 
 describe('chunk', () => {
   it('splits into groups of the given size', () => {

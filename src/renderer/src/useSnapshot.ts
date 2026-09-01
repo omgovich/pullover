@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
 import type { InboxSnapshot } from '@shared/ipc'
+import { useEffect, useState } from 'react'
 
 const EMPTY: InboxSnapshot = {
   status: 'loading',

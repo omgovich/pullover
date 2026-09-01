@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
-import { classify, classifyAll, countAttention } from '@core/classify'
 import type { ClassifyContext } from '@core/classify'
+import { classify, classifyAll, countAttention } from '@core/classify'
 import type { Snooze } from '@shared/types'
+import { describe, expect, it } from 'vitest'
 import { makeComment, makePullRequest, makeReview, makeThread } from './test-factory'
 
 const ME = 'vlad'
@@ -109,9 +109,7 @@ describe('classify — reviewer branch', () => {
   it('new-replies outranks re-review', () => {
     const pr = makePullRequest({
       buckets: ['involves'],
-      reviews: [
-        { authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' },
-      ],
+      reviews: [{ authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' }],
       lastCommitPushedAt: '2026-08-05T10:00:00Z',
       reviewThreads: [
         makeThread({
@@ -138,9 +136,7 @@ describe('classify — reviewer branch', () => {
   it('mentioned when the mention is newer than my last activity, even though I participated', () => {
     const pr = makePullRequest({
       buckets: ['involves', 'mentions'],
-      reviews: [
-        { authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' },
-      ],
+      reviews: [{ authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' }],
       lastCommitPushedAt: '2026-08-01T10:00:00Z',
       lastMentionAt: '2026-08-05T10:00:00Z',
     })
@@ -152,9 +148,7 @@ describe('classify — reviewer branch', () => {
   it('not mentioned when the mention predates my last activity — falls through to waiting', () => {
     const pr = makePullRequest({
       buckets: ['involves', 'mentions'],
-      reviews: [
-        { authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-05T10:00:00Z' },
-      ],
+      reviews: [{ authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-05T10:00:00Z' }],
       lastCommitPushedAt: '2026-08-01T10:00:00Z',
       lastMentionAt: '2026-08-01T10:00:00Z',
     })
@@ -236,9 +230,7 @@ describe('classify — author branch', () => {
   it('my-pr-action on a reviewer thread I have not answered', () => {
     const pr = makePullRequest({
       ...mine,
-      reviewThreads: [
-        makeThread({ comments: [makeComment('alice', '2026-08-02T10:00:00Z')] }),
-      ],
+      reviewThreads: [makeThread({ comments: [makeComment('alice', '2026-08-02T10:00:00Z')] })],
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('my-pr-action')

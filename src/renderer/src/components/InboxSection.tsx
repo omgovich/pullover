@@ -1,7 +1,7 @@
-import { forwardRef, useEffect, useRef } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
-import { Actionable, Icon, Text, View } from 'reshaped/bundle'
 import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { forwardRef, useEffect, useRef } from 'react'
+import { Actionable, Icon, Text, View } from 'reshaped/bundle'
 import PullRequestCard, { type PullRequestCardHandle } from './PullRequestCard'
 
 interface Props {
@@ -36,9 +36,7 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
   // new ref identity, re-registering the card's handle on every re-render
   // (including the 30-second clock tick). Caching one stable callback per PR
   // id keeps registration to mount/unmount only.
-  const cardRefCallbacks = useRef(
-    new Map<string, (handle: PullRequestCardHandle | null) => void>(),
-  )
+  const cardRefCallbacks = useRef(new Map<string, (handle: PullRequestCardHandle | null) => void>())
 
   useEffect(() => {
     const cache = cardRefCallbacks.current

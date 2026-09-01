@@ -1,7 +1,7 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { Avatar, Text, View } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { ClassifiedPullRequest } from '@shared/types'
+import { forwardRef, useImperativeHandle, useRef } from 'react'
+import { Avatar, Text, View } from 'reshaped/bundle'
 import SnoozeMenu from './SnoozeMenu'
 
 interface Props {
