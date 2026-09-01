@@ -97,22 +97,27 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
             <span className="pv-diff-del">{'−'}{pr.deletions}</span>
           </span>
           {item.reason !== '' && <span className="pv-reason-pill">{item.reason}</span>}
+
+          {/*
+           * Always in the flow, revealed on hover. Rendering it conditionally
+           * would reflow the row every time the pointer moves between cards.
+           */}
+          <div
+            className={`pv-card-actions${isActive ? ' pv-card-actions--active' : ''}`}
+            aria-hidden={!isActive}
+          >
+            <SnoozeMenu
+              prId={pr.id}
+              isSnoozed={item.isSnoozed}
+              instanceRef={snoozeInstanceRef}
+              onSnoozed={() => onSnoozed(item)}
+            />
+            <button type="button" className="pv-review-btn" onClick={openPr} title="Review — ⏎">
+              Review
+            </button>
+          </div>
         </div>
       </div>
-
-      {isActive && (
-        <div className="pv-card-actions">
-          <SnoozeMenu
-            prId={pr.id}
-            isSnoozed={item.isSnoozed}
-            instanceRef={snoozeInstanceRef}
-            onSnoozed={() => onSnoozed(item)}
-          />
-          <button type="button" className="pv-review-btn" onClick={openPr} title="Review — ⏎">
-            Review
-          </button>
-        </div>
-      )}
     </div>
   )
 })

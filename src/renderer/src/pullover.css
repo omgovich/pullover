@@ -423,7 +423,6 @@ body {
   align-items: center;
   gap: 8px;
   min-height: 24px;
-  padding-right: 104px;
 }
 
 .pv-diff {
@@ -443,6 +442,8 @@ body {
 }
 
 .pv-reason-pill {
+  /* Shrinks and ellipsises rather than pushing the actions out of the row. */
+  min-width: 0;
   max-width: 200px;
   padding: 1px 7px;
   border-radius: 9999px;
@@ -457,12 +458,25 @@ body {
 }
 
 .pv-card-actions {
-  position: absolute;
-  right: 0;
-  bottom: 0;
+  /*
+   * A flex child of the footer row rather than absolutely positioned: anchored
+   * to the card's corner it ignored the card's padding and collided with the
+   * text beside it. `margin-left:auto` pins it right, and it keeps its space
+   * while hidden so revealing it never reflows the row.
+   */
+  margin-left: auto;
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 6px;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 160ms var(--rs-easing-standard);
+}
+
+.pv-card-actions--active {
+  visibility: visible;
+  opacity: 1;
 }
 
 .pv-snooze-btn {
