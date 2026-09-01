@@ -43,17 +43,6 @@ Alternatively, launch it once, let macOS refuse, then approve it under System Se
 
 Sign in with GitHub when it asks, then open **Settings** and add the repos you want watched, as `owner/repo`. That's it.
 
-## About the permissions it asks for
-
-At sign-in Pullover requests two scopes:
-
-- **`repo`** — to read pull requests in private repositories. If everything you review is public, this is more than strictly needed, but GitHub has no narrower read-only scope that covers private PRs.
-- **`read:org`** — so that review requests that reached you through a team, rather than by name, still show up.
-
-Pullover only ever reads. It never writes a comment, review, or anything else.
-
-If a repo belongs to an organisation that restricts third-party OAuth Apps, its pull requests won't appear until an org owner approves Pullover under **Settings → Third-party Actions Access** for that org.
-
 <details>
 <summary><b>Running from source</b></summary>
 
@@ -99,6 +88,13 @@ Click the menu-bar item, hit **Sign in with GitHub**. Pullover shows you a short
 
 </details>
 
-## License
+## About the permissions it asks for
 
-[MIT](LICENSE)
+At sign-in Pullover requests two scopes:
+
+- **`repo`** — to read pull requests in private repositories. If everything you review is public, this is more than strictly needed, but GitHub has no narrower read-only scope that covers private PRs.
+- **`read:org`** — so that review requests that reached you through a team, rather than by name, still show up.
+
+Pullover only ever reads. It never writes a comment, review, or anything else.
+
+If a repo belongs to an organisation that restricts third-party OAuth Apps, its pull requests won't appear until an org owner approves Pullover under **Settings → Third-party Actions Access** for that org.
