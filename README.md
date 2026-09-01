@@ -1,6 +1,29 @@
-# Pullover
+<p align="center">
+  <img src="build/icon.png" width="140" alt="Pullover icon" />
+</p>
 
-A menu-bar inbox for code review: it shows only the pull requests that currently need your action, and hides the ones where you're waiting on someone else.
+<h1 align="center">Pullover</h1>
+
+<p align="center"><b>Your code-review inbox, in the macOS menu bar.</b><br />Only the pull requests that need <i>you</i> — everything you're waiting on stays hidden.</p>
+
+<p align="center">
+  <a href="https://github.com/omgovich/pullover/releases/latest"><img src="https://img.shields.io/github/v/release/omgovich/pullover" alt="latest release" /></a>
+  <a href="https://github.com/omgovich/pullover/actions/workflows/ci.yml"><img src="https://github.com/omgovich/pullover/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license" /></a>
+</p>
+
+---
+
+GitHub notifications bury the one thing that matters — *whose move is it?* Pullover answers exactly that. It watches the repos you review in and keeps a short, honest inbox: if a PR shows up, it's waiting on you; if it doesn't, you're free.
+
+## Features
+
+- **Only what needs you.** Fresh review requests, re-reviews after new commits, unanswered comment threads, mentions — each PR lands in the inbox with the reason it's there. PRs where the ball is in someone else's court stay out of sight.
+- **Your own PRs, too.** They surface only when there's something for you to do: changes requested, a comment you haven't answered, red CI, or approved and ready to merge.
+- **Snooze that un-snoozes itself.** Park a PR for a while — it wakes up on its own when something actually happens: new commits or a new reply.
+- **Lives in the menu bar.** A quiet count of PRs waiting on you; no Dock icon, no window to manage.
+- **Read-only by design.** Pullover never comments, approves, or merges. Clicking a PR opens it on github.com — you act where you always did.
+- **Private repos and team review requests** work out of the box (that's what the `repo` and `read:org` scopes are for — details below).
 
 ## Install
 
@@ -14,13 +37,25 @@ xattr -dr com.apple.quarantine /Applications/Pullover.app
 
 Alternatively, launch it once, let macOS refuse, then approve it under System Settings → Privacy & Security → "Open Anyway".
 
-Release builds ship with a built-in GitHub OAuth client ID, so you can skip straight to signing in. The OAuth App registration below is only needed when running from source.
+Sign in with GitHub when it asks, then open **Settings** and add the repos you want watched, as `owner/repo`. That's it.
 
-## Running from source
+## About the permissions it asks for
+
+At sign-in Pullover requests two scopes:
+
+- **`repo`** — to read pull requests in private repositories. If everything you review is public, this is more than strictly needed, but GitHub has no narrower read-only scope that covers private PRs.
+- **`read:org`** — so that review requests that reached you through a team, rather than by name, still show up.
+
+Pullover only ever reads. It never writes a comment, review, or anything else.
+
+If a repo belongs to an organisation that restricts third-party OAuth Apps, its pull requests won't appear until an org owner approves Pullover under **Settings → Third-party Actions Access** for that org.
+
+<details>
+<summary><b>Running from source</b></summary>
 
 ### 1. Register a GitHub OAuth App
 
-Pullover signs you in with GitHub's Device Flow, so it needs its own OAuth App. You only do this once, and it takes about two minutes.
+Release builds ship with a built-in OAuth client ID, but a from-source build needs its own. Pullover signs you in with GitHub's Device Flow, so it needs an OAuth App. You only do this once, and it takes about two minutes.
 
 1. Go to https://github.com/settings/developers and pick the **OAuth Apps** tab — not GitHub Apps, they're a different thing and won't work here.
 2. Click **New OAuth App** and fill in:
@@ -50,41 +85,15 @@ npm install
 npm run dev
 ```
 
-Click the menu-bar item, hit **Sign in with GitHub**. Pullover shows you a short code, copies it to your clipboard and opens the browser — paste it, approve, and the window fills in. Then open **Settings** and add the repos you want watched, as `owner/repo`.
+Click the menu-bar item, hit **Sign in with GitHub**. Pullover shows you a short code, copies it to your clipboard and opens the browser — paste it, approve, and the window fills in.
 
-### About the permissions it asks for
-
-At sign-in Pullover requests two scopes:
-
-- **`repo`** — to read pull requests in private repositories. If everything you review is public, this is more than strictly needed, but GitHub has no narrower read-only scope that covers private PRs.
-- **`read:org`** — so that review requests that reached you through a team, rather than by name, still show up.
-
-Pullover only ever reads. It never writes a comment, review, or anything else — clicking a pull request opens it on github.com and you act there.
-
-If a repo belongs to an organisation that restricts third-party OAuth Apps, its pull requests won't appear until an org owner approves Pullover under **Settings → Third-party Actions Access** for that org.
-
-## Build
-
-```bash
-npm run dist
-```
-
-The build isn't signed, so clear the quarantine flag before the first launch (see [Install](#install)) if you move it out of `dist/`.
-
-## Development
+### Development
 
 - `npm test` — unit tests (all the classification logic lives in `src/core/`)
 - `npm run typecheck` — type checking
+- `npm run dist` — local unsigned build; clear the quarantine flag before the first launch (see [Install](#install)) if you move it out of `dist/`.
 
-## Releasing
-
-Releases happen entirely in CI ([release.yml](.github/workflows/release.yml)): bump `version` in `package.json`, commit, then
-
-```bash
-git tag v0.1.0 && git push origin main --tags
-```
-
-CI builds arm64 and x64 dmgs, attaches them to a draft GitHub release, then Claude writes the release notes from the commit log and publishes it. The workflow needs two pieces of repository configuration (Settings → Secrets and variables → Actions): the `PULLOVER_GITHUB_CLIENT_ID` **variable** — the client ID of the official Pullover OAuth App, baked into the binaries so they can sign in out of the box — and the `ANTHROPIC_API_KEY` **secret** for the release-notes step (without it the draft still gets built; publish it by hand).
+</details>
 
 ## License
 
