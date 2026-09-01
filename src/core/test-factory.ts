@@ -1,15 +1,6 @@
-import type {
-  PullRequest,
-  Review,
-  ReviewThread,
-  ThreadComment,
-} from '@shared/types'
+import type { PullRequest, Review, ReviewThread, ThreadComment } from '@shared/types'
 
-export function makeComment(
-  authorLogin: string,
-  createdAt: string,
-  bodyText = '',
-): ThreadComment {
+export function makeComment(authorLogin: string, createdAt: string, bodyText = ''): ThreadComment {
   return { authorLogin, createdAt, bodyText }
 }
 
@@ -30,9 +21,7 @@ export function makeThread(overrides: Partial<ReviewThread> = {}): ReviewThread 
   }
 }
 
-export function makePullRequest(
-  overrides: Partial<PullRequest> = {},
-): PullRequest {
+export function makePullRequest(overrides: Partial<PullRequest> = {}): PullRequest {
   return {
     id: 'PR_1',
     number: 1,

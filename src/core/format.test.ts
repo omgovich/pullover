@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
 import { formatAge } from '@core/format'
+import { describe, expect, it } from 'vitest'
 
 const NOW = '2026-08-10T12:00:00Z'
 

@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { formatBadgeTitle, formatRefreshItem } from './tray'
 
 // `Tray` needs a running Electron and cannot be constructed headlessly, so
-// only the pure string-building is covered here. `createTray`/`setBadge`
-// themselves stay untested, as they were before this change.
+// only the pure string-building is covered here.
 describe('formatBadgeTitle', () => {
   it('reads "No PRs" for zero', () => {
     expect(formatBadgeTitle(0)).toBe('No PRs')
@@ -27,8 +26,8 @@ describe('formatRefreshItem', () => {
     expect(formatRefreshItem('error')).toEqual({ label: 'Refresh now', enabled: true })
   })
 
-  it('reports progress instead of queueing a second refresh', () => {
-    expect(formatRefreshItem('loading')).toEqual({ label: 'Refreshing…', enabled: false })
+  it('stays available mid-refresh, since a second call just queues one follow-up', () => {
+    expect(formatRefreshItem('loading')).toEqual({ label: 'Refresh now', enabled: true })
   })
 
   it('explains why refreshing is unavailable when signed out', () => {

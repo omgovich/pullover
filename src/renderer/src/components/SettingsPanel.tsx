@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import type { ThemePreference } from '@shared/types'
+import { useState } from 'react'
 import { Button, Checkbox, Link, Text, View } from 'reshaped/bundle'
-import type { Settings } from '@shared/types'
+import { useSettings } from '../useSettings'
 
 interface Props {
   knownRepositories: string[]
@@ -8,6 +9,12 @@ interface Props {
 }
 
 const INTERVAL_OPTIONS = [1, 5, 15, 30]
+
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+]
 
 /**
  * Options to render = the union of `knownRepositories` and
@@ -24,20 +31,9 @@ function repositoryOptions(known: string[], selected: string[]): string[] {
   return [...byLower.values()].sort((a, b) => a.localeCompare(b))
 }
 
-export default function SettingsPanel({
-  knownRepositories,
-  onClose,
-}: Props): React.JSX.Element {
-  const [settings, setSettings] = useState<Settings | null>(null)
+export default function SettingsPanel({ knownRepositories, onClose }: Props): React.JSX.Element {
+  const settings = useSettings()
   const [error, setError] = useState<string | null>(null)
-
-  const reload = async (): Promise<void> => {
-    setSettings(await window.api.getSettings())
-  }
-
-  useEffect(() => {
-    void reload()
-  }, [])
 
   const toggleRepository = async (fullName: string, checked: boolean): Promise<void> => {
     setError(null)
@@ -47,7 +43,6 @@ export default function SettingsPanel({
       } else {
         await window.api.removeRepository(fullName)
       }
-      await reload()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     }
@@ -55,12 +50,14 @@ export default function SettingsPanel({
 
   const setInterval = async (minutes: number): Promise<void> => {
     await window.api.setSettings({ pollIntervalMinutes: minutes })
-    await reload()
   }
 
   const setWatchAll = async (checked: boolean): Promise<void> => {
     await window.api.setSettings({ watchAllRepositories: checked })
-    await reload()
+  }
+
+  const setTheme = async (theme: ThemePreference): Promise<void> => {
+    await window.api.setSettings({ theme })
   }
 
   if (settings === null) return <View padding={4} height="100%" minHeight={0} />
@@ -69,13 +66,7 @@ export default function SettingsPanel({
 
   return (
     <View height="100%" minHeight={0}>
-      <View
-        direction="row"
-        align="center"
-        padding={3}
-        borderColor="neutral-faded"
-        borderBottom
-      >
+      <View direction="row" align="center" padding={3} borderColor="neutral-faded" borderBottom>
         <Text variant="body-2" weight="bold">
           Settings
         </Text>
@@ -105,33 +96,30 @@ export default function SettingsPanel({
             </Text>
           )}
 
-          {!settings.watchAllRepositories && (
-            <>
-              {options.length === 0 ? (
-                <Text variant="caption-1" color="neutral-faded">
-                  Nothing in your inbox yet, so there's nothing to narrow.
-                </Text>
-              ) : (
-                <>
-                  {settings.repositories.length === 0 && (
-                    <Text variant="caption-1" color="neutral-faded">
-                      Nothing ticked, so nothing shows. Tick the repos you care about.
-                    </Text>
-                  )}
-                  {options.map((repo) => (
-                    <Checkbox
-                      key={repo}
-                      name={`repository-${repo}`}
-                      checked={settings.repositories.includes(repo.toLowerCase())}
-                      onChange={({ checked }) => void toggleRepository(repo, checked)}
-                    >
-                      {repo}
-                    </Checkbox>
-                  ))}
-                </>
-              )}
-            </>
-          )}
+          {!settings.watchAllRepositories &&
+            (options.length === 0 ? (
+              <Text variant="caption-1" color="neutral-faded">
+                Nothing in your inbox yet, so there's nothing to narrow.
+              </Text>
+            ) : (
+              <>
+                {settings.repositories.length === 0 && (
+                  <Text variant="caption-1" color="neutral-faded">
+                    Nothing ticked, so nothing shows. Tick the repos you care about.
+                  </Text>
+                )}
+                {options.map((repo) => (
+                  <Checkbox
+                    key={repo}
+                    name={`repository-${repo}`}
+                    checked={settings.repositories.includes(repo.toLowerCase())}
+                    onChange={({ checked }) => void toggleRepository(repo, checked)}
+                  >
+                    {repo}
+                  </Checkbox>
+                ))}
+              </>
+            ))}
         </View>
 
         <View gap={2}>
@@ -143,12 +131,28 @@ export default function SettingsPanel({
               <Button
                 key={minutes}
                 size="small"
-                variant={
-                  settings.pollIntervalMinutes === minutes ? 'solid' : 'outline'
-                }
+                variant={settings.pollIntervalMinutes === minutes ? 'solid' : 'outline'}
                 onClick={() => void setInterval(minutes)}
               >
                 {minutes} min
+              </Button>
+            ))}
+          </View>
+        </View>
+
+        <View gap={2}>
+          <Text variant="caption-1" weight="bold" color="neutral-faded">
+            APPEARANCE
+          </Text>
+          <View direction="row" gap={2}>
+            {THEME_OPTIONS.map(({ value, label }) => (
+              <Button
+                key={value}
+                size="small"
+                variant={settings.theme === value ? 'solid' : 'outline'}
+                onClick={() => void setTheme(value)}
+              >
+                {label}
               </Button>
             ))}
           </View>

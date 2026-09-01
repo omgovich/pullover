@@ -1,10 +1,5 @@
+import { DEFAULT_SETTINGS, type Settings, type Snooze, type SnoozeType } from '@shared/types'
 import Store from 'electron-store'
-import {
-  DEFAULT_SETTINGS,
-  type Settings,
-  type Snooze,
-  type SnoozeType,
-} from '@shared/types'
 
 export interface PersistedState {
   settings: Settings
@@ -49,9 +44,7 @@ export class AppStore {
   removeRepository(fullName: string): void {
     const normalised = fullName.trim().toLowerCase()
     this.updateSettings({
-      repositories: this.getSettings().repositories.filter(
-        (repo) => repo !== normalised,
-      ),
+      repositories: this.getSettings().repositories.filter((repo) => repo !== normalised),
     })
   }
 
@@ -60,13 +53,13 @@ export class AppStore {
   }
 
   snooze(prId: string, type: SnoozeType, now: string, hours?: number): void {
-    if (type === 'until-time' && hours === undefined) {
-      throw new Error('until-time snooze requires hours')
+    let until: string | undefined
+    if (type === 'until-time') {
+      if (hours === undefined) {
+        throw new Error('until-time snooze requires hours')
+      }
+      until = new Date(Date.parse(now) + hours * 3_600_000).toISOString()
     }
-    const until =
-      type === 'until-time'
-        ? new Date(Date.parse(now) + hours! * 3_600_000).toISOString()
-        : undefined
     this.backend.set('snoozes', {
       ...this.getSnoozes(),
       [prId]: { prId, type, snoozedAt: now, until },
@@ -78,7 +71,6 @@ export class AppStore {
     delete next[prId]
     this.backend.set('snoozes', next)
   }
-
 }
 
 export function createAppStore(): AppStore {

@@ -1,7 +1,7 @@
-import { forwardRef, useEffect, useRef } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
-import { Actionable, Icon, Text, View } from 'reshaped/bundle'
 import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { forwardRef, useEffect, useRef } from 'react'
+import { Actionable, Icon, Text, View } from 'reshaped/bundle'
 import PullRequestCard, { type PullRequestCardHandle } from './PullRequestCard'
 
 interface Props {
@@ -32,14 +32,11 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
   }: Props,
   ref,
 ) {
-  // A fresh ref-callback closure on every render makes React treat it as a
-  // new ref identity, so it unregisters and re-registers the card's handle
-  // on every re-render — including the 30-second clock tick that re-renders
-  // the whole list. Caching one stable callback per PR id keeps registration
-  // to mount/unmount only, matching what the DOM ref itself already does.
-  const cardRefCallbacks = useRef(
-    new Map<string, (handle: PullRequestCardHandle | null) => void>(),
-  )
+  // A fresh ref-callback closure every render would make React treat it as a
+  // new ref identity, re-registering the card's handle on every re-render
+  // (including the 30-second clock tick). Caching one stable callback per PR
+  // id keeps registration to mount/unmount only.
+  const cardRefCallbacks = useRef(new Map<string, (handle: PullRequestCardHandle | null) => void>())
 
   useEffect(() => {
     const cache = cardRefCallbacks.current
@@ -63,10 +60,6 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
 
   return (
     <div ref={ref}>
-      {/* `Actionable` replaces the hand-reset `as="button"` `View` — its own
-          native-button reset (border/padding/background/cursor/text-align)
-          covers everything `.pv-section-header` used to, so none of that CSS
-          survives. `fullWidth` matches the old explicit `width: 100%`. */}
       <Actionable onClick={onToggle} fullWidth>
         <View
           direction="row"
@@ -80,36 +73,30 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
           zIndex={2}
           backgroundColor="elevation-overlay"
         >
-          {/* No longer uppercase or letter-spaced, and full neutral instead
-              of faded — both dropped along with the divider rule below. */}
           <Text as="span" variant="caption-1" weight="semibold" color="neutral">
             {CATEGORY_TITLES[category]}
           </Text>
-          {/* A plain View instead of `Badge`: the design drops the count
-              pill's border, and `Badge`'s only borderless variant swaps in a
-              solid neutral background instead of this faint wash. */}
+          {/* A plain View instead of `Badge`: `Badge`'s only borderless
+              variant swaps in a solid neutral background instead of this
+              faint wash. */}
           <View
             minWidth="18px"
             paddingInline={1.5}
             align="center"
             justify="center"
             borderRadius="circular"
-            attributes={{ style: { background: '#ffffff14' } }}
+            backgroundColor="neutral-faded"
           >
             <Text as="span" variant="caption-1" weight="semibold" color="neutral-faded" numeric>
               {items.length}
             </Text>
           </View>
-          {/* Plain flexible spacer — the divider rule is gone. */}
           <View.Item grow />
-          {/* `size` takes a literal string for an exact pixel value instead
-              of the 4px-unit multiplier used elsewhere in this file. */}
           <Icon svg={open ? ChevronDown : ChevronRight} size="15px" color="neutral-faded" />
         </View>
       </Actionable>
 
       {open && (
-        // 1px between cards, almost flush — was a much larger gap.
         <View direction="column" gap={0.25}>
           {items.map((item) => (
             <PullRequestCard

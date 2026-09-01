@@ -1,4 +1,5 @@
-import { app, clipboard, shell, type BrowserWindow, type Tray } from 'electron'
+import { IPC } from '@shared/ipc'
+import { app, type BrowserWindow, clipboard, shell, type Tray } from 'electron'
 import { pollForToken, requestDeviceCode } from './auth/device-flow'
 import { clearToken, loadToken, saveToken } from './auth/token-storage'
 import { createGraphQLClient, type GraphQLClient } from './github/fetch-prs'
@@ -7,7 +8,6 @@ import { registerIpc } from './ipc'
 import { createAppStore } from './store'
 import { createTray, setBadge } from './tray'
 import { createPopupWindow, togglePopup } from './window'
-import { IPC } from '@shared/ipc'
 
 const CLIENT_ID = import.meta.env.MAIN_VITE_GITHUB_CLIENT_ID as string | undefined
 

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
 import { collectRepositories, filterByRepositories } from '@core/repo-filter'
 import { makePullRequest } from '@core/test-factory'
+import { describe, expect, it } from 'vitest'
 
 describe('collectRepositories', () => {
   it('dedupes and sorts repository names', () => {
@@ -36,8 +36,6 @@ describe('filterByRepositories', () => {
   })
 
   it('matches case-insensitively', () => {
-    expect(
-      filterByRepositories(prs, ['ACME/WEB']).map((pr) => pr.id),
-    ).toEqual(['PR_1'])
+    expect(filterByRepositories(prs, ['ACME/WEB']).map((pr) => pr.id)).toEqual(['PR_1'])
   })
 })

@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { AppStore } from './store'
-import type { KeyValueStore, PersistedState } from './store'
 import { DEFAULT_SETTINGS } from '@shared/types'
+import { beforeEach, describe, expect, it } from 'vitest'
+import type { KeyValueStore, PersistedState } from './store'
+import { AppStore } from './store'
 
 class MemoryStore implements KeyValueStore {
   private state: PersistedState = {
@@ -40,6 +40,23 @@ describe('settings', () => {
     expect(store.getSettings().watchAllRepositories).toBe(true)
   })
 
+  it('defaults to following the system theme', () => {
+    expect(store.getSettings().theme).toBe('system')
+  })
+
+  it('normalises a pre-existing settings file missing theme to system', () => {
+    const backend = new MemoryStore()
+    // Simulate a settings file written before `theme` existed: the key is
+    // simply absent, not `undefined`-valued.
+    backend.set('settings', {
+      pollIntervalMinutes: 5,
+      repositories: [],
+      watchAllRepositories: true,
+    } as unknown as PersistedState['settings'])
+    store = new AppStore(backend)
+    expect(store.getSettings().theme).toBe('system')
+  })
+
   it('normalises a pre-existing settings file missing watchAllRepositories to true', () => {
     const backend = new MemoryStore()
     // Simulate a settings file written before `watchAllRepositories` existed:
@@ -58,6 +75,7 @@ describe('settings', () => {
       pollIntervalMinutes: 5,
       repositories: ['acme/web'],
       watchAllRepositories: false,
+      theme: 'system',
     })
     store = new AppStore(backend)
     expect(store.getSettings().watchAllRepositories).toBe(false)
@@ -74,6 +92,7 @@ describe('settings', () => {
       pollIntervalMinutes: 42,
       repositories: ['acme/web', 'acme/api'],
       watchAllRepositories: true,
+      theme: 'system',
     })
   })
 

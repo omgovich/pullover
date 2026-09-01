@@ -84,6 +84,8 @@ Click the menu-bar item, hit **Sign in with GitHub**. Pullover shows you a short
 
 - `npm test` — unit tests (all the classification logic lives in `src/core/`)
 - `npm run typecheck` — type checking
+- `npm run lint` — lint + formatting check ([Biome](https://biomejs.dev), config in `biome.json`)
+- `npm run lint:fix` — apply every safe lint fix and reformat
 - `npm run dist` — local unsigned build; clear the quarantine flag before the first launch (see [Install](#-install)) if you move it out of `dist/`.
 
 </details>

@@ -9,11 +9,11 @@ import {
 } from '@core/threads'
 import {
   ATTENTION_CATEGORIES,
-  VISIBLE_CATEGORIES,
   type Category,
   type ClassifiedPullRequest,
   type PullRequest,
   type Snooze,
+  VISIBLE_CATEGORIES,
 } from '@shared/types'
 
 export interface ClassifyContext {
@@ -63,12 +63,9 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
 
   if (pr.buckets.includes('mentions') && !requested) {
     const lastActivity = myLastActivityAt(pr, myLogin)
-    // GitHub's mentions:@me search already told us the user was mentioned.
-    // `lastMentionAt` is null when our own text scan could not find where —
-    // a team mention, a mention in text we don't fetch, and so on. Rather
-    // than drop the PR, assume the mention is as recent as the PR's last
-    // activity: we know we were mentioned, we just can't see where, so we
-    // err toward showing it instead of silently hiding a PR that needs us.
+    // lastMentionAt is null when our own text scan couldn't find where (a
+    // team mention, etc.) even though GitHub's search matched — fall back to
+    // the PR's last activity rather than silently hiding a PR that needs us.
     const mentionAt = pr.lastMentionAt ?? pr.updatedAt
     const mentionIsNew = lastActivity === null || mentionAt > lastActivity
     if (mentionIsNew) {
@@ -105,10 +102,7 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
   return { category: 'waiting', reason: 'Waiting on reviewers' }
 }
 
-export function classify(
-  pr: PullRequest,
-  ctx: ClassifyContext,
-): ClassifiedPullRequest {
+export function classify(pr: PullRequest, ctx: ClassifyContext): ClassifiedPullRequest {
   if (pr.isDraft) {
     return { pr, category: 'hidden', reason: '', isSnoozed: false }
   }
@@ -130,17 +124,13 @@ export function classify(
   return { pr, ...verdict, isSnoozed: false }
 }
 
-export function classifyAll(
-  prs: PullRequest[],
-  ctx: ClassifyContext,
-): ClassifiedPullRequest[] {
+export function classifyAll(prs: PullRequest[], ctx: ClassifyContext): ClassifiedPullRequest[] {
   return prs
     .map((pr) => classify(pr, ctx))
     .filter((item) => item.category !== 'hidden')
     .sort((a, b) => {
       const byCategory =
-        VISIBLE_CATEGORIES.indexOf(a.category) -
-        VISIBLE_CATEGORIES.indexOf(b.category)
+        VISIBLE_CATEGORIES.indexOf(a.category) - VISIBLE_CATEGORIES.indexOf(b.category)
       if (byCategory !== 0) return byCategory
       // Newest first. compareIso is the project's one ISO comparator.
       return compareIso(b.pr.updatedAt, a.pr.updatedAt)
@@ -148,6 +138,5 @@ export function classifyAll(
 }
 
 export function countAttention(items: ClassifiedPullRequest[]): number {
-  return items.filter((item) => ATTENTION_CATEGORIES.includes(item.category))
-    .length
+  return items.filter((item) => ATTENTION_CATEGORIES.includes(item.category)).length
 }

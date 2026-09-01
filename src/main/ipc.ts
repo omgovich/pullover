@@ -1,6 +1,6 @@
-import { BrowserWindow, ipcMain, shell } from 'electron'
-import { IPC, type DeviceCodePayload } from '@shared/ipc'
+import { type DeviceCodePayload, IPC } from '@shared/ipc'
 import type { Settings, SnoozeType } from '@shared/types'
+import { type BrowserWindow, ipcMain, shell } from 'electron'
 import type { Inbox } from './inbox'
 import { isSafeExternalUrl } from './safe-url'
 import type { AppStore } from './store'
@@ -17,6 +17,13 @@ export interface IpcDeps {
 export function registerIpc(deps: IpcDeps): void {
   const now = (): string => new Date().toISOString()
 
+  // Pushed after every handler below that can change what `getSettings()`
+  // returns, so `useSettings()` in the renderer stays in sync without
+  // re-fetching — the same pattern `inbox`'s `onChange` uses for snapshots.
+  const pushSettings = (): void => {
+    deps.getWindow()?.webContents.send(IPC.settingsChanged, deps.store.getSettings())
+  }
+
   ipcMain.handle(IPC.getSnapshot, () => deps.inbox.getSnapshot())
   ipcMain.handle(IPC.refresh, () => deps.inbox.refresh())
 
@@ -28,13 +35,10 @@ export function registerIpc(deps: IpcDeps): void {
     return shell.openExternal(url)
   })
 
-  ipcMain.handle(
-    IPC.snooze,
-    (_event, prId: string, type: SnoozeType, hours?: number) => {
-      deps.store.snooze(prId, type, now(), hours)
-      deps.inbox.reclassify()
-    },
-  )
+  ipcMain.handle(IPC.snooze, (_event, prId: string, type: SnoozeType, hours?: number) => {
+    deps.store.snooze(prId, type, now(), hours)
+    deps.inbox.reclassify()
+  })
 
   ipcMain.handle(IPC.unsnooze, (_event, prId: string) => {
     deps.store.unsnooze(prId)
@@ -47,16 +51,19 @@ export function registerIpc(deps: IpcDeps): void {
     deps.store.updateSettings(patch)
     if (patch.pollIntervalMinutes !== undefined) deps.restartPolling()
     if (patch.watchAllRepositories !== undefined) deps.inbox.reclassify()
+    pushSettings()
   })
 
   ipcMain.handle(IPC.addRepository, (_event, fullName: string) => {
     deps.store.addRepository(fullName)
     deps.inbox.reclassify()
+    pushSettings()
   })
 
   ipcMain.handle(IPC.removeRepository, (_event, fullName: string) => {
     deps.store.removeRepository(fullName)
     deps.inbox.reclassify()
+    pushSettings()
   })
 
   ipcMain.handle(IPC.startAuth, () =>

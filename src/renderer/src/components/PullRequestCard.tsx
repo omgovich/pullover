@@ -1,7 +1,7 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { Avatar, Text, View } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { ClassifiedPullRequest } from '@shared/types'
+import { forwardRef, useImperativeHandle, useRef } from 'react'
+import { Avatar, Text, type TextProps, View, type ViewProps } from 'reshaped/bundle'
 import SnoozeMenu from './SnoozeMenu'
 
 interface Props {
@@ -20,38 +20,70 @@ export interface PullRequestCardHandle {
   focus: () => void
 }
 
-// The status pill's colors, keyed off the exact reason strings
-// `src/core/classify.ts` produces. The counted reasons ("3 new replies", "2
-// open threads") and the remaining ones ("Review requested", "Re-review
-// requested", "New commits") aren't listed here on purpose — they fall
-// through to the default accent pair below rather than being parsed.
-const STATUS_PILL_COLORS: Record<string, { text: string; background: string }> = {
-  'CI is red': { text: '#f36a6a', background: '#3a2020' },
-  'Changes requested': { text: '#f36a6a', background: '#3a2020' },
-  'Ready to merge': { text: '#18ab66', background: '#1d2b23' },
-  'Waiting on author': { text: '#9aa4b8', background: '#ffffff12' },
-  'Waiting on reviewers': { text: '#9aa4b8', background: '#ffffff12' },
-  Snoozed: { text: '#9aa4b8', background: '#ffffff12' },
-  Mentioned: { text: '#f1c512', background: '#2e2818' },
+interface PillColor {
+  text: NonNullable<TextProps['color']>
+  background: NonNullable<ViewProps['backgroundColor']>
+  /**
+   * Without an edge the pills disappear on a hovered card: the hover wash and
+   * every `*-faded` fill sit at the same lightness (L 0.98 in light mode, 0.24
+   * in dark), separated only by a couple of hundredths of chroma. The matching
+   * `*-faded` border is a step away from its fill in both modes, so it draws
+   * the boundary the fill alone cannot.
+   */
+  border: NonNullable<ViewProps['borderColor']>
 }
 
-// Same purple as `--pv-accent-text` in pullover.css (the PR number below
-// uses that CSS variable directly); kept as a literal here so every entry in
-// this lookup reads the same way, but the two should stay in sync.
-const DEFAULT_STATUS_PILL_COLOR = { text: '#8b8af7', background: '#252544' }
+// Keyed off the exact reason strings `src/core/classify.ts` produces. The
+// counted reasons ("3 new replies", "2 open threads") aren't listed here on
+// purpose — they fall through to the default accent pair below.
+const STATUS_PILL_COLORS: Record<string, PillColor> = {
+  'CI is red': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
+  'Changes requested': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
+  'Ready to merge': { text: 'positive', background: 'positive-faded', border: 'positive-faded' },
+  'Waiting on author': {
+    text: 'neutral-faded',
+    background: 'neutral-faded',
+    border: 'neutral-faded',
+  },
+  'Waiting on reviewers': {
+    text: 'neutral-faded',
+    background: 'neutral-faded',
+    border: 'neutral-faded',
+  },
+  Snoozed: { text: 'neutral-faded', background: 'neutral-faded', border: 'neutral-faded' },
+  Mentioned: { text: 'warning', background: 'warning-faded', border: 'warning-faded' },
+}
 
-function statusPillColor(reason: string): { text: string; background: string } {
+const DEFAULT_STATUS_PILL_COLOR: PillColor = {
+  text: 'primary',
+  background: 'primary-faded',
+  border: 'primary-faded',
+}
+
+function statusPillColor(reason: string): PillColor {
   return STATUS_PILL_COLORS[reason] ?? DEFAULT_STATUS_PILL_COLOR
 }
 
-// The design's CI pill drops the three-color `Badge` mapping the old
-// Review-button footer used, in favor of its own hand-picked hex pairs plus
-// a leading dot — nothing left here maps onto a `Badge` color/variant.
-const CI_PILL_COLORS = {
-  success: { text: '#18ab66', background: '#1f2a23', label: 'CI green' },
-  failure: { text: '#f36a6a', background: '#3e1f1f', label: 'CI failing' },
-  pending: { text: '#b4920c', background: '#2c271f', label: 'CI running' },
-} as const
+const CI_PILL_COLORS: Record<'success' | 'failure' | 'pending', PillColor & { label: string }> = {
+  success: {
+    text: 'positive',
+    background: 'positive-faded',
+    border: 'positive-faded',
+    label: 'CI green',
+  },
+  failure: {
+    text: 'critical',
+    background: 'critical-faded',
+    border: 'critical-faded',
+    label: 'CI failing',
+  },
+  pending: {
+    text: 'warning',
+    background: 'warning-faded',
+    border: 'warning-faded',
+    label: 'CI running',
+  },
+}
 
 function initialsOf(login: string): string {
   return login.slice(0, 1).toUpperCase()
@@ -71,28 +103,18 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
     focus: () => cardRef.current?.focus({ preventScroll: true }),
   }))
 
-  // The Review button is gone from the design, so the card body itself is
-  // now what opens the pull request — on click, and (via App's `enter`
-  // hotkey, unchanged) on Enter for whichever card is keyboard-selected.
-  // Clicking still also selects the card, so the keyboard cursor picks up
-  // from wherever the mouse last was.
+  // The card body opens the PR, on click and (via App's `enter` hotkey) on
+  // Enter for whichever card is keyboard-selected. Clicking also selects the
+  // card, so the keyboard cursor picks up from wherever the mouse last was.
   const handleOpen = (): void => {
     onSelect(pr.id)
     void window.api.openPr(pr.url)
   }
 
-  // A plain `<div>`, not `View`, wraps the row for the sake of `cardRef`:
-  // `View` isn't `forwardRef`, and unlike `Card` (see the old version of
-  // this file) its `attributes` type has no `ref` field at all to cast
-  // into, satisfiable or not. Everything visual still lives on the `View`
-  // inside it — this wrapper carries no styling of its own.
-  //
-  // `tabIndex={-1}` makes it programmatically focusable (via the handle's
-  // `focus()`, driven by App's `selectedId`) without adding it to the Tab
-  // order. That's safe from the double-activation worry a Tab-reachable row
-  // would raise: this is a plain `div` with an `onClick`, so there's no
-  // native Enter-to-click behavior for focus to trigger on top of App's own
-  // `enter` hotkey. `role="button"` stays, for assistive tech.
+  // A plain `<div>`, not `View`, wraps the row: `View` isn't `forwardRef`, so
+  // it can't carry `cardRef`. `tabIndex={-1}` makes it focusable via the
+  // handle's `focus()` without adding it to the Tab order; `role="button"`
+  // stays for assistive tech.
   return (
     <div ref={cardRef} tabIndex={-1} className="pv-card-focus">
       <View
@@ -103,6 +125,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
         paddingInline={2.5}
         paddingBottom={2.5}
         borderRadius="large"
+        backgroundColor={isActive ? 'neutral-faded' : undefined}
         attributes={{
           role: 'button',
           onClick: handleOpen,
@@ -110,7 +133,6 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           onMouseLeave: () => onHover(null),
           style: {
             cursor: 'pointer',
-            background: isActive ? '#ffffff12' : 'transparent',
             transition: 'background 140ms',
           },
         }}
@@ -128,26 +150,15 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
 
         <View.Item grow>
           <View direction="column" gap={1} minWidth={0}>
-            {/* Meta row: repo, #number, age, and now the diff counts too,
-                moved up here from the footer. `wrap={false}` replaces the
-                nowrap that used to come as a side effect of the trailing
-                `View.Item grow` this row no longer has now that the CI pill
-                moved to the row below. */}
+            {/* Meta row: repo, #number, age, diff counts. `wrap={false}` keeps
+                it one line so the repo name ellipsises instead of wrapping. */}
             <View direction="row" align="center" gap={2} wrap={false} minWidth={0}>
               <View shrink minWidth={0}>
                 <Text as="span" variant="caption-1" color="neutral-faded" maxLines={1}>
                   {pr.repository}
                 </Text>
               </View>
-              <Text
-                as="span"
-                variant="caption-1"
-                numeric
-                // Custom accent purple — the one place besides the status
-                // pill's default this app keeps it (see pullover.css). No
-                // longer bold, per the design.
-                attributes={{ style: { color: 'var(--pv-accent-text)' } }}
-              >
+              <Text as="span" variant="caption-1" numeric color="primary">
                 #{pr.number}
               </Text>
               <Text
@@ -184,12 +195,9 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
               {pr.title}
             </Text>
 
-            {/* Third row: status pill, CI pill, a spacer, then the snooze
-                pill — replaces the old footer's reason `Badge` plus the
-                Review/snooze button pair. `wrap={false}` keeps it one line
-                so the status pill shrinks and ellipsises instead of the row
-                wrapping — nothing here has a `grow` child to trigger nowrap
-                as a side effect the way the meta row's diff pair used to. */}
+            {/* Status pill, CI pill, a spacer, then the snooze pill.
+                `wrap={false}` keeps it one line so the status pill shrinks
+                and ellipsises instead of the row wrapping. */}
             <View direction="row" align="center" gap={2} wrap={false} minWidth={0}>
               {status !== null && (
                 <View
@@ -199,14 +207,16 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   paddingBlock={0.5}
                   paddingInline={2.25}
                   borderRadius="circular"
-                  attributes={{ style: { background: status.background } }}
+                  backgroundColor={status.background}
+                  border
+                  borderColor={status.border}
                 >
                   <Text
                     as="span"
                     variant="caption-1"
                     weight="semibold"
                     maxLines={1}
-                    attributes={{ style: { color: status.text } }}
+                    color={status.text}
                   >
                     {item.reason}
                   </Text>
@@ -221,36 +231,32 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   paddingBlock={0.5}
                   paddingInline={2.25}
                   borderRadius="circular"
-                  attributes={{ style: { background: ci.background } }}
+                  backgroundColor={ci.background}
+                  border
+                  borderColor={ci.border}
                 >
                   <View
                     width="5px"
                     height="5px"
                     borderRadius="circular"
-                    attributes={{ style: { background: ci.text, flexShrink: 0 } }}
+                    backgroundColor={ci.text}
+                    attributes={{ style: { flexShrink: 0 } }}
                   />
                   <Text
                     as="span"
                     variant="caption-1"
                     weight="semibold"
                     maxLines={1}
-                    attributes={{ style: { color: ci.text } }}
+                    color={ci.text}
                   >
                     {ci.label}
                   </Text>
                 </View>
               )}
 
-              {/*
-               * The snooze pill: always in the flow, revealed on
-               * hover/active rather than rendered conditionally, so the
-               * pointer moving between cards never reflows the row. No
-               * Reshaped prop expresses "hidden but still holding its
-               * layout space" — `hidden` props elsewhere in the library
-               * remove elements from flow or scale them to 0, neither of
-               * which reserves the space — so this stays custom CSS.
-               * `gapBefore="auto"` pins it to the row's end.
-               */}
+              {/* Snooze pill: stays in the flow (visibility/opacity via CSS,
+                  not conditional rendering) so hovering between cards never
+                  reflows the row. `gapBefore="auto"` pins it to the row's end. */}
               <View.Item gapBefore="auto">
                 <View
                   className={`pv-card-actions${isActive ? ' pv-card-actions--active' : ''}`}

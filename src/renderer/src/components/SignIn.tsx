@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
-import { LogIn } from 'lucide-react'
-import { Button, Text, View } from 'reshaped/bundle'
 import type { DeviceCodePayload } from '@shared/ipc'
+import { LogIn } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Button, Text, View } from 'reshaped/bundle'
 
 export default function SignIn(): React.JSX.Element {
   const [code, setCode] = useState<DeviceCodePayload | null>(null)

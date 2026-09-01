@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest'
 import {
   compareIso,
   hasNewReplyInMyThreadsSince,
@@ -10,6 +9,7 @@ import {
   unansweredThreads,
   unresolvedThreads,
 } from '@core/threads'
+import { describe, expect, it } from 'vitest'
 import { makeComment, makePullRequest, makeThread } from './test-factory'
 
 const ME = 'vlad'
@@ -173,9 +173,7 @@ describe('myLatestReview', () => {
 
   it('ignores my unsubmitted PENDING draft review', () => {
     const pr = makePullRequest({
-      reviews: [
-        { authorLogin: ME, state: 'PENDING', submittedAt: '2026-08-09T10:00:00Z' },
-      ],
+      reviews: [{ authorLogin: ME, state: 'PENDING', submittedAt: '2026-08-09T10:00:00Z' }],
     })
     expect(myLatestReview(pr, ME)).toBeNull()
   })
@@ -183,15 +181,11 @@ describe('myLatestReview', () => {
 
 describe('compareIso', () => {
   it('returns a negative number when the first timestamp is earlier', () => {
-    expect(
-      compareIso('2026-08-01T10:00:00Z', '2026-08-03T10:00:00Z'),
-    ).toBeLessThan(0)
+    expect(compareIso('2026-08-01T10:00:00Z', '2026-08-03T10:00:00Z')).toBeLessThan(0)
   })
 
   it('returns a positive number when the first timestamp is later', () => {
-    expect(
-      compareIso('2026-08-03T10:00:00Z', '2026-08-01T10:00:00Z'),
-    ).toBeGreaterThan(0)
+    expect(compareIso('2026-08-03T10:00:00Z', '2026-08-01T10:00:00Z')).toBeGreaterThan(0)
   })
 
   it('returns exactly 0 for equal timestamps', () => {
@@ -206,9 +200,7 @@ describe('hasParticipated', () => {
 
   it('is true when I submitted a review', () => {
     const pr = makePullRequest({
-      reviews: [
-        { authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' },
-      ],
+      reviews: [{ authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' }],
     })
     expect(hasParticipated(pr, ME)).toBe(true)
   })
@@ -239,18 +231,11 @@ describe('myLastActivityAt', () => {
   })
 
   it('returns the latest across my reviews, thread comments and conversation comments', () => {
-    // The conversation comment is deliberately the newest of the three
-    // sources (not the thread comment) so this test actually exercises that
-    // source: a mutant that made this function ignore conversation comments
-    // used to slip through here because the thread comment already held the
-    // maximum, so removing the conversation comment didn't change the result.
+    // The conversation comment is deliberately the newest source, so a
+    // mutant that ignored conversation comments would still fail this test.
     const pr = makePullRequest({
-      reviews: [
-        { authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' },
-      ],
-      reviewThreads: [
-        makeThread({ comments: [makeComment(ME, '2026-08-04T10:00:00Z')] }),
-      ],
+      reviews: [{ authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' }],
+      reviewThreads: [makeThread({ comments: [makeComment(ME, '2026-08-04T10:00:00Z')] })],
       conversationComments: [makeComment(ME, '2026-08-07T10:00:00Z')],
     })
     expect(myLastActivityAt(pr, ME)).toBe('2026-08-07T10:00:00Z')
@@ -258,12 +243,8 @@ describe('myLastActivityAt', () => {
 
   it('ignores activity by other people', () => {
     const pr = makePullRequest({
-      reviews: [
-        { authorLogin: 'alice', state: 'APPROVED', submittedAt: '2026-08-09T10:00:00Z' },
-      ],
-      reviewThreads: [
-        makeThread({ comments: [makeComment('alice', '2026-08-08T10:00:00Z')] }),
-      ],
+      reviews: [{ authorLogin: 'alice', state: 'APPROVED', submittedAt: '2026-08-09T10:00:00Z' }],
+      reviewThreads: [makeThread({ comments: [makeComment('alice', '2026-08-08T10:00:00Z')] })],
       conversationComments: [makeComment('alice', '2026-08-07T10:00:00Z')],
     })
     expect(myLastActivityAt(pr, ME)).toBeNull()

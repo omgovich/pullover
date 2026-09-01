@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { pollForToken, requestDeviceCode } from './device-flow'
 import type { DeviceCodeInfo } from './device-flow'
+import { pollForToken, requestDeviceCode } from './device-flow'
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -41,12 +41,10 @@ describe('requestDeviceCode', () => {
   })
 
   it('throws when GitHub reports an error', async () => {
-    const fetchFn = vi.fn(async () =>
-      jsonResponse({ error: 'unauthorized_client' }),
+    const fetchFn = vi.fn(async () => jsonResponse({ error: 'unauthorized_client' }))
+    await expect(requestDeviceCode('bad', fetchFn as unknown as typeof fetch)).rejects.toThrow(
+      /unauthorized_client/,
     )
-    await expect(
-      requestDeviceCode('bad', fetchFn as unknown as typeof fetch),
-    ).rejects.toThrow(/unauthorized_client/)
   })
 })
 

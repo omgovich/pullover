@@ -1,18 +1,9 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import {
-  IPC,
-  type DeviceCodePayload,
-  type InboxSnapshot,
-  type RendererApi,
-} from '@shared/ipc'
+import { type DeviceCodePayload, type InboxSnapshot, IPC, type RendererApi } from '@shared/ipc'
 import type { Settings, SnoozeType } from '@shared/types'
+import { contextBridge, type IpcRendererEvent, ipcRenderer } from 'electron'
 
-function subscribe<T>(
-  channel: string,
-  listener: (payload: T) => void,
-): () => void {
-  const handler = (_event: IpcRendererEvent, payload: T): void =>
-    listener(payload)
+function subscribe<T>(channel: string, listener: (payload: T) => void): () => void {
+  const handler = (_event: IpcRendererEvent, payload: T): void => listener(payload)
   ipcRenderer.on(channel, handler)
   return () => {
     ipcRenderer.off(channel, handler)
@@ -31,12 +22,10 @@ const api: RendererApi = {
     ipcRenderer.invoke(IPC.snooze, prId, type, hours),
   unsnooze: (prId: string) => ipcRenderer.invoke(IPC.unsnooze, prId),
   getSettings: () => ipcRenderer.invoke(IPC.getSettings),
-  setSettings: (patch: Partial<Settings>) =>
-    ipcRenderer.invoke(IPC.setSettings, patch),
-  addRepository: (fullName: string) =>
-    ipcRenderer.invoke(IPC.addRepository, fullName),
-  removeRepository: (fullName: string) =>
-    ipcRenderer.invoke(IPC.removeRepository, fullName),
+  setSettings: (patch: Partial<Settings>) => ipcRenderer.invoke(IPC.setSettings, patch),
+  onSettings: (listener: (settings: Settings) => void) => subscribe(IPC.settingsChanged, listener),
+  addRepository: (fullName: string) => ipcRenderer.invoke(IPC.addRepository, fullName),
+  removeRepository: (fullName: string) => ipcRenderer.invoke(IPC.removeRepository, fullName),
   startAuth: () => ipcRenderer.invoke(IPC.startAuth),
   signOut: () => ipcRenderer.invoke(IPC.signOut),
 }
