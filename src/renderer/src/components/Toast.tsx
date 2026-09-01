@@ -20,7 +20,7 @@ export default function Toast({ toast, onUndo }: Props): React.JSX.Element {
   // aren't in `Card`'s prop surface (only a `View` subset is), so those stay
   // on a wrapping `View`.
   return (
-    <View position="absolute" insetInline="center" insetBottom={13} zIndex={3}>
+    <View position="absolute" insetInline="center" insetBottom={14} zIndex={3}>
       <Card raised direction="row" align="center" gap={3} padding={3}>
         <Text
           as="span"

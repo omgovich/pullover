@@ -4,7 +4,7 @@ import { isSafeExternalUrl } from './safe-url'
 
 // The window is exactly the size of the popup's visible card — must match
 // `.pv-shell`'s width/height in src/renderer/src/pullover.css.
-const CARD_WIDTH = 452
+const CARD_WIDTH = 440
 const CARD_HEIGHT = 620
 
 export function createPopupWindow(): BrowserWindow {

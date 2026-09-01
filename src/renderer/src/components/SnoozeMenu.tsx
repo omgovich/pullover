@@ -1,6 +1,6 @@
 import type { Ref } from 'react'
-import { Activity, Clock, Undo2 } from 'lucide-react'
-import { Button, DropdownMenu, type DropdownMenuInstance } from 'reshaped/bundle'
+import { Activity, Clock, Moon, Undo2 } from 'lucide-react'
+import { Button, DropdownMenu, Icon, type DropdownMenuInstance } from 'reshaped/bundle'
 import type { SnoozeType } from '@shared/types'
 
 interface Props {
@@ -18,6 +18,23 @@ const OPTIONS: Array<{ label: string; type: SnoozeType; hours?: number; icon: Re
   { label: 'Until tomorrow', type: 'until-time', hours: 24, icon: Clock },
 ]
 
+// The labelled pill's box: none of `Button`'s size steps land on a 21px-tall,
+// fully-rounded pill with this background wash, so it's set directly here.
+// The hover shift the design also specifies (brighter background and text)
+// isn't reachable the same way without fighting `Button`'s own cascade with
+// custom CSS — this keeps its default ghost/neutral hover wash instead,
+// per the project's rule that a small visual mismatch beats that.
+const pillStyle = {
+  height: '21px',
+  minHeight: '21px',
+  padding: '0 9px',
+  borderRadius: '9999px',
+  backgroundColor: '#ffffff14',
+  color: 'var(--rs-color-foreground-neutral-faded)',
+  fontSize: '11px',
+  fontWeight: 600,
+}
+
 export default function SnoozeMenu({
   prId,
   isSnoozed,
@@ -27,14 +44,16 @@ export default function SnoozeMenu({
   if (isSnoozed) {
     return (
       <Button
-        variant="outline"
+        variant="ghost"
         color="neutral"
         size="small"
-        icon={Undo2}
         stopPropagation
         onClick={() => void window.api.unsnooze(prId)}
-        attributes={{ title: 'Unsnooze', 'aria-label': 'Unsnooze' }}
-      />
+        attributes={{ title: 'Unsnooze', 'aria-label': 'Unsnooze', style: pillStyle }}
+      >
+        <Icon svg={Undo2} size="13px" />
+        Unsnooze
+      </Button>
     )
   }
 
@@ -43,13 +62,15 @@ export default function SnoozeMenu({
       <DropdownMenu.Trigger>
         {(attributes) => (
           <Button
-            variant="outline"
+            variant="ghost"
             color="neutral"
             size="small"
-            icon={Clock}
             stopPropagation
-            attributes={{ ...attributes, title: 'Snooze — S', 'aria-label': 'Snooze' }}
-          />
+            attributes={{ ...attributes, title: 'Snooze — S', 'aria-label': 'Snooze', style: pillStyle }}
+          >
+            <Icon svg={Moon} size="13px" />
+            Snooze
+          </Button>
         )}
       </DropdownMenu.Trigger>
       <DropdownMenu.Content>

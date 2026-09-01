@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Badge, Loader, ScrollArea, Text, View, useHotkeys } from 'reshaped/bundle'
+import { Loader, ScrollArea, Text, View, useHotkeys } from 'reshaped/bundle'
 import { VISIBLE_CATEGORIES, type Category, type ClassifiedPullRequest } from '@shared/types'
 import EmptyState from './components/EmptyState'
 import Header from './components/Header'
@@ -18,6 +18,29 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 }
 
+// Hints-bar keycaps: a plain View instead of `Badge` — the design drops
+// their border in favor of a faint wash plus a custom text color, and
+// `Badge`'s only borderless variant swaps in a solid background instead.
+function KeyCap({ children }: { children: string }): React.JSX.Element {
+  return (
+    <View
+      paddingBlock={0.25}
+      paddingInline={1.25}
+      borderRadius="small"
+      attributes={{ style: { background: '#ffffff14' } }}
+    >
+      <Text
+        as="span"
+        variant="caption-1"
+        weight="semibold"
+        attributes={{ style: { color: '#c0c6d6' } }}
+      >
+        {children}
+      </Text>
+    </View>
+  )
+}
+
 export default function App(): React.JSX.Element {
   const snapshot = useSnapshot()
   const scroll = useScrollMemory()
@@ -29,7 +52,6 @@ export default function App(): React.JSX.Element {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
 
-  const waitingSectionRef = useRef<HTMLDivElement | null>(null)
   const cardHandles = useRef(new Map<string, PullRequestCardHandle>())
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -81,16 +103,6 @@ export default function App(): React.JSX.Element {
     void window.api.unsnooze(toast.prId)
     dismissToast()
   }, [toast, dismissToast])
-
-  const showSnoozed = useCallback((): void => {
-    setCollapsed((prev) => {
-      if (!prev.has('waiting')) return prev
-      const next = new Set(prev)
-      next.delete('waiting')
-      return next
-    })
-    waitingSectionRef.current?.scrollIntoView({ block: 'nearest' })
-  }, [])
 
   // Clears the toast timer on unmount so it never fires against a gone component.
   useEffect(() => {
@@ -175,7 +187,6 @@ export default function App(): React.JSX.Element {
     { disabled: showSettings },
   )
 
-  const snoozedCount = snapshot.items.filter((item) => item.isSnoozed).length
   const activeId = hoveredId ?? selectedId
   const showEmptyState = snapshot.attentionCount === 0
 
@@ -220,24 +231,15 @@ export default function App(): React.JSX.Element {
         <ScrollArea
           ref={scroll.ref}
           onScroll={scroll.onScroll}
-          maxHeight="560px"
+          maxHeight="620px"
           className="pv-scroll"
           scrollableClassName="pv-scroll-content"
         >
-          {showEmptyState && (
-            <EmptyState
-              isError={snapshot.status === 'error'}
-              snoozedCount={snoozedCount}
-              refreshing={refreshing}
-              onRefresh={() => void refresh()}
-              onShowSnoozed={showSnoozed}
-            />
-          )}
+          {showEmptyState && <EmptyState isError={snapshot.status === 'error'} />}
 
           {VISIBLE_CATEGORIES.map((category) => (
             <InboxSection
               key={category}
-              ref={category === 'waiting' ? waitingSectionRef : undefined}
               category={category}
               items={snapshot.items.filter((item) => item.category === category)}
               now={now}
@@ -255,42 +257,33 @@ export default function App(): React.JSX.Element {
         <View
           direction="row"
           align="center"
-          gap={3}
-          paddingBlock={2}
+          gap={3.5}
+          paddingBlock={2.5}
           paddingInline={4}
           borderColor="neutral-faded"
           borderTop
           backgroundColor="elevation-base"
         >
-          {/* Keycaps are `Badge`s now — small pills, per the owner's call. */}
           <View direction="row" align="center" gap={1}>
-            <Badge variant="faded" color="neutral" size="small">
-              ↑↓
-            </Badge>
+            <KeyCap>↑↓</KeyCap>
             <Text as="span" variant="caption-1" color="neutral-faded">
               Move
             </Text>
           </View>
           <View direction="row" align="center" gap={1}>
-            <Badge variant="faded" color="neutral" size="small">
-              ⏎
-            </Badge>
+            <KeyCap>⏎</KeyCap>
             <Text as="span" variant="caption-1" color="neutral-faded">
               Review
             </Text>
           </View>
           <View direction="row" align="center" gap={1}>
-            <Badge variant="faded" color="neutral" size="small">
-              S
-            </Badge>
+            <KeyCap>S</KeyCap>
             <Text as="span" variant="caption-1" color="neutral-faded">
               Snooze
             </Text>
           </View>
           <View direction="row" align="center" gap={1}>
-            <Badge variant="faded" color="neutral" size="small">
-              R
-            </Badge>
+            <KeyCap>R</KeyCap>
             <Text as="span" variant="caption-1" color="neutral-faded">
               Refresh
             </Text>
