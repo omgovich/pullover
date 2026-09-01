@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Checkbox, Text, View } from 'reshaped/bundle'
+import { Button, Checkbox, Link, Text, View } from 'reshaped/bundle'
 import type { Settings } from '@shared/types'
 
 interface Props {
@@ -169,6 +169,19 @@ export default function SettingsPanel({
             </Button>
           </View>
         </View>
+
+        <View grow />
+
+        <Text variant="caption-1" color="neutral-faded">
+          Pullover {__APP_VERSION__} · MIT © 2026 Vlad Shilov ·{' '}
+          <Link
+            variant="plain"
+            color="inherit"
+            onClick={() => void window.api.openPr('https://github.com/omgovich/pullover')}
+          >
+            GitHub
+          </Link>
+        </Text>
       </View>
     </View>
   )
