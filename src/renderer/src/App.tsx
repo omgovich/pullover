@@ -181,61 +181,73 @@ export default function App(): React.JSX.Element {
   const activeId = hoveredId ?? selectedId
   const showEmptyState = snapshot.attentionCount === 0
 
+  // The window is transparent padding around the card (see
+  // src/shared/geometry.ts), and Electron still delivers clicks anywhere in
+  // that transparent area — a click there should dismiss the popup like any
+  // popover, rather than silently doing nothing. Checking that the click
+  // target is this wrapper itself (not a descendant) means a click on the
+  // card doesn't have to stop its own propagation to be exempt.
+  const dismissIfPadding = (event: React.MouseEvent): void => {
+    if (event.target === event.currentTarget) void window.api.hidePopup()
+  }
+
   return (
-    <div className="pv-shell">
-      <Header
-        snapshot={snapshot}
-        now={now}
-        refreshing={refreshing}
-        onRefresh={() => void refresh()}
-        onOpenSettings={() => setShowSettings(true)}
-      />
+    <div className="pv-window-padding" onClick={dismissIfPadding}>
+      <div className="pv-shell">
+        <Header
+          snapshot={snapshot}
+          now={now}
+          refreshing={refreshing}
+          onRefresh={() => void refresh()}
+          onOpenSettings={() => setShowSettings(true)}
+        />
 
-      <div className="pv-scroll" ref={scroll.ref} onScroll={scroll.onScroll}>
-        {showEmptyState && (
-          <EmptyState
-            isError={snapshot.status === 'error'}
-            snoozedCount={snoozedCount}
-            refreshing={refreshing}
-            onRefresh={() => void refresh()}
-            onShowSnoozed={showSnoozed}
-          />
-        )}
+        <div className="pv-scroll" ref={scroll.ref} onScroll={scroll.onScroll}>
+          {showEmptyState && (
+            <EmptyState
+              isError={snapshot.status === 'error'}
+              snoozedCount={snoozedCount}
+              refreshing={refreshing}
+              onRefresh={() => void refresh()}
+              onShowSnoozed={showSnoozed}
+            />
+          )}
 
-        {VISIBLE_CATEGORIES.map((category) => (
-          <InboxSection
-            key={category}
-            ref={category === 'waiting' ? waitingSectionRef : undefined}
-            category={category}
-            items={snapshot.items.filter((item) => item.category === category)}
-            now={now}
-            open={!collapsed.has(category)}
-            onToggle={() => toggleCategory(category)}
-            activePrId={activeId}
-            onHoverCard={setHoveredId}
-            onSelectCard={setSelectedId}
-            onSnoozed={showToast}
-            registerCard={registerCard}
-          />
-        ))}
+          {VISIBLE_CATEGORIES.map((category) => (
+            <InboxSection
+              key={category}
+              ref={category === 'waiting' ? waitingSectionRef : undefined}
+              category={category}
+              items={snapshot.items.filter((item) => item.category === category)}
+              now={now}
+              open={!collapsed.has(category)}
+              onToggle={() => toggleCategory(category)}
+              activePrId={activeId}
+              onHoverCard={setHoveredId}
+              onSelectCard={setSelectedId}
+              onSnoozed={showToast}
+              registerCard={registerCard}
+            />
+          ))}
+        </div>
+
+        <div className="pv-hints">
+          <span className="pv-hint">
+            <span className="pv-keycap">↑↓</span>Move
+          </span>
+          <span className="pv-hint">
+            <span className="pv-keycap">⏎</span>Review
+          </span>
+          <span className="pv-hint">
+            <span className="pv-keycap">S</span>Snooze
+          </span>
+          <span className="pv-hint">
+            <span className="pv-keycap">R</span>Refresh
+          </span>
+        </div>
+
+        {toast !== null && <Toast toast={toast} onUndo={undoToast} />}
       </div>
-
-      <div className="pv-hints">
-        <span className="pv-hint">
-          <span className="pv-keycap">↑↓</span>Move
-        </span>
-        <span className="pv-hint">
-          <span className="pv-keycap">⏎</span>Review
-        </span>
-        <span className="pv-hint">
-          <span className="pv-keycap">S</span>Snooze
-        </span>
-        <span className="pv-hint">
-          <span className="pv-keycap">R</span>Refresh
-        </span>
-      </div>
-
-      {toast !== null && <Toast toast={toast} onUndo={undoToast} />}
     </div>
   )
 }

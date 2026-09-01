@@ -17,10 +17,18 @@
   --pv-negative: #f36a6a;
   --pv-warning: #b4920c;
 
-  /* Transparent margin around the shell, matching `WINDOW_PADDING` in
-   * src/main/window.ts, that gives the shell's drop shadow room to render
-   * without being clipped by the (now larger) BrowserWindow bounds. */
-  --pv-window-padding: 96px;
+  /*
+   * Transparent padding around the shell, one value per side, that gives
+   * the shell's drop shadow room to render without being clipped by the
+   * (now larger) BrowserWindow bounds. Set from `WINDOW_PADDING` in
+   * src/shared/geometry.ts by src/renderer/src/main.tsx before the app ever
+   * paints — that shared module, not this file, is the source of truth, so
+   * these and the main process's window size can never drift apart.
+   */
+  --pv-window-padding-top: 0px;
+  --pv-window-padding-right: 0px;
+  --pv-window-padding-bottom: 0px;
+  --pv-window-padding-left: 0px;
 }
 
 html,
@@ -28,15 +36,6 @@ body,
 #root {
   height: 100%;
   margin: 0;
-}
-
-/*
- * Establishes its own block-formatting context so a margin on a full-bleed
- * child (the shell's inset from the window edge, below) can never collapse
- * through into #root/body/html and shift the whole page.
- */
-#root {
-  display: flow-root;
 }
 
 /*
@@ -50,20 +49,27 @@ body {
   background: transparent;
 }
 
+/*
+ * Fills the window and reserves the transparent padding the shell's drop
+ * shadow renders into — scoped to this wrapper (rather than the shell
+ * itself, or #root) so the other screens — sign-in, loading, settings —
+ * keep filling the window edge-to-edge as before, and so a click landing in
+ * the padding has an element of its own to dismiss the popup from (see
+ * App.tsx) without also catching clicks meant for those other screens.
+ */
+.pv-window-padding {
+  height: 100%;
+  box-sizing: border-box;
+  padding: var(--pv-window-padding-top) var(--pv-window-padding-right)
+    var(--pv-window-padding-bottom) var(--pv-window-padding-left);
+}
+
 .pv-shell {
-  /*
-   * Inset from every edge of the now-oversized window by the same amount,
-   * leaving transparent room for the drop shadow below to render into.
-   * Scoped to the shell itself (rather than padding on #root) so the other
-   * screens — sign-in, loading, settings — keep filling the window
-   * edge-to-edge as before.
-   */
-  margin: var(--pv-window-padding);
   position: relative;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - (var(--pv-window-padding) * 2));
   width: 452px;
+  height: 620px;
   border-radius: 14px;
   background: var(--rs-color-background-elevation-overlay);
   border: 1px solid #ffffff1f;
