@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { Actionable, Badge, Divider, Icon, Text, View } from 'reshaped/bundle'
+import { Actionable, Icon, Text, View } from 'reshaped/bundle'
 import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
 import PullRequestCard, { type PullRequestCardHandle } from './PullRequestCard'
 
@@ -72,37 +72,45 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
           direction="row"
           align="center"
           gap={2}
-          paddingTop={3}
-          paddingBottom={2}
-          paddingInline={2}
+          paddingTop={3.5}
+          paddingBottom={1.5}
+          paddingInline={2.5}
           position="sticky"
           insetTop={0}
           zIndex={2}
           backgroundColor="elevation-overlay"
         >
-          <Text
-            as="span"
-            variant="caption-1"
-            weight="bold"
-            color="neutral-faded"
-            // No `Text` prop reaches `letter-spacing`.
-            attributes={{ style: { letterSpacing: '0.09em' } }}
-          >
-            {CATEGORY_TITLES[category].toUpperCase()}
+          {/* No longer uppercase or letter-spaced, and full neutral instead
+              of faded — both dropped along with the divider rule below. */}
+          <Text as="span" variant="caption-1" weight="semibold" color="neutral">
+            {CATEGORY_TITLES[category]}
           </Text>
-          <Badge variant="faded" color="neutral" size="small" rounded>
-            {items.length}
-          </Badge>
-          <View.Item grow>
-            <Divider />
-          </View.Item>
-          {/* `size` is a multiple of the 4px unit, not pixels — 4 is 16px. */}
-          <Icon svg={open ? ChevronDown : ChevronRight} size={4} color="neutral-faded" />
+          {/* A plain View instead of `Badge`: the design drops the count
+              pill's border, and `Badge`'s only borderless variant swaps in a
+              solid neutral background instead of this faint wash. */}
+          <View
+            minWidth="18px"
+            paddingInline={1.5}
+            align="center"
+            justify="center"
+            borderRadius="circular"
+            attributes={{ style: { background: '#ffffff14' } }}
+          >
+            <Text as="span" variant="caption-1" weight="semibold" color="neutral-faded" numeric>
+              {items.length}
+            </Text>
+          </View>
+          {/* Plain flexible spacer — the divider rule is gone. */}
+          <View.Item grow />
+          {/* `size` takes a literal string for an exact pixel value instead
+              of the 4px-unit multiplier used elsewhere in this file. */}
+          <Icon svg={open ? ChevronDown : ChevronRight} size="15px" color="neutral-faded" />
         </View>
       </Actionable>
 
       {open && (
-        <View direction="column" gap={2}>
+        // 1px between cards, almost flush — was a much larger gap.
+        <View direction="column" gap={0.25}>
           {items.map((item) => (
             <PullRequestCard
               key={item.pr.id}

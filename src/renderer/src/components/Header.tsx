@@ -1,5 +1,5 @@
 import { RefreshCw, Settings } from 'lucide-react'
-import { Badge, Button, Text, View } from 'reshaped/bundle'
+import { Button, Text, View } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { InboxSnapshot } from '@shared/ipc'
 
@@ -27,6 +27,24 @@ function statusText(snapshot: InboxSnapshot, now: string): string {
   return `${snapshot.errorMessage} · last updated ${formatAge(snapshot.lastUpdatedAt, now)}`
 }
 
+// Button's size steps don't land on 32×32 with a 9px radius (small is closer
+// to 28px, per the old design; medium overshoots to 36px), so the box itself
+// is set directly via `attributes.style` rather than through `size`. The
+// hover color/background shift the design also calls for isn't reachable the
+// same way — `--rs-button-color` isn't hover-conditional, and Button's own
+// cascade out-specifies a plain external class — so this keeps Button's
+// ghost/neutral defaults (transparent at rest, its own faint hover wash)
+// rather than fight that with custom CSS, per the project's own rule that a
+// visual mismatch is preferable to writing it.
+const iconButtonStyle = {
+  width: '32px',
+  height: '32px',
+  minWidth: '32px',
+  minHeight: '32px',
+  padding: 0,
+  borderRadius: '9px',
+}
+
 export default function Header({
   snapshot,
   now,
@@ -40,71 +58,69 @@ export default function Header({
       align="center"
       justify="space-between"
       gap={3}
-      height={11}
-      paddingStart={3}
-      paddingEnd={2}
+      height={13}
+      paddingStart={4}
+      paddingEnd={2.5}
       backgroundColor="elevation-raised"
-      borderColor="neutral"
+      borderColor="neutral-faded"
       borderBottom
     >
-      <View direction="row" align="center" gap={2} minWidth={0}>
-        {snapshot.attentionCount > 0 ? (
-          <>
-            {/* `primary`/`faded` is Reshaped's closest built-in pairing to
-                the design's dark-indigo chip (muted indigo background,
-                bright indigo foreground) — close enough that the old
-                `--pv-accent-text` override isn't worth carrying over here. */}
-            <Badge color="primary" variant="faded" size="small">
+      <View direction="row" align="center" gap={2.5} minWidth={0}>
+        {snapshot.attentionCount > 0 && (
+          // Neutral text on a faint white wash — no longer accent-colored.
+          // A plain View instead of `Badge`: `Badge`'s own `Text` is fixed at
+          // weight="medium" with no tabular-nums, but this count changes and
+          // the design calls for weight 700 and tabular figures, so it stays
+          // custom.
+          <View
+            minWidth="26px"
+            height={6}
+            paddingInline={2}
+            align="center"
+            justify="center"
+            borderRadius="medium"
+            attributes={{ style: { background: '#ffffff12' } }}
+          >
+            <Text as="span" variant="caption-1" weight="bold" numeric color="neutral-faded">
               {snapshot.attentionCount}
-            </Badge>
-            <Text as="span" variant="caption-1" weight="semibold" color="neutral" maxLines={1}>
-              waiting on you
             </Text>
-          </>
-        ) : (
-          <Text as="span" variant="caption-1" weight="semibold" color="neutral" maxLines={1}>
-            All clear
-          </Text>
+          </View>
         )}
-        {/* A plain bullet between two pieces of text, not a status light — the
-            error state reads through `statusText` below instead. An empty
-            `Badge` would be Reshaped's dot, but its smallest size is 8px of
-            solid neutral, which reads as a blob beside 12px text rather than a
-            separator; a sized `View` gets the design's 3px without any CSS. */}
-        <View
-          width="3px"
-          height="3px"
-          borderRadius="circular"
-          backgroundColor="neutral-faded"
-          attributes={{ style: { flexShrink: 0, opacity: 0.6 } }}
-        />
-        {/* Wrapping in its own `minWidth={0}` `View` is what lets `Text`'s
-            `maxLines={1}` actually truncate instead of overflowing: a flex
-            child's min-width defaults to its content size otherwise. */}
-        <View minWidth={0}>
+        <View direction="column" minWidth={0}>
+          <Text as="span" variant="body-2" weight="semibold" color="neutral" maxLines={1}>
+            {snapshot.attentionCount > 0 ? 'waiting on you' : 'All clear'}
+          </Text>
           <Text as="span" variant="caption-1" color="neutral-faded" maxLines={1}>
             {statusText(snapshot, now)}
           </Text>
         </View>
       </View>
 
-      <View direction="row" align="center" gap={0.5}>
+      <View direction="row" align="center" gap={1}>
         <Button
-          variant="outline"
+          variant="ghost"
           color="neutral"
           size="small"
           icon={RefreshCw}
           loading={refreshing}
           onClick={onRefresh}
-          attributes={{ title: 'Refresh — R', 'aria-label': 'Refresh — R' }}
+          attributes={{
+            title: 'Refresh — R',
+            'aria-label': 'Refresh — R',
+            style: iconButtonStyle,
+          }}
         />
         <Button
-          variant="outline"
+          variant="ghost"
           color="neutral"
           size="small"
           icon={Settings}
           onClick={onOpenSettings}
-          attributes={{ title: 'Settings', 'aria-label': 'Settings' }}
+          attributes={{
+            title: 'Settings',
+            'aria-label': 'Settings',
+            style: iconButtonStyle,
+          }}
         />
       </View>
     </View>

@@ -2,26 +2,27 @@
  * Pullover's redesigned inbox screen.
  *
  * Rebuilt on Reshaped's standard components (View, Text, Icon, Button,
- * Badge, Avatar, Card, Actionable, Divider, ScrollArea, DropdownMenu) per
- * the owner's rule: use the standard components even where the result
- * doesn't exactly match the original design. What's left below is only what
- * genuinely has no equivalent — colors and effects with no token, decorative
- * effects no prop reaches, one piece of state Reshaped has no prop for
- * ("hidden but still holding its layout space"), and a couple of structural
- * declarations (flex-shrink, a missing `grow` prop) that don't correspond to
- * any design *value* at all, so there's no fidelity trade-off to make.
+ * Avatar, Card, Actionable, ScrollArea, DropdownMenu) per the owner's rule:
+ * use the standard components even where the result doesn't exactly match
+ * the original design. What's left below is only what genuinely has no
+ * equivalent — colors and effects with no token, one piece of state
+ * Reshaped has no prop for ("hidden but still holding its layout space"),
+ * and a couple of structural declarations (flex-shrink, a missing `grow`
+ * prop) that don't correspond to any design *value* at all, so there's no
+ * fidelity trade-off to make.
  */
 
 :root {
   /*
    * The app's purple identity. Reshaped's `primary` token is blue, so this
    * isn't a near-miss to swap away — but it's scoped down to just the two
-   * places the owner called out (header count, PR number), set inline via
-   * `attributes.style` on those two `Text`s rather than through a class here
-   * (see Header.tsx and PullRequestCard.tsx). Everywhere else that used to
-   * reach for it (avatars, the Review button, the reason pill, the
-   * selection ring, etc.) now uses Reshaped's own `primary` color, or
-   * whatever `Card`'s `selected` state ships, instead.
+   * places the owner called out (a PR's `#number`, and the default color for
+   * the card's status pill), set inline via `attributes.style`/a literal
+   * hex kept in sync with this variable rather than through a class here
+   * (see PullRequestCard.tsx). Everywhere else that used to reach for it
+   * (avatars, the old Review button, the old selection ring, etc.) now uses
+   * Reshaped's own `primary` color, or a status-specific hex from the
+   * design, instead.
    */
   --pv-accent-text: #8b8af7;
 }
@@ -61,24 +62,21 @@ body {
  * Applied via `ScrollArea`'s `scrollableClassName`, since this padding
  * belongs on the scrolled content, not the scroll container — there's no
  * prop path onto that inner element, only a `className` one. Values are
- * snapped to Reshaped's 4px steps (was 0/10px/12px).
+ * snapped to Reshaped's 4px steps.
  */
 .pv-scroll-content {
-  padding: 0 12px 12px;
+  padding: 0 8px 10px;
 }
 
 /* Card list */
 
 /*
- * The Review/snooze actions: always in the flow, revealed on hover/active
- * rather than rendered conditionally, so the pointer moving between cards
- * never reflows the row. No Reshaped prop expresses "hidden but still
- * holding its layout space" — `hidden` props elsewhere in the library remove
- * elements from flow or scale them to 0, neither of which reserves the
- * space — so this stays custom. Positioning it at the row's end is now
- * `gapBefore="auto"` on the wrapping `View.Item` (see PullRequestCard.tsx)
- * instead of the old `margin-left: auto` here, and the gap between the
- * snooze button and Review is a `gap` prop instead of a literal value.
+ * The snooze pill: always in the flow, revealed on hover/active rather than
+ * rendered conditionally, so the pointer moving between cards never reflows
+ * the row. No Reshaped prop expresses "hidden but still holding its layout
+ * space" — `hidden` props elsewhere in the library remove elements from
+ * flow or scale them to 0, neither of which reserves the space — so this
+ * stays custom.
  */
 .pv-card-actions {
   visibility: hidden;
@@ -89,30 +87,4 @@ body {
 .pv-card-actions--active {
   visibility: visible;
   opacity: 1;
-}
-
-/* Empty state */
-
-/* The masked radial-gradient dot field has no Reshaped equivalent. */
-.pv-empty-dots {
-  top: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 280px;
-  height: 180px;
-  background-image: radial-gradient(#ffffff 1px, transparent 1px);
-  background-size: 14px 14px;
-  opacity: 0.09;
-  -webkit-mask-image: radial-gradient(circle at 50% 34%, #000 0%, transparent 68%);
-  mask-image: radial-gradient(circle at 50% 34%, #000 0%, transparent 68%);
-  pointer-events: none;
-}
-
-/* The soft glow ring around the checkmark badge — no `shadow` token
-   produces a colored, spread-out glow like this, same reasoning as the
-   shell's shadow. Sourced from the real `border-primary-faded` token
-   instead of a hardcoded accent hex, now that the badge itself uses
-   Reshaped's own `primary-faded` background/border. */
-.pv-empty-badge {
-  box-shadow: 0 0 0 10px var(--rs-color-border-primary-faded);
 }
