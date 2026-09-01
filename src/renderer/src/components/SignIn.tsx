@@ -24,7 +24,7 @@ export default function SignIn(): React.JSX.Element {
   }
 
   return (
-    <View padding={6} gap={4} align="center" justify="center" height="100%">
+    <View padding={6} gap={4} align="center" justify="center" height="100%" minHeight={0}>
       <Text variant="featured-3" weight="bold">
         Pullover
       </Text>

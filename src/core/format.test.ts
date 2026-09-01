@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatAge, formatDiff } from '@core/format'
+import { formatAge } from '@core/format'
 
 const NOW = '2026-08-10T12:00:00Z'
 
@@ -34,15 +34,5 @@ describe('formatAge', () => {
 
   it('pins day boundary at exactly 86400 seconds', () => {
     expect(formatAge('2026-08-09T12:00:00Z', NOW)).toBe('1d ago')
-  })
-})
-
-describe('formatDiff', () => {
-  it('renders both sides', () => {
-    expect(formatDiff(12, 3)).toBe('+12 −3')
-  })
-
-  it('renders zeroes', () => {
-    expect(formatDiff(0, 0)).toBe('+0 −0')
   })
 })

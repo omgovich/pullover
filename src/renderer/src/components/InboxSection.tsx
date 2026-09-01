@@ -1,47 +1,94 @@
+import { forwardRef, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { Actionable, Badge, Icon, Text, useToggle, View } from 'reshaped/bundle'
 import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
-import { CATEGORY_ICONS } from '../categoryIcons'
-import PullRequestCard from './PullRequestCard'
+import PullRequestCard, { type PullRequestCardHandle } from './PullRequestCard'
 
 interface Props {
   category: Category
   items: ClassifiedPullRequest[]
   now: string
-  /** The waiting section starts collapsed; attention sections start open. */
-  defaultCollapsed: boolean
+  open: boolean
+  onToggle: () => void
+  activePrId: string | null
+  onHoverCard: (prId: string | null) => void
+  onSelectCard: (prId: string) => void
+  onSnoozed: (item: ClassifiedPullRequest) => void
+  registerCard: (prId: string, handle: PullRequestCardHandle | null) => void
 }
 
-export default function InboxSection({
-  category,
-  items,
-  now,
-  defaultCollapsed,
-}: Props): React.JSX.Element | null {
-  const { active: open, toggle } = useToggle(!defaultCollapsed)
+const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
+  {
+    category,
+    items,
+    now,
+    open,
+    onToggle,
+    activePrId,
+    onHoverCard,
+    onSelectCard,
+    onSnoozed,
+    registerCard,
+  }: Props,
+  ref,
+) {
+  // A fresh ref-callback closure on every render makes React treat it as a
+  // new ref identity, so it unregisters and re-registers the card's handle
+  // on every re-render — including the 30-second clock tick that re-renders
+  // the whole list. Caching one stable callback per PR id keeps registration
+  // to mount/unmount only, matching what the DOM ref itself already does.
+  const cardRefCallbacks = useRef(
+    new Map<string, (handle: PullRequestCardHandle | null) => void>(),
+  )
+
+  useEffect(() => {
+    const cache = cardRefCallbacks.current
+    const presentIds = new Set(items.map((item) => item.pr.id))
+    for (const id of cache.keys()) {
+      if (!presentIds.has(id)) cache.delete(id)
+    }
+  })
+
+  function getCardRefCallback(prId: string): (handle: PullRequestCardHandle | null) => void {
+    const cache = cardRefCallbacks.current
+    let callback = cache.get(prId)
+    if (callback === undefined) {
+      callback = (handle) => registerCard(prId, handle)
+      cache.set(prId, callback)
+    }
+    return callback
+  }
 
   if (items.length === 0) return null
 
   return (
-    <View gap={2}>
-      <Actionable onClick={toggle}>
-        <View direction="row" gap={2} align="center" paddingBlock={1}>
-          <Icon svg={CATEGORY_ICONS[category]} size={4} color="neutral-faded" />
-          <Text variant="caption-1" weight="bold" color="neutral-faded">
-            {CATEGORY_TITLES[category].toUpperCase()}
-          </Text>
-          <Badge size="small" variant="faded">
-            {items.length}
-          </Badge>
-          <View grow />
-          <Icon svg={open ? ChevronDown : ChevronRight} size={4} color="neutral-faded" />
-        </View>
-      </Actionable>
+    <div ref={ref}>
+      <button type="button" className="pv-section-header" onClick={onToggle}>
+        <span className="pv-section-label">{CATEGORY_TITLES[category].toUpperCase()}</span>
+        <span className="pv-section-count">{items.length}</span>
+        <span className="pv-section-rule" />
+        <span className="pv-section-chevron">
+          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </span>
+      </button>
 
-      {open &&
-        items.map((item) => (
-          <PullRequestCard key={item.pr.id} item={item} now={now} />
-        ))}
-    </View>
+      {open && (
+        <div className="pv-card-list">
+          {items.map((item) => (
+            <PullRequestCard
+              key={item.pr.id}
+              ref={getCardRefCallback(item.pr.id)}
+              item={item}
+              now={now}
+              isActive={item.pr.id === activePrId}
+              onHover={onHoverCard}
+              onSelect={onSelectCard}
+              onSnoozed={onSnoozed}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   )
-}
+})
+
+export default InboxSection

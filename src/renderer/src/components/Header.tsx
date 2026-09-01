@@ -1,12 +1,12 @@
-import { useState } from 'react'
 import { RefreshCw, Settings } from 'lucide-react'
-import { Button, Text, View } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { InboxSnapshot } from '@shared/ipc'
 
 interface Props {
   snapshot: InboxSnapshot
   now: string
+  refreshing: boolean
+  onRefresh: () => void
   onOpenSettings: () => void
 }
 
@@ -29,59 +29,50 @@ function statusText(snapshot: InboxSnapshot, now: string): string {
 export default function Header({
   snapshot,
   now,
+  refreshing,
+  onRefresh,
   onOpenSettings,
 }: Props): React.JSX.Element {
-  const [refreshing, setRefreshing] = useState(false)
-
-  const refresh = async (): Promise<void> => {
-    setRefreshing(true)
-    try {
-      await window.api.refresh()
-    } finally {
-      setRefreshing(false)
-    }
-  }
+  const hasError = snapshot.errorMessage !== null
 
   return (
-    <View
-      direction="row"
-      gap={2}
-      align="center"
-      padding={3}
-      borderColor="neutral-faded"
-      borderBottom
-    >
-      <View gap={0}>
-        <Text variant="body-2" weight="bold">
-          {snapshot.attentionCount > 0
-            ? `${snapshot.attentionCount} waiting on you`
-            : 'All clear'}
-        </Text>
-        <Text
-          variant="caption-2"
-          color={snapshot.errorMessage === null ? 'neutral-faded' : 'critical'}
-        >
+    <div className="pv-header">
+      <div className="pv-header-left">
+        {snapshot.attentionCount > 0 ? (
+          <>
+            <span className="pv-header-count">{snapshot.attentionCount}</span>
+            <span className="pv-header-label">waiting on you</span>
+          </>
+        ) : (
+          <span className="pv-header-label">All clear</span>
+        )}
+        <span className="pv-header-status">
+          <span className={`pv-dot${hasError ? ' pv-dot--negative' : ''}`} />
           {statusText(snapshot, now)}
-        </Text>
-      </View>
+        </span>
+      </div>
 
-      <View grow />
-
-      <Button
-        size="small"
-        variant="ghost"
-        icon={RefreshCw}
-        loading={refreshing}
-        onClick={() => void refresh()}
-        attributes={{ title: 'Refresh', 'aria-label': 'Refresh' }}
-      />
-      <Button
-        size="small"
-        variant="ghost"
-        icon={Settings}
-        onClick={onOpenSettings}
-        attributes={{ title: 'Settings', 'aria-label': 'Settings' }}
-      />
-    </View>
+      <div className="pv-header-actions">
+        <button
+          type="button"
+          className={`pv-icon-btn${refreshing ? ' pv-icon-btn--busy' : ''}`}
+          onClick={onRefresh}
+          disabled={refreshing}
+          title="Refresh — R"
+          aria-label="Refresh — R"
+        >
+          <RefreshCw size={16} className={refreshing ? 'pv-spin' : undefined} />
+        </button>
+        <button
+          type="button"
+          className="pv-icon-btn"
+          onClick={onOpenSettings}
+          title="Settings"
+          aria-label="Settings"
+        >
+          <Settings size={16} />
+        </button>
+      </div>
+    </div>
   )
 }

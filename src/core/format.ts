@@ -9,7 +9,3 @@ export function formatAge(iso: string, now: string): string {
   if (elapsed < DAY) return `${Math.floor(elapsed / HOUR)}h ago`
   return `${Math.floor(elapsed / DAY)}d ago`
 }
-
-export function formatDiff(additions: number, deletions: number): string {
-  return `+${additions} −${deletions}`
-}

@@ -63,12 +63,12 @@ export default function SettingsPanel({
     await reload()
   }
 
-  if (settings === null) return <View padding={4} />
+  if (settings === null) return <View padding={4} height="100%" minHeight={0} />
 
   const options = repositoryOptions(knownRepositories, settings.repositories)
 
   return (
-    <View height="100vh" backgroundColor="page">
+    <View height="100%" minHeight={0}>
       <View
         direction="row"
         align="center"
