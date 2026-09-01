@@ -6,6 +6,11 @@ directories:
 files:
   - out/**/*
   - package.json
+dmg:
+  # The app has no auto-update (no electron-updater), so don't generate the
+  # update artifacts (*.blockmap, latest-mac.yml) — releases stay just the
+  # dmgs. Flip back to true if auto-update ever lands.
+  writeUpdateInfo: false
 publish:
   provider: github
   owner: omgovich
