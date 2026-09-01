@@ -20,16 +20,16 @@
 
 GitHub notifications bury the one thing that matters — *whose move is it?* Pullover answers exactly that. It watches the repos you review in and keeps a short, honest inbox: if a PR shows up, it's waiting on you; if it doesn't, you're free.
 
-## Features
+## ✨ Features
 
-- **Only what needs you.** Fresh review requests, re-reviews after new commits, unanswered comment threads, mentions — each PR lands in the inbox with the reason it's there. PRs where the ball is in someone else's court stay out of sight.
-- **Your own PRs, too.** They surface only when there's something for you to do: changes requested, a comment you haven't answered, red CI, or approved and ready to merge.
-- **Snooze that un-snoozes itself.** Park a PR for a while — it wakes up on its own when something actually happens: new commits or a new reply.
-- **Lives in the menu bar.** A quiet count of PRs waiting on you; no Dock icon, no window to manage.
-- **Read-only by design.** Pullover never comments, approves, or merges. Clicking a PR opens it on github.com — you act where you always did.
-- **Private repos and team review requests** work out of the box (that's what the `repo` and `read:org` scopes are for — details below).
+- 🎯 **Only what needs you.** Fresh review requests, re-reviews after new commits, unanswered comment threads, mentions — each PR lands in the inbox with the reason it's there. PRs where the ball is in someone else's court stay out of sight.
+- 🧑‍💻 **Your own PRs, too.** They surface only when there's something for you to do: changes requested, a comment you haven't answered, red CI, or approved and ready to merge.
+- 💤 **Snooze that un-snoozes itself.** Park a PR for a while — it wakes up on its own when something actually happens: new commits or a new reply.
+- 📌 **Lives in the menu bar.** A quiet count of PRs waiting on you; no Dock icon, no window to manage.
+- 👀 **Read-only by design.** Pullover never comments, approves, or merges. Clicking a PR opens it on github.com — you act where you always did.
+- 🔒 **Private repos and team review requests** work out of the box (that's what the `repo` and `read:org` scopes are for — details below).
 
-## Install
+## 📦 Install
 
 Download the `.dmg` for your Mac from the [latest release](https://github.com/omgovich/pullover/releases/latest) — `arm64` for Apple Silicon, `x64` for Intel — and drag Pullover into Applications.
 
@@ -44,7 +44,7 @@ Alternatively, launch it once, let macOS refuse, then approve it under System Se
 Sign in with GitHub when it asks, then open **Settings** and add the repos you want watched, as `owner/repo`. That's it.
 
 <details>
-<summary><b>Running from source</b></summary>
+<summary><b>🛠️ Running from source</b></summary>
 
 ### 1. Register a GitHub OAuth App
 
@@ -84,11 +84,11 @@ Click the menu-bar item, hit **Sign in with GitHub**. Pullover shows you a short
 
 - `npm test` — unit tests (all the classification logic lives in `src/core/`)
 - `npm run typecheck` — type checking
-- `npm run dist` — local unsigned build; clear the quarantine flag before the first launch (see [Install](#install)) if you move it out of `dist/`.
+- `npm run dist` — local unsigned build; clear the quarantine flag before the first launch (see [Install](#-install)) if you move it out of `dist/`.
 
 </details>
 
-## About the permissions it asks for
+## 🛡️ About the permissions it asks for
 
 At sign-in Pullover requests two scopes:
 
