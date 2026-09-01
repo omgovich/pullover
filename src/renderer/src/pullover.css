@@ -73,6 +73,16 @@ body {
    * is a header or a card.
    */
   padding: 0 8px 16px;
+  /*
+   * Reshaped's own `.content` class on this element sets `height: 100%`,
+   * which pins the content box to the scroll container's height. The
+   * padding above then sits at the bottom of *that* box — where the
+   * container ends — instead of after the last child, so overflowing
+   * content simply scrolls past it and the bottom padding never appears.
+   * `height: auto` lets the box grow with its children; `min-height: 100%`
+   * (also Reshaped's) still makes short content fill the area.
+   */
+  height: auto;
 }
 
 /* Card list */
