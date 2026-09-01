@@ -1,26 +1,29 @@
 /*
  * Pullover's redesigned inbox screen.
  *
- * Rebuilt on Reshaped's components (View, Text, Icon, Button, Badge, Avatar,
- * Divider, ScrollArea, DropdownMenu) using its defaults wherever they're
- * close to the original design — a one- or two-pixel gap between a design
- * value and a token is not worth a bespoke rule. What's left below is only
- * what genuinely has no equivalent: colors and dimensions with no token,
- * decorative effects no prop reaches, and a few structural declarations
- * (native-button resets, flex-shrink, ellipsis) that don't correspond to any
- * design *value* at all, so there's no fidelity trade-off to make.
+ * Rebuilt on Reshaped's standard components (View, Text, Icon, Button,
+ * Badge, Avatar, Card, Actionable, Divider, ScrollArea, DropdownMenu) per
+ * the owner's rule: use the standard components even where the result
+ * doesn't exactly match the original design. What's left below is only what
+ * genuinely has no equivalent — colors and effects with no token, decorative
+ * effects no prop reaches, one piece of state Reshaped has no prop for
+ * ("hidden but still holding its layout space"), and a couple of structural
+ * declarations (flex-shrink, a missing `grow` prop) that don't correspond to
+ * any design *value* at all, so there's no fidelity trade-off to make.
  */
 
 :root {
   /*
    * The app's purple identity. Reshaped's `primary` token is blue, so this
-   * isn't a near-miss to swap away — but it's scoped down to just the three
-   * places the owner called out (header count, PR number, selection ring);
-   * everywhere else that used to reach for it (avatars, the Review button,
-   * the reason pill, etc.) now uses Reshaped's own `primary` color instead.
+   * isn't a near-miss to swap away — but it's scoped down to just the two
+   * places the owner called out (header count, PR number), set inline via
+   * `attributes.style` on those two `Text`s rather than through a class here
+   * (see Header.tsx and PullRequestCard.tsx). Everywhere else that used to
+   * reach for it (avatars, the Review button, the reason pill, the
+   * selection ring, etc.) now uses Reshaped's own `primary` color, or
+   * whatever `Card`'s `selected` state ships, instead.
    */
   --pv-accent-text: #8b8af7;
-  --pv-accent-border: #6d6bf4;
 
   /*
    * Transparent padding around the shell, one value per side, that gives
@@ -71,31 +74,13 @@ body {
  * radius now come from `border`/`borderColor="neutral"`/`borderRadius="large"`
  * props in App.tsx — only the two-layer drop shadow is left, since no
  * `shadow` token comes close and it's what makes the window read as
- * floating over the desktop.
+ * floating over the desktop. (The toast's own floating shadow, by contrast,
+ * is not kept: it's a `Card` now and takes whatever `raised` gives it.)
  */
 .pv-shell {
   box-shadow:
     0 28px 64px rgba(0, 0, 0, 0.62),
     0 6px 16px rgba(0, 0, 0, 0.45);
-}
-
-/* Header */
-
-.pv-header-status {
-  /* Keeps the status line ("Updated 5m ago") from wrapping to a second
-     line when the row gets tight; no `Text` prop reaches `white-space`. */
-  white-space: nowrap;
-}
-
-.pv-dot {
-  width: 5px;
-  height: 5px;
-  background: var(--rs-color-foreground-positive);
-  flex-shrink: 0;
-}
-
-.pv-dot--negative {
-  background: var(--rs-color-foreground-critical);
 }
 
 /* Scroll area */
@@ -104,7 +89,7 @@ body {
  * `ScrollArea` (App.tsx) has no `grow` prop, so making it fill the rest of
  * `.pv-shell`'s column — instead of sizing to content — still needs a
  * literal flex declaration, the same `min-height: 0` override used
- * everywhere else in this file that wraps a scrollable region.
+ * elsewhere in this file that wraps a scrollable region.
  */
 .pv-scroll {
   flex: 1 1 auto;
@@ -121,133 +106,20 @@ body {
   padding: 0 12px 12px;
 }
 
-/* Section header */
-
-/*
- * `ScrollArea`'s content wrapper is `display: inline-block`, not flex, so
- * this `<button>` needs an explicit full-width rather than the "children
- * stretch to fill" behavior a flex column gives block children for free.
- * The rest (border/cursor/text-align/font/color) resets native `<button>`
- * chrome that `as="button"` doesn't clear on its own — none of it
- * corresponds to a design pixel value, so there's nothing to convert.
- */
-.pv-section-header {
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  width: 100%;
-}
-
-.pv-section-label {
-  flex-shrink: 0;
-  letter-spacing: 0.09em;
-}
-
-.pv-section-chevron {
-  flex-shrink: 0;
-  display: flex;
-}
-
 /* Card list */
 
-.pv-card {
-  /* `cursor` is the one piece of native-button reset a clickable `div`
-     still needs (unlike a `<button>`, its default cursor isn't already a
-     pointer). */
-  cursor: pointer;
-}
-
 /*
- * The selection ring: the one other place (besides the header count and PR
- * number) the owner wants the purple identity kept, driven by React state
- * (`isActive`) rather than `:hover`/`:focus`. Border color is the custom
- * accent; the fill is the same accent at low opacity, derived from it with
- * `rgb(from ...)` (the same relative-color syntax Reshaped's own theme.css
- * uses) rather than a second hardcoded hex.
+ * The Review/snooze actions: always in the flow, revealed on hover/active
+ * rather than rendered conditionally, so the pointer moving between cards
+ * never reflows the row. No Reshaped prop expresses "hidden but still
+ * holding its layout space" — `hidden` props elsewhere in the library remove
+ * elements from flow or scale them to 0, neither of which reserves the
+ * space — so this stays custom. Positioning it at the row's end is now
+ * `gapBefore="auto"` on the wrapping `View.Item` (see PullRequestCard.tsx)
+ * instead of the old `margin-left: auto` here, and the gap between the
+ * snooze button and Review is a `gap` prop instead of a literal value.
  */
-.pv-card-ring {
-  border-color: var(--pv-accent-border);
-  background: rgb(from var(--pv-accent-border) r g b / 12%);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 160ms var(--rs-easing-standard);
-}
-
-.pv-card-ring--active {
-  opacity: 1;
-}
-
-/* `Avatar`'s `size` prop has no letter-spacing equivalent (no Reshaped prop
-   does), so this is the one leftover on top of `variant="faded"
-   color="primary"`. */
-.pv-avatar {
-  letter-spacing: 0.02em;
-}
-
-/* Meta row (repo · #number · age · CI badge) */
-
-.pv-meta-repo {
-  min-width: 0;
-  flex-shrink: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pv-meta-number {
-  flex-shrink: 0;
-  color: var(--pv-accent-text); /* custom accent, not a token */
-}
-
-.pv-meta-dot {
-  flex-shrink: 0;
-  opacity: 0.5;
-}
-
-.pv-meta-age {
-  flex-shrink: 0;
-}
-
-.pv-diff-del {
-  margin-left: 4px;
-}
-
-/* No `Text` prop truncates to a single line with an ellipsis (`maxLines`
-   clamps to N lines, not this). */
-.pv-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/*
- * The reason pill shrinks and ellipsises rather than pushing the actions
- * out of the row — `min-width: 0`/`white-space`/`text-overflow` have no
- * `View` props, and `Badge`'s content wrapper isn't reachable via
- * `className` to apply them to, so it stays a plain `View` rather than a
- * `Badge` (see PullRequestCard.tsx for the full reasoning). Everything else
- * about it — background, radius, color, padding, max-width — is props now.
- */
-.pv-reason-pill {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .pv-card-actions {
-  /*
-   * A flex child of the footer row rather than absolutely positioned:
-   * anchored to the card's corner it ignored the card's padding and
-   * collided with the text beside it. `margin-left:auto` pins it right —
-   * not a pixel value with a token equivalent, just a layout technique —
-   * and it keeps its space while hidden so revealing it never reflows the
-   * row.
-   */
-  margin-left: auto;
-  gap: 8px;
   visibility: hidden;
   opacity: 0;
   transition: opacity 160ms var(--rs-easing-standard);
@@ -258,24 +130,9 @@ body {
   opacity: 1;
 }
 
-/* Hints bar */
-
-/* Keycap chips (↑↓, ⏎, S, R). Radius already lands exactly on `small`
-   (4px) as a literal, so there's no token swap needed there; background
-   now reads from the same neutral-faded token used elsewhere instead of a
-   hardcoded translucent white. The muted blue-grey text color is a
-   deliberate hue choice, not a pixel near-miss, so it stays literal. */
-.pv-keycap {
-  padding: 0 4px;
-  border-radius: 4px;
-  background: var(--rs-color-background-neutral-faded);
-  border: 1px solid var(--rs-color-border-neutral-faded);
-  color: #c0c6d6;
-}
-
 /* Empty state */
 
-/* The masked radial-gradient dotted field has no Reshaped equivalent. */
+/* The masked radial-gradient dot field has no Reshaped equivalent. */
 .pv-empty-dots {
   top: 24px;
   left: 50%;
@@ -297,43 +154,4 @@ body {
    Reshaped's own `primary-faded` background/border. */
 .pv-empty-badge {
   box-shadow: 0 0 0 10px var(--rs-color-border-primary-faded);
-}
-
-/* No `margin` prop exists on `View` or `Text` at all — not a fidelity gap,
-   just a missing capability — so these three stay literal, snapped to the
-   nearest 4px step (was 18/18/22px). */
-.pv-empty-heading {
-  margin-top: 20px;
-}
-
-/* `text-wrap: pretty` has no `Text` equivalent (`wrap` only offers
-   `"balance"`, a different algorithm that would change how these two
-   sentences actually break). */
-.pv-empty-body {
-  margin-top: 4px;
-  max-width: 280px;
-  text-wrap: pretty;
-}
-
-.pv-empty-stats {
-  margin-top: 20px;
-}
-
-.pv-empty-actions {
-  margin-top: 24px;
-}
-
-/* Toast */
-
-/*
- * `white-space: nowrap` has no `Text`/`View` prop. The shadow stays custom
- * for the same reason the shell's does: the toast floats over a busy,
- * transparent-windowed card list and needs real contrast — the built-in
- * `shadow` tokens are calibrated for opaque page backgrounds and read as
- * far too faint here (their overlay token is a 6%-opacity triple layer;
- * this is a single 55%-opacity layer).
- */
-.pv-toast {
-  white-space: nowrap;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
 }

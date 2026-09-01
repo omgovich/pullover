@@ -1,5 +1,5 @@
 import { RefreshCw, Settings } from 'lucide-react'
-import { Button, Text, View } from 'reshaped/bundle'
+import { Badge, Button, Text, View } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { InboxSnapshot } from '@shared/ipc'
 
@@ -76,12 +76,15 @@ export default function Header({
             All clear
           </Text>
         )}
-        <View className="pv-header-status" direction="row" align="center" gap={1}>
-          <View
-            className={`pv-dot${hasError ? ' pv-dot--negative' : ''}`}
-            borderRadius="circular"
-          />
-          <Text as="span" variant="caption-1" color="neutral-faded">
+        <View direction="row" align="center" gap={1} minWidth={0}>
+          {/* An empty `Badge` is Reshaped's dot: `rounded` makes it
+              circular, and dropping `variant` gives the solid color fill. */}
+          <Badge color={hasError ? 'critical' : 'positive'} size="small" rounded />
+          {/* `maxLines={1}` keeps the status line from wrapping to a second
+              line when the row gets tight — same intent as the old
+              `white-space: nowrap`, just expressed through `Text`'s own
+              truncation prop instead of a CSS class. */}
+          <Text as="span" variant="caption-1" color="neutral-faded" maxLines={1}>
             {statusText(snapshot, now)}
           </Text>
         </View>

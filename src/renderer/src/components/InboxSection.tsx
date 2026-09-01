@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { Badge, Divider, Icon, Text, View } from 'reshaped/bundle'
+import { Actionable, Badge, Divider, Icon, Text, View } from 'reshaped/bundle'
 import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
 import PullRequestCard, { type PullRequestCardHandle } from './PullRequestCard'
 
@@ -63,40 +63,42 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
 
   return (
     <div ref={ref}>
-      <View
-        as="button"
-        className="pv-section-header"
-        direction="row"
-        align="center"
-        gap={2}
-        paddingTop={3}
-        paddingBottom={2}
-        paddingInline={2}
-        position="sticky"
-        insetTop={0}
-        zIndex={2}
-        backgroundColor="elevation-overlay"
-        attributes={{ type: 'button', onClick: onToggle }}
-      >
-        <Text
-          as="span"
-          variant="caption-1"
-          weight="bold"
-          color="neutral-faded"
-          className="pv-section-label"
+      {/* `Actionable` replaces the hand-reset `as="button"` `View` — its own
+          native-button reset (border/padding/background/cursor/text-align)
+          covers everything `.pv-section-header` used to, so none of that CSS
+          survives. `fullWidth` matches the old explicit `width: 100%`. */}
+      <Actionable onClick={onToggle} fullWidth>
+        <View
+          direction="row"
+          align="center"
+          gap={2}
+          paddingTop={3}
+          paddingBottom={2}
+          paddingInline={2}
+          position="sticky"
+          insetTop={0}
+          zIndex={2}
+          backgroundColor="elevation-overlay"
         >
-          {CATEGORY_TITLES[category].toUpperCase()}
-        </Text>
-        <Badge variant="faded" color="neutral" size="small" rounded>
-          {items.length}
-        </Badge>
-        <View.Item grow>
-          <Divider />
-        </View.Item>
-        <View className="pv-section-chevron">
+          <Text
+            as="span"
+            variant="caption-1"
+            weight="bold"
+            color="neutral-faded"
+            // No `Text` prop reaches `letter-spacing`.
+            attributes={{ style: { letterSpacing: '0.09em' } }}
+          >
+            {CATEGORY_TITLES[category].toUpperCase()}
+          </Text>
+          <Badge variant="faded" color="neutral" size="small" rounded>
+            {items.length}
+          </Badge>
+          <View.Item grow>
+            <Divider />
+          </View.Item>
           <Icon svg={open ? ChevronDown : ChevronRight} size={14} color="neutral-faded" />
         </View>
-      </View>
+      </Actionable>
 
       {open && (
         <View direction="column" gap={2}>

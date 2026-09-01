@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Loader, ScrollArea, Text, View, useHotkeys } from 'reshaped/bundle'
+import { Badge, Loader, ScrollArea, Text, View, useHotkeys } from 'reshaped/bundle'
 import { VISIBLE_CATEGORIES, type Category, type ClassifiedPullRequest } from '@shared/types'
 import EmptyState from './components/EmptyState'
 import Header from './components/Header'
@@ -274,34 +274,35 @@ export default function App(): React.JSX.Element {
           borderTop
           backgroundColor="elevation-base"
         >
+          {/* Keycaps are `Badge`s now — small pills, per the owner's call. */}
           <View direction="row" align="center" gap={1}>
-            <Text as="span" variant="caption-1" weight="semibold" className="pv-keycap">
+            <Badge variant="faded" color="neutral" size="small">
               ↑↓
-            </Text>
+            </Badge>
             <Text as="span" variant="caption-1" color="neutral-faded">
               Move
             </Text>
           </View>
           <View direction="row" align="center" gap={1}>
-            <Text as="span" variant="caption-1" weight="semibold" className="pv-keycap">
+            <Badge variant="faded" color="neutral" size="small">
               ⏎
-            </Text>
+            </Badge>
             <Text as="span" variant="caption-1" color="neutral-faded">
               Review
             </Text>
           </View>
           <View direction="row" align="center" gap={1}>
-            <Text as="span" variant="caption-1" weight="semibold" className="pv-keycap">
+            <Badge variant="faded" color="neutral" size="small">
               S
-            </Text>
+            </Badge>
             <Text as="span" variant="caption-1" color="neutral-faded">
               Snooze
             </Text>
           </View>
           <View direction="row" align="center" gap={1}>
-            <Text as="span" variant="caption-1" weight="semibold" className="pv-keycap">
+            <Badge variant="faded" color="neutral" size="small">
               R
-            </Text>
+            </Badge>
             <Text as="span" variant="caption-1" color="neutral-faded">
               Refresh
             </Text>

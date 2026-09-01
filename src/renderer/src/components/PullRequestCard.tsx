@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { Avatar, Badge, Button, Text, View } from 'reshaped/bundle'
+import { Avatar, Badge, Button, Card, Text, View } from 'reshaped/bundle'
 import type { DropdownMenuInstance } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { ClassifiedPullRequest } from '@shared/types'
@@ -59,83 +59,74 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
     void window.api.openPr(pr.url)
   }
 
-  // `Card`'s `selected` state renders a 2px inset box-shadow ring with no
-  // background tint, and its `onClick` prop marks it "actionable" which adds
-  // an unconditional hover background tint with no prop to turn off — the
-  // design has neither (only this hover/select-driven ring, no tint), so the
-  // card stays a plain `View`, not a `Card`. It also stays a `div` rather
-  // than a `button` (`as="button"`, which `onClick`-handled Views elsewhere
-  // in this file use): it contains the Review and snooze/unsnooze buttons,
-  // and a `<button>` nested inside another `<button>` is invalid HTML —
-  // browsers silently restructure the DOM around it, breaking the inner
-  // buttons' clicks. That's exactly how the original plain div with class
-  // "pv-card" avoided the problem too.
+  // `Card` is used with its own `onClick` (not `attributes.onClick`, which
+  // Card's non-actionable render path clobbers with its own undefined
+  // `onClick` prop — checked in Card.js). With the default `as` ("div"),
+  // `onClick` routes through `Actionable`, which only renders a literal
+  // `<button>` when `as` is left undefined; Card always passes an explicit
+  // `as` down, so this renders a div with `role="button"` instead — safe to
+  // nest the Review/snooze `Button`s inside. `selected` drives the ring
+  // Reshaped ships (an inset primary-blue box-shadow, not this app's purple,
+  // and not the old bespoke ring) and the actionable hover tint is whatever
+  // Card gives for free — both accepted per the owner's call.
   return (
-    <View
-      className="pv-card"
+    <Card
       direction="row"
       align="start"
       gap={3}
-      position="relative"
-      borderRadius="large"
-      border
-      borderColor="neutral-faded"
-      backgroundColor="elevation-raised"
-      paddingBlock={3}
-      paddingInline={3}
+      padding={3}
+      raised
+      selected={isActive}
+      onClick={() => onSelect(pr.id)}
       attributes={{
-        ref: cardRef,
-        onClick: () => onSelect(pr.id),
+        // `Card`'s `attributes.ref` type is intersected from both a plain
+        // `<div>`'s ref and `Actionable`'s button-shaped `AttributesRef` —
+        // two mutually exclusive element types no single ref value can ever
+        // satisfy (see Card.types.d.ts / Actionable.types.d.ts). The element
+        // really is a div (see the comment above), so this is a type-level
+        // cast only; `cardRef.current` stays an `HTMLDivElement`.
+        ref: cardRef as unknown as never,
         onMouseEnter: () => onHover(pr.id),
         onMouseLeave: () => onHover(null),
       }}
     >
-      {/* The selection ring: driven by React state (`isActive`), not
-          `:hover`/`:focus`, and tinted with the accent purple the header
-          count and PR number use — not `borderColor="primary"` (Reshaped's
-          blue), which is a different color entirely, not a near-miss of it. */}
-      <View
-        className={`pv-card-ring${isActive ? ' pv-card-ring--active' : ''}`}
-        position="absolute"
-        inset={0}
-        borderRadius="large"
-        border
-      />
-
       <Avatar
-        className="pv-avatar"
         src={pr.authorAvatarUrl !== '' ? pr.authorAvatarUrl : undefined}
         initials={initialsOf(pr.authorLogin)}
         size={8}
         variant="faded"
         color="primary"
+        // No `Avatar` prop reaches `letter-spacing` (no Reshaped prop does).
+        attributes={{ style: { letterSpacing: '0.02em' } }}
       />
 
       <View.Item grow>
         <View direction="column" gap={1} minWidth={0}>
           <View direction="row" align="center" gap={1}>
-            <Text as="span" variant="caption-1" color="neutral-faded" className="pv-meta-repo">
-              {pr.repository}
-            </Text>
+            {/* Only this row's flexible element: `shrink`/`minWidth={0}`
+                override the `flex-shrink: 0` Reshaped's `View` already
+                applies to every item here once a sibling (the spacer below)
+                has `grow` — everything else in the row keeps that default. */}
+            <View shrink minWidth={0}>
+              <Text as="span" variant="caption-1" color="neutral-faded" maxLines={1}>
+                {pr.repository}
+              </Text>
+            </View>
             <Text
               as="span"
               variant="caption-1"
               weight="semibold"
               numeric
-              className="pv-meta-number"
+              // Custom accent purple — one of the three places the owner
+              // wants it kept (see pullover.css), not a Reshaped token.
+              attributes={{ style: { color: 'var(--pv-accent-text)' } }}
             >
               #{pr.number}
             </Text>
-            <Text as="span" variant="caption-1" color="neutral-faded" className="pv-meta-dot">
+            <Text as="span" variant="caption-1" color="neutral-faded">
               ·
             </Text>
-            <Text
-              as="span"
-              variant="caption-1"
-              color="neutral-faded"
-              numeric
-              className="pv-meta-age"
-            >
+            <Text as="span" variant="caption-1" color="neutral-faded" numeric>
               {formatAge(pr.updatedAt, now)}
             </Text>
             <View.Item grow />
@@ -146,81 +137,73 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
             )}
           </View>
 
-          <Text as="div" variant="body-2" weight="semibold" className="pv-title">
+          <Text as="div" variant="body-2" weight="semibold" maxLines={1}>
             {pr.title}
           </Text>
 
           <View direction="row" align="center" gap={2} minHeight={6}>
-            <Text as="span" variant="caption-1" weight="semibold" numeric>
-              <Text as="span" color="positive">
+            <View as="span" direction="row" gap={1}>
+              <Text as="span" variant="caption-1" weight="semibold" numeric color="positive">
                 +{pr.additions}
               </Text>
-              <Text as="span" color="critical" className="pv-diff-del">
+              <Text as="span" variant="caption-1" weight="semibold" numeric color="critical">
                 {'−'}
                 {pr.deletions}
               </Text>
-            </Text>
+            </View>
             {/*
-             * Stays a plain `View`/`Text` rather than a `Badge`: the row
-             * shrinks this pill and ellipsises its text rather than letting
-             * it push the Review/snooze buttons out of the row, which needs
-             * `min-width: 0` plus `white-space`/`text-overflow` on the
-             * element holding the text itself. `Badge` wraps its children in
-             * an internal `Text` inside a flex `.content` span that isn't
-             * reachable via `className`, so those three properties would
-             * land on `Badge`'s flex *root* instead — which clips the text
-             * abruptly with no "…" rather than ellipsising it, since
-             * `text-overflow` doesn't apply to a flex container's overflow.
-             * Everything else about it (color, background, radius, padding)
-             * is real tokens/props now, and the accent purple is dropped in
-             * favor of Reshaped's own `primary` per the same scoping as the
-             * avatar and Review button below.
+             * A `Badge` now, per the owner's call — its internal `Text` isn't
+             * reachable via `className`, so a long reason clips abruptly at
+             * `maxWidth` with no "…" rather than ellipsising. That's an
+             * accepted loss of detail, not a missing capability: the pill's
+             * color/background/radius/padding are all real tokens/props.
              */}
             {item.reason !== '' && (
-              <View
-                as="span"
-                className="pv-reason-pill"
-                backgroundColor="primary-faded"
-                borderRadius="circular"
-                paddingInline={2}
-                maxWidth="200px"
-              >
-                <Text as="span" variant="caption-1" color="primary">
+              <View maxWidth="200px" overflow="hidden" shrink minWidth={0}>
+                <Badge variant="faded" color="primary" size="small" rounded>
                   {item.reason}
-                </Text>
+                </Badge>
               </View>
             )}
 
             {/*
              * Always in the flow, revealed on hover. Rendering it conditionally
              * would reflow the row every time the pointer moves between cards.
+             * `gapBefore="auto"` pins it to the row's end (Reshaped's own
+             * `margin-inline-start: auto` mechanism, replacing the old
+             * hand-rolled one); visibility/opacity/transition have no
+             * Reshaped equivalent for "keep the layout space while hidden",
+             * so that part stays custom CSS.
              */}
-            <View
-              className={`pv-card-actions${isActive ? ' pv-card-actions--active' : ''}`}
-              direction="row"
-              align="center"
-              attributes={{ 'aria-hidden': !isActive }}
-            >
-              <SnoozeMenu
-                prId={pr.id}
-                isSnoozed={item.isSnoozed}
-                instanceRef={snoozeInstanceRef}
-                onSnoozed={() => onSnoozed(item)}
-              />
-              <Button
-                variant="solid"
-                color="primary"
-                size="small"
-                onClick={openPr}
-                attributes={{ title: 'Review — ⏎' }}
+            <View.Item gapBefore="auto">
+              <View
+                className={`pv-card-actions${isActive ? ' pv-card-actions--active' : ''}`}
+                direction="row"
+                align="center"
+                gap={2}
+                attributes={{ 'aria-hidden': !isActive }}
               >
-                Review
-              </Button>
-            </View>
+                <SnoozeMenu
+                  prId={pr.id}
+                  isSnoozed={item.isSnoozed}
+                  instanceRef={snoozeInstanceRef}
+                  onSnoozed={() => onSnoozed(item)}
+                />
+                <Button
+                  variant="solid"
+                  color="primary"
+                  size="small"
+                  onClick={openPr}
+                  attributes={{ title: 'Review — ⏎' }}
+                >
+                  Review
+                </Button>
+              </View>
+            </View.Item>
           </View>
         </View>
       </View.Item>
-    </View>
+    </Card>
   )
 })
 
