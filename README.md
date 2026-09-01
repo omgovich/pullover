@@ -78,15 +78,13 @@ The build isn't signed, so clear the quarantine flag before the first launch (se
 
 ## Releasing
 
-Releases are built by [release.yml](.github/workflows/release.yml). It needs the `PULLOVER_GITHUB_CLIENT_ID` repository variable (Settings → Secrets and variables → Actions → Variables) set to the client ID of the official Pullover OAuth App — it's baked into the binaries so they can sign in out of the box.
-
-To cut a release: bump `version` in `package.json`, commit, then
+Releases happen entirely in CI ([release.yml](.github/workflows/release.yml)): bump `version` in `package.json`, commit, then
 
 ```bash
 git tag v0.1.0 && git push origin main --tags
 ```
 
-CI builds arm64 and x64 dmgs and attaches them to a **draft** GitHub release — write the release notes and publish it.
+CI builds arm64 and x64 dmgs, attaches them to a draft GitHub release, then Claude writes the release notes from the commit log and publishes it. The workflow needs two pieces of repository configuration (Settings → Secrets and variables → Actions): the `PULLOVER_GITHUB_CLIENT_ID` **variable** — the client ID of the official Pullover OAuth App, baked into the binaries so they can sign in out of the box — and the `ANTHROPIC_API_KEY` **secret** for the release-notes step (without it the draft still gets built; publish it by hand).
 
 ## License
 

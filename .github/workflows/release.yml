@@ -1,14 +1,20 @@
 name: Release
 
-# Builds macOS dmgs and attaches them to a draft GitHub release.
-# Trigger: push a tag matching the version in package.json, e.g. `v0.1.0`.
+# The whole release happens in CI — locally you only push a tag:
+#   git tag v0.1.1 && git push origin v0.1.1
+# The `build` job builds unsigned arm64/x64 dmgs and attaches them to a
+# draft GitHub release (electron-builder's publisher, see the `publish`
+# section of electron-builder.yml). The `publish` job then runs Claude,
+# which writes user-facing release notes from the commit log, verifies the
+# assets, and publishes the draft.
 #
-# Needs one piece of repository configuration:
-#   Settings → Secrets and variables → Actions → Variables →
-#   PULLOVER_GITHUB_CLIENT_ID — the client ID of the official Pullover
-#   OAuth App (a Device Flow public client; the client ID is not a secret).
-#   It is baked into the build so released binaries can sign in out of
-#   the box.
+# Needs two pieces of repository configuration:
+#   Settings → Secrets and variables → Actions →
+#   - Variables → PULLOVER_GITHUB_CLIENT_ID — the client ID of the official
+#     Pullover OAuth App (a Device Flow public client; the client ID is not
+#     a secret). It is baked into the build so released binaries can sign
+#     in out of the box.
+#   - Secrets → ANTHROPIC_API_KEY — for the release-notes step.
 
 on:
   push:
@@ -18,7 +24,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,3 +56,45 @@ jobs:
         run: npx electron-builder --mac dmg --arm64 --x64 --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure ANTHROPIC_API_KEY is configured
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::Set the ANTHROPIC_API_KEY repository secret — the publish job uses Claude to write the release notes. The draft release with the dmgs is ready; you can also write notes and publish it by hand."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history + tags, for the changelog
+
+      - name: Write release notes and publish the draft
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: --allowedTools "Bash(git:*),Bash(gh release:*)"
+          prompt: |
+            Finish the Pullover release for tag ${{ github.ref_name }}.
+
+            The build job has already attached the dmgs to a DRAFT GitHub release for this tag. Your job:
+
+            1. Verify the draft holds both `Pullover-*-arm64.dmg` and `Pullover-*-x64.dmg`: `gh release view ${{ github.ref_name }}`. If either is missing, print what's wrong and exit with `exit 1` — do NOT publish a broken release.
+            2. Write user-facing release notes from the commits since the previous tag: find it with `git describe --tags --abbrev=0 ${{ github.ref_name }}^` (if the command fails, this is the first release — write a 2-3 sentence introduction of the app from README.md instead of a changelog). Notes style: a few short bullets under `## Features` and `## Fixes`, present tense, no commit hashes, skip internal refactors/CI/docs changes users can't feel; drop a heading with nothing under it.
+            3. Publish: write the notes to a file and run `gh release edit ${{ github.ref_name }} --notes-file <file> --draft=false`.
+
+      - name: Verify the release is published
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "$(gh release view '${{ github.ref_name }}' --repo '${{ github.repository }}' --json isDraft --jq .isDraft)" != "false" ]; then
+            echo "::error::The release is still a draft — Claude did not publish it. Check the step above; the dmgs are attached, so you can publish it by hand."
+            exit 1
+          fi
