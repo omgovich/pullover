@@ -1,33 +1,32 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader, ScrollArea, Text, View, useHotkeys } from 'reshaped/bundle'
-import { VISIBLE_CATEGORIES, type Category, type ClassifiedPullRequest } from '@shared/types'
+import { VISIBLE_CATEGORIES, type ClassifiedPullRequest } from '@shared/types'
 import EmptyState from './components/EmptyState'
 import Header from './components/Header'
 import InboxSection from './components/InboxSection'
-import type { PullRequestCardHandle } from './components/PullRequestCard'
 import SettingsPanel from './components/SettingsPanel'
 import SignIn from './components/SignIn'
-import Toast, { type ToastState } from './components/Toast'
+import Toast from './components/Toast'
 import { useScrollMemory } from './useScrollMemory'
+import { useSectionCollapse } from './useSectionCollapse'
+import { useSelection } from './useSelection'
 import { useSnapshot } from './useSnapshot'
-
-const TOAST_DURATION_MS = 4000
+import { useToast } from './useToast'
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 }
 
-// Hints-bar keycaps: a plain View instead of `Badge` — the design drops
-// their border in favor of a faint wash plus a custom text color, and
-// `Badge`'s only borderless variant swaps in a solid background instead.
+// Hints-bar keycaps: a plain View instead of `Badge` — `Badge`'s only
+// borderless variant swaps in a solid background instead of this faint wash.
 function KeyCap({ children }: { children: string }): React.JSX.Element {
   return (
     <View
       paddingBlock={0.25}
       paddingInline={1.25}
       borderRadius="small"
-      attributes={{ style: { background: '#ffffff14' } }}
+      attributes={{ style: { background: 'var(--pv-overlay)' } }}
     >
       <Text
         as="span"
@@ -47,13 +46,8 @@ export default function App(): React.JSX.Element {
   const [showSettings, setShowSettings] = useState(false)
   const [now, setNow] = useState(() => new Date().toISOString())
   const [refreshing, setRefreshing] = useState(false)
-  const [collapsed, setCollapsed] = useState<Set<Category>>(() => new Set(['waiting']))
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [toast, setToast] = useState<ToastState | null>(null)
-
-  const cardHandles = useRef(new Map<string, PullRequestCardHandle>())
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { collapsed, toggleCategory } = useSectionCollapse()
+  const { toast, showToast, undoToast } = useToast()
 
   // Keeps the relative ages honest without re-fetching anything.
   useEffect(() => {
@@ -70,47 +64,6 @@ export default function App(): React.JSX.Element {
     }
   }, [])
 
-  const registerCard = useCallback(
-    (prId: string, handle: PullRequestCardHandle | null): void => {
-      if (handle === null) cardHandles.current.delete(prId)
-      else cardHandles.current.set(prId, handle)
-    },
-    [],
-  )
-
-  const toggleCategory = useCallback((category: Category): void => {
-    setCollapsed((prev) => {
-      const next = new Set(prev)
-      if (next.has(category)) next.delete(category)
-      else next.add(category)
-      return next
-    })
-  }, [])
-
-  const showToast = useCallback((item: ClassifiedPullRequest): void => {
-    if (toastTimer.current !== null) clearTimeout(toastTimer.current)
-    setToast({ prId: item.pr.id, number: item.pr.number })
-    toastTimer.current = setTimeout(() => setToast(null), TOAST_DURATION_MS)
-  }, [])
-
-  const dismissToast = useCallback((): void => {
-    if (toastTimer.current !== null) clearTimeout(toastTimer.current)
-    setToast(null)
-  }, [])
-
-  const undoToast = useCallback((): void => {
-    if (toast === null) return
-    void window.api.unsnooze(toast.prId)
-    dismissToast()
-  }, [toast, dismissToast])
-
-  // Clears the toast timer on unmount so it never fires against a gone component.
-  useEffect(() => {
-    return () => {
-      if (toastTimer.current !== null) clearTimeout(toastTimer.current)
-    }
-  }, [])
-
   // The order the keyboard cursor travels: visual order, skipping collapsed sections.
   const visibleItems = useMemo(() => {
     const result: ClassifiedPullRequest[] = []
@@ -123,65 +76,13 @@ export default function App(): React.JSX.Element {
     return result
   }, [snapshot.items, collapsed])
 
-  const moveSelection = useCallback(
-    (delta: 1 | -1): void => {
-      if (visibleItems.length === 0) return
-      const currentIndex = visibleItems.findIndex((item) => item.pr.id === selectedId)
-      const nextIndex =
-        currentIndex === -1
-          ? delta === 1
-            ? 0
-            : visibleItems.length - 1
-          : (currentIndex + delta + visibleItems.length) % visibleItems.length
-      const nextId = visibleItems[nextIndex].pr.id
-      setSelectedId(nextId)
-      setHoveredId(null)
-    },
-    [visibleItems, selectedId],
-  )
+  const { activeId, selectedId, setHoveredId, setSelectedId, moveSelection, registerCard } =
+    useSelection(visibleItems)
 
-  // Selects the first visible card as soon as there's something to select —
-  // this is what puts focus on a card the moment the popup opens (see the
-  // effect below), rather than leaving it on the header's refresh button.
-  useEffect(() => {
-    if (selectedId === null && visibleItems.length > 0) {
-      setSelectedId(visibleItems[0].pr.id)
-    }
-  }, [visibleItems, selectedId])
-
-  // Keeps real DOM focus in lockstep with `selectedId`, whatever moved it
-  // (arrow keys, a click, or the auto-select above) — the highlight and the
-  // focus ring must always land on the same card. `scrollIntoView` moves
-  // here too, alongside `focus()`, so both fire together off the one source
-  // of truth instead of being duplicated at every call site that can change
-  // the selection.
-  useEffect(() => {
-    if (selectedId === null) return
-    const handle = cardHandles.current.get(selectedId)
-    handle?.element?.scrollIntoView({ block: 'nearest' })
-    handle?.focus()
-  }, [selectedId])
-
-  // The popup hides rather than unmounts, so when it's shown again the
-  // window regains focus but the DOM's own focus state was never touched —
-  // it's still sitting on whatever had it when the window lost focus, which
-  // the browser doesn't restore visibly on its own. Re-focus the selected
-  // card explicitly.
-  useEffect(() => {
-    const handleWindowFocus = (): void => {
-      if (selectedId === null) return
-      cardHandles.current.get(selectedId)?.focus()
-    }
-    window.addEventListener('focus', handleWindowFocus)
-    return () => window.removeEventListener('focus', handleWindowFocus)
-  }, [selectedId])
-
-  // `useHotkeys` (from `reshaped/bundle`) replaces the manual `window`
-  // keydown listener. It has no built-in "ignore while typing" guard, so
-  // that check moves inside each callback instead — same effect, since the
-  // callback still receives the raw `KeyboardEvent`. It's split into two
-  // calls rather than one because `preventDefault` applies to every key in
-  // a single `useHotkeys` call: only the arrow keys need it (so they don't
+  // `useHotkeys` (from `reshaped/bundle`) has no built-in "ignore while
+  // typing" guard, so that check moves inside each callback instead. It's
+  // split into two calls because `preventDefault` applies to every key in a
+  // single `useHotkeys` call: only the arrow keys need it (so they don't
   // scroll anything natively), while Enter/S/R must not risk swallowing a
   // keystroke a future text field might want.
   useHotkeys(
@@ -232,7 +133,6 @@ export default function App(): React.JSX.Element {
     { disabled: showSettings },
   )
 
-  const activeId = hoveredId ?? selectedId
   const showEmptyState = snapshot.attentionCount === 0
 
   // `App` always renders the one `.pv-shell` card (see pullover.css); only

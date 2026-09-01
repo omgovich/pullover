@@ -15,10 +15,7 @@ export default function EmptyState({ isError }: Props): React.JSX.Element {
       paddingBottom={15}
       paddingInline={6}
     >
-      {/* No `Icon` color token is this exact green — same hex the "Ready to
-          merge"/"CI green" status pills use elsewhere, kept literal so all
-          three read as the same color. */}
-      <Icon svg={Check} size="28px" attributes={{ style: { color: '#18ab66' } }} />
+      <Icon svg={Check} size="28px" attributes={{ style: { color: 'var(--pv-green)' } }} />
 
       <View.Item gapBefore={3.5}>
         <Text as="div" variant="body-2" weight="semibold" color="neutral">

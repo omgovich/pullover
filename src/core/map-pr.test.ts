@@ -42,8 +42,8 @@ describe('mapCiStatus', () => {
 
 describe('mapPullRequest', () => {
   it('copies the scalar fields and attaches the buckets', () => {
-    // isDraft is flipped to true here (the factory default is false) so a mutant
-    // that hardcodes the field instead of reading it can't hide behind the default.
+    // isDraft: true (factory default is false) so a mutant that hardcodes the
+    // field can't hide behind the default.
     const pr = mapPullRequest(node({ isDraft: true }), ['review-requested'], 'vlad')
     expect(pr.id).toBe('PR_1')
     expect(pr.number).toBe(7)
@@ -79,8 +79,7 @@ describe('mapPullRequest', () => {
       [],
       'vlad',
     )
-    // bodyText is now part of the mapped Review contract (Finding 1: reviews
-    // are scanned for mentions too), defaulting to '' when the source omits it.
+    // bodyText defaults to '' when the source omits it.
     expect(pr.reviews).toEqual([
       { authorLogin: 'bob', state: 'APPROVED', submittedAt: '2026-08-02T10:00:00Z', bodyText: '' },
     ])
@@ -288,11 +287,8 @@ describe('mapPullRequest', () => {
 
   describe('lastMentionAt', () => {
     it('picks the newest mention across conversation comments, thread comments and the PR body', () => {
-      // The conversation comment is deliberately the newest of the three
-      // sources (not the thread comment) so this test actually exercises the
-      // conversation-comments source: a mutant that dropped it from the scan
-      // used to slip through here because removing the middle-aged timestamp
-      // didn't change which source held the maximum.
+      // The conversation comment is deliberately the newest source, so a
+      // mutant that dropped it from the scan would still fail this test.
       const pr = mapPullRequest(
         node({
           bodyText: 'cc @vlad for visibility',
@@ -501,9 +497,8 @@ describe('mentionsUser', () => {
   })
 
   it('does not match a different, hyphen-suffixed login sharing the same prefix', () => {
-    // GitHub logins are letters, digits and hyphens, so `-` is a login-legal
-    // character. A plain `\b` boundary treats it as a break (since `-` is not
-    // a word character) and would wrongly match these unrelated accounts.
+    // `-` is login-legal but not a word character, so a plain `\b` boundary
+    // would wrongly match these unrelated accounts.
     expect(mentionsUser('cc @vlad-2 for review', 'vlad')).toBe(false)
     expect(mentionsUser('ping @vlad-bot please', 'vlad')).toBe(false)
   })

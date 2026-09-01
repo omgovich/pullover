@@ -18,18 +18,14 @@ const OPTIONS: Array<{ label: string; type: SnoozeType; hours?: number; icon: Re
   { label: 'Until tomorrow', type: 'until-time', hours: 24, icon: Clock },
 ]
 
-// The labelled pill's box: none of `Button`'s size steps land on a 21px-tall,
-// fully-rounded pill with this background wash, so it's set directly here.
-// The hover shift the design also specifies (brighter background and text)
-// isn't reachable the same way without fighting `Button`'s own cascade with
-// custom CSS — this keeps its default ghost/neutral hover wash instead,
-// per the project's rule that a small visual mismatch beats that.
+// None of `Button`'s size steps land on this 21px-tall, fully-rounded pill,
+// so it's set directly here.
 const pillStyle = {
   height: '21px',
   minHeight: '21px',
   padding: '0 9px',
   borderRadius: '9999px',
-  backgroundColor: '#ffffff14',
+  backgroundColor: 'var(--pv-overlay)',
   color: 'var(--rs-color-foreground-neutral-faded)',
   fontSize: '11px',
   fontWeight: 600,

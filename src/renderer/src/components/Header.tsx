@@ -27,15 +27,8 @@ function statusText(snapshot: InboxSnapshot, now: string): string {
   return `${snapshot.errorMessage} · last updated ${formatAge(snapshot.lastUpdatedAt, now)}`
 }
 
-// Button's size steps don't land on 32×32 with a 9px radius (small is closer
-// to 28px, per the old design; medium overshoots to 36px), so the box itself
-// is set directly via `attributes.style` rather than through `size`. The
-// hover color/background shift the design also calls for isn't reachable the
-// same way — `--rs-button-color` isn't hover-conditional, and Button's own
-// cascade out-specifies a plain external class — so this keeps Button's
-// ghost/neutral defaults (transparent at rest, its own faint hover wash)
-// rather than fight that with custom CSS, per the project's own rule that a
-// visual mismatch is preferable to writing it.
+// Button's size steps don't land on 32×32 with a 9px radius, so the box
+// itself is set directly via `attributes.style` rather than through `size`.
 const iconButtonStyle = {
   width: '32px',
   height: '32px',
@@ -67,11 +60,9 @@ export default function Header({
     >
       <View direction="row" align="center" gap={2.5} minWidth={0}>
         {snapshot.attentionCount > 0 && (
-          // Neutral text on a faint white wash — no longer accent-colored.
           // A plain View instead of `Badge`: `Badge`'s own `Text` is fixed at
-          // weight="medium" with no tabular-nums, but this count changes and
-          // the design calls for weight 700 and tabular figures, so it stays
-          // custom.
+          // weight="medium" with no tabular-nums, but this count needs bold
+          // tabular figures.
           <View
             minWidth="26px"
             height={6}
@@ -79,7 +70,7 @@ export default function Header({
             align="center"
             justify="center"
             borderRadius="medium"
-            attributes={{ style: { background: '#ffffff12' } }}
+            attributes={{ style: { background: 'var(--pv-overlay-weak)' } }}
           >
             <Text as="span" variant="caption-1" weight="bold" numeric color="neutral-faded">
               {snapshot.attentionCount}

@@ -24,9 +24,8 @@ describe('DETAILS_QUERY', () => {
   })
 
   it('still paginates the PR-level conversation comments from the newest end', () => {
-    // This one was already correct before the fix and must stay that way.
-    const occurrences = DETAILS_QUERY.split('comments(last: 50)').length - 1
     // Once nested inside reviewThreads, once at the PR level.
+    const occurrences = DETAILS_QUERY.split('comments(last: 50)').length - 1
     expect(occurrences).toBe(2)
   })
 })
