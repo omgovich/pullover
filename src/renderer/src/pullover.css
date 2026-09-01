@@ -1,13 +1,21 @@
 /*
  * Pullover's redesigned inbox screen.
  *
- * Reshaped's slate theme still supplies every `--rs-color-*` token used
- * below. The app also needs a small accent palette the theme doesn't have
- * (the design's purple, not slate's blue primary) — defined once here rather
- * than repeated as hex codes across components.
+ * Rebuilt on Reshaped's components (View, Text, Icon, Divider, ScrollArea,
+ * Avatar, DropdownMenu) — this file now holds only what Reshaped's props
+ * cannot express: exact pixel values with no matching token, colors outside
+ * the theme, and a handful of structural declarations no prop reaches.
+ * Every rule below carries a comment saying which prop was considered and
+ * why it falls short.
  */
 
 :root {
+  /*
+   * The design's purple accent plus status colors. The slate theme's own
+   * `primary` token is blue, and there's no `color`/`backgroundColor` prop
+   * value for an arbitrary hex, so these stay custom properties rather than
+   * theme tokens, referenced directly where needed below.
+   */
   --pv-accent: #5a58f2;
   --pv-accent-hover: #4f4cf0;
   --pv-accent-border: #6d6bf4;
@@ -50,78 +58,48 @@ body {
 }
 
 /*
- * Fills the window and reserves the transparent padding the shell's drop
- * shadow renders into — scoped to this wrapper (rather than the shell
- * itself, or #root) so a click landing in the padding has an element of its
- * own to dismiss the popup from (see App.tsx), distinct from the shell that
- * must never dismiss on click.
+ * Reserves the transparent padding the shell's drop shadow renders into.
+ * Driven entirely by the `--pv-window-padding-*` custom properties above
+ * (themselves driven by src/shared/geometry.ts) — the `padding` prop only
+ * takes a literal number (multiplied by the 4px unit) or nothing, never a
+ * `var()`, so this can't move to a prop.
  */
 .pv-window-padding {
-  height: 100%;
-  box-sizing: border-box;
   padding: var(--pv-window-padding-top) var(--pv-window-padding-right)
     var(--pv-window-padding-bottom) var(--pv-window-padding-left);
 }
 
 /*
- * The one floating card every screen renders into — sign-in, loading,
- * settings, and the inbox all share these visual values so the window's
- * silhouette never changes between states. Only the contents differ: the
- * inbox uses the header/scroll/hints layout below directly as children,
- * while the other screens wrap a single full-height child in `.pv-shell-fill`.
+ * The one floating card every screen renders into (see App.tsx). Width,
+ * height, flex layout, background and overflow are all View props now;
+ * what's left is `borderRadius` (14px has no step — `large` is 10px, and
+ * 14px is a named fidelity exception), a literal translucent-white border
+ * with no matching `borderColor` token, and a two-layer shadow with no
+ * `shadow` token close to it.
  */
 .pv-shell {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 452px;
-  height: 620px;
-  border-radius: 14px;
-  background: var(--rs-color-background-elevation-overlay);
   border: 1px solid #ffffff1f;
+  border-radius: 14px;
   box-shadow:
     0 28px 64px rgba(0, 0, 0, 0.62),
     0 6px 16px rgba(0, 0, 0, 0.45);
-  overflow: hidden;
-  font-family: var(--rs-font-family-body);
-  color: var(--rs-color-foreground-neutral);
-}
-
-/*
- * Wraps a single full-height screen (sign-in, loading, settings) so it fills
- * whatever the header/scroll/hints trio would otherwise occupy. `min-height:
- * 0` overrides the flex item's automatic minimum size so the wrapped screen
- * is actually constrained to the shell's remaining height (and can scroll
- * internally, as settings does) rather than stretching the shell to fit its
- * content.
- */
-.pv-shell-fill {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
 }
 
 /* Header */
 
+/* 10/12/10/14px — a mix of multiples and non-multiples of 4, so the whole
+   shorthand stays literal rather than splitting across paddingTop/paddingEnd/
+   paddingBottom/paddingStart props for a partial win. */
 .pv-header {
-  flex-shrink: 0;
   padding: 10px 12px 10px 14px;
-  border-bottom: 1px solid var(--rs-color-border-neutral);
-  background: var(--rs-color-background-elevation-raised);
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
 }
 
 .pv-header-left {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
+  gap: 7px; /* not a multiple of 4 */
   min-width: 0;
 }
 
+/* 19px — between `featured-6` (18px) and `featured-5` (20px); no token. */
 .pv-header-count {
   font-size: 19px;
   line-height: 24px;
@@ -130,18 +108,10 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.pv-header-label {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 600;
-  color: var(--rs-color-foreground-neutral);
-}
-
+/* 11px — no token between caption-1 (12px) and caption-2 (10px); the same
+   gap applies throughout this file wherever this comment is referenced. */
 .pv-header-status {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--rs-color-foreground-neutral-faded);
+  gap: 5px; /* not a multiple of 4 */
   font-size: 11px;
   line-height: 16px;
   white-space: nowrap;
@@ -150,7 +120,6 @@ body {
 .pv-dot {
   width: 5px;
   height: 5px;
-  border-radius: 9999px;
   background: var(--pv-positive);
   flex-shrink: 0;
 }
@@ -160,12 +129,22 @@ body {
 }
 
 .pv-header-actions {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  gap: 6px; /* not a multiple of 4 */
 }
 
+/*
+ * The header's icon buttons stay native `<button>`s rather than `Button`:
+ * `Button`'s hover/press feedback is painted by an internal overlay element
+ * (not reachable through `className`) whose color comes from a
+ * `--rs-button-highlight-color` set per variant/color combination — none of
+ * which reproduces this exact transparent-at-rest, `#ffffff14`-on-hover,
+ * accent-tinted-when-busy treatment. `variant="outline"` also resolves to a
+ * real background (`--rs-color-background-elevation-base`, oklch 0.2)
+ * instead of transparent, which would paint a visible rectangle over the
+ * header's own `elevation-raised` background (oklch 0.22). Radius 8px is
+ * also a named fidelity exception (`large`/`medium`/`small` are
+ * 10px/6px/4px).
+ */
 .pv-icon-btn {
   width: 28px;
   height: 28px;
@@ -207,58 +186,50 @@ body {
 
 /* Scroll area */
 
+/*
+ * `ScrollArea` (App.tsx) has no `grow` prop, so making it fill the rest of
+ * `.pv-shell`'s column — instead of sizing to content — still needs a
+ * literal flex declaration, the same `min-height: 0` override used
+ * everywhere else in this file that wraps a scrollable region.
+ */
 .pv-scroll {
   flex: 1 1 auto;
   min-height: 0;
-  max-height: 560px;
-  overflow-y: auto;
+}
+
+/* 0/10/12px — 10px isn't a multiple of 4, so the shorthand stays literal.
+   Applied via `ScrollArea`'s `scrollableClassName`, since this padding
+   belongs on the scrolled content, not the scroll container. */
+.pv-scroll-content {
   padding: 0 10px 12px;
-}
-
-.pv-scroll::-webkit-scrollbar {
-  width: 10px;
-}
-
-.pv-scroll::-webkit-scrollbar-thumb {
-  background: #ffffff1f;
-  border-radius: 9999px;
-  border: 3px solid transparent;
-  background-clip: content-box;
-}
-
-.pv-scroll::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 /* Section header */
 
+/* 12/6/8px — 6px isn't a multiple of 4. */
 .pv-section-header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
   padding: 12px 6px 8px;
-  background: var(--rs-color-background-elevation-overlay);
   border: none;
   cursor: pointer;
   text-align: left;
   font: inherit;
   color: inherit;
+  /* `ScrollArea`'s content wrapper is `display: inline-block`, not flex, so
+     this `<button>` needs an explicit full-width rather than the "children
+     stretch to fill" behavior a flex column gives block children for free. */
+  width: 100%;
 }
 
 .pv-section-label {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 11px; /* no token; see .pv-header-status */
   line-height: 16px;
-  font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--rs-color-foreground-neutral-faded);
 }
 
+/* 1/6px padding and the #ffffff14 background have no token; 11px type as
+   above. */
 .pv-section-count {
   flex-shrink: 0;
   min-width: 20px;
@@ -268,52 +239,43 @@ body {
   background: #ffffff14;
   border: 1px solid var(--rs-color-border-neutral-faded);
   font-size: 11px;
-  font-weight: 600;
-  color: var(--rs-color-foreground-neutral-faded);
   font-variant-numeric: tabular-nums;
-}
-
-.pv-section-rule {
-  flex: 1;
-  height: 1px;
-  background: var(--rs-color-border-neutral-faded);
 }
 
 .pv-section-chevron {
   flex-shrink: 0;
   display: flex;
-  color: var(--rs-color-foreground-neutral-faded);
 }
 
 /* Card list */
 
 .pv-card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  gap: 6px; /* not a multiple of 4 */
 }
 
+/*
+ * The pull request card stays a plain `View` (a `div`, clickable via
+ * `onClick`) rather than `Card`: `Card`'s `selected` state renders a 2px
+ * inset box-shadow ring with no background tint (the design wants a 1px
+ * border plus a `#5a58f21f` tint), and its `onClick` prop marks it
+ * "actionable", which adds an unconditional hover background tint with no
+ * prop to turn it off — the design has no such hover tint at all, only the
+ * ring below, driven by React state (`isActive`). It also isn't `as="button"`
+ * like the section header above: it contains the Review and snooze/unsnooze
+ * buttons, and a `<button>` nested inside another `<button>` is invalid
+ * HTML. 11px padding and the 10px row gap (avatar to body) are
+ * non-multiples of 4; `cursor` is the one piece of native-button reset a
+ * clickable `div` still needs (unlike a `<button>`, its default cursor
+ * isn't already a pointer).
+ */
 .pv-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: 30px 1fr;
   gap: 10px;
   padding: 11px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--rs-color-border-neutral-faded);
-  background: var(--rs-color-background-elevation-raised);
   cursor: pointer;
-  text-align: left;
-  font: inherit;
-  color: inherit;
 }
 
 .pv-card-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 10px;
-  border: 1px solid var(--rs-color-border-primary);
-  background: #5a58f21f;
+  background: #5a58f21f; /* no token */
   pointer-events: none;
   opacity: 0;
   transition: opacity 160ms var(--rs-easing-standard);
@@ -323,39 +285,35 @@ body {
   opacity: 1;
 }
 
+/*
+ * `Avatar`'s `size` prop is a 4px-multiplier only (unlike `width`/`height`,
+ * it has no literal-pixel option) — `size={8}` is 32px, one step short of
+ * the design's 30px, so the box is forced to the exact value here.
+ * Reshaped's own width/height mixins use `!important` for the same reason
+ * (see node_modules/reshaped/dist/styles/resolvers/width/width.module.css),
+ * so matching it is the only way to reliably win the cascade. The fallback
+ * (no `src`) initials' background/color are the custom accent palette, and
+ * its font-size (Avatar computes it as `height / 3`, ~10.7px at this size)
+ * and letter-spacing are also literal, not tokens.
+ */
 .pv-avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 9999px;
-  object-fit: cover;
-  display: block;
-}
-
-.pv-avatar-fallback {
-  width: 30px;
-  height: 30px;
-  border-radius: 9999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 30px !important;
+  height: 30px !important;
+  background: var(--pv-accent-bg);
+  color: var(--pv-accent-text);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  background: var(--pv-accent-bg);
-  color: var(--pv-accent-text);
 }
 
 .pv-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  gap: 5px; /* not a multiple of 4 */
   min-width: 0;
 }
 
+/* 11px type throughout this row; see .pv-header-status. Color is set once
+   here rather than per span, and inherited by the plain `Text`s inside. */
 .pv-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
   font-size: 11px;
   line-height: 16px;
   color: var(--rs-color-foreground-neutral-faded);
@@ -372,8 +330,7 @@ body {
 
 .pv-meta-number {
   flex-shrink: 0;
-  color: var(--pv-accent-text);
-  font-weight: 600;
+  color: var(--pv-accent-text); /* custom accent, not a token */
 }
 
 .pv-meta-dot {
@@ -385,19 +342,23 @@ body {
   flex-shrink: 0;
 }
 
-.pv-meta-spacer {
-  flex: 1;
-}
-
+/*
+ * The CI pill's nine colors (three states × text/background/border) are
+ * custom, not theme tokens — kept as custom properties, set inline per card
+ * from PullRequestCard.tsx's `CI_LABELS` and read here, rather than
+ * hardcoding three copies of this rule. 1/5/7px padding has no token; the
+ * 10px label text is `Text variant="caption-2"` instead (a real token, see
+ * PullRequestCard.tsx) rather than `Badge`, which would render this text —
+ * `Badge` hardcodes its text to `caption-1` (12px) with no override, and
+ * neither `caption-1` nor `caption-2` is both this pill's and the
+ * section-count pill's 11px, so `Badge` isn't used for either (see report).
+ */
 .pv-ci-pill {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
   gap: 5px;
   padding: 1px 7px 1px 5px;
-  border-radius: 9999px;
-  font-size: 10px;
-  font-weight: 600;
+  color: var(--pv-ci-text);
+  background: var(--pv-ci-bg);
+  border: 1px solid var(--pv-ci-border);
 }
 
 .pv-ci-dot {
@@ -409,25 +370,13 @@ body {
 }
 
 .pv-title {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 600;
-  color: var(--rs-color-foreground-neutral);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.pv-footer-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 24px;
-}
-
 .pv-diff {
-  flex-shrink: 0;
-  font-size: 11px;
+  font-size: 11px; /* no token; see .pv-header-status */
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -441,6 +390,7 @@ body {
   color: var(--pv-negative);
 }
 
+/* 200px max-width and 1/7px padding have no tokens; 11px type as above. */
 .pv-reason-pill {
   /* Shrinks and ellipsises rather than pushing the actions out of the row. */
   min-width: 0;
@@ -450,8 +400,6 @@ body {
   background: var(--pv-accent-bg);
   color: var(--pv-accent-text);
   font-size: 11px;
-  line-height: 16px;
-  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -459,15 +407,13 @@ body {
 
 .pv-card-actions {
   /*
-   * A flex child of the footer row rather than absolutely positioned: anchored
-   * to the card's corner it ignored the card's padding and collided with the
-   * text beside it. `margin-left:auto` pins it right, and it keeps its space
-   * while hidden so revealing it never reflows the row.
+   * A flex child of the footer row rather than absolutely positioned:
+   * anchored to the card's corner it ignored the card's padding and
+   * collided with the text beside it. `margin-left:auto` pins it right, and
+   * it keeps its space while hidden so revealing it never reflows the row.
+   * 6px gap isn't a multiple of 4.
    */
   margin-left: auto;
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
   gap: 6px;
   visibility: hidden;
   opacity: 0;
@@ -479,6 +425,12 @@ body {
   opacity: 1;
 }
 
+/*
+ * Same reasoning as `.pv-icon-btn`: no `Button` variant reproduces this
+ * exact resting/hover palette, and its hover overlay isn't reachable via
+ * `className`. 26×24px is literal; radius 6px does match `medium`, but
+ * stays with the rest of this bespoke rule rather than splitting it.
+ */
 .pv-snooze-btn {
   width: 26px;
   height: 24px;
@@ -505,7 +457,7 @@ body {
   border: 1px solid var(--pv-accent-border);
   background: var(--pv-accent);
   color: #fff;
-  font-size: 11px;
+  font-size: 11px; /* no token; see .pv-header-status */
   font-weight: 600;
   box-shadow: var(--rs-shadow-raised);
   cursor: pointer;
@@ -517,48 +469,33 @@ body {
 
 /* Hints bar */
 
+/* 8/14px — 14px isn't a multiple of 4. */
 .pv-hints {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
   padding: 8px 14px;
-  border-top: 1px solid var(--rs-color-border-neutral-faded);
-  background: var(--rs-color-background-elevation-base);
-  font-size: 11px;
+  font-size: 11px; /* no token; see .pv-header-status */
   line-height: 16px;
-  color: var(--rs-color-foreground-neutral-faded);
 }
 
 .pv-hint {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+  gap: 5px; /* not a multiple of 4 */
 }
 
+/* 1/5px padding and 11px type have no tokens; radius 4px matches `small`
+   but stays with the rest of this bespoke rule rather than splitting it. */
 .pv-keycap {
   padding: 1px 5px;
   border-radius: 4px;
   background: #ffffff14;
   border: 1px solid var(--rs-color-border-neutral-faded);
+  font-size: 11px;
   font-weight: 600;
   color: #c0c6d6;
 }
 
 /* Empty state */
 
-.pv-empty {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 52px 24px 44px;
-  text-align: center;
-  overflow: hidden;
-}
-
+/* The masked radial-gradient dotted field has no Reshaped equivalent. */
 .pv-empty-dots {
-  position: absolute;
   top: 24px;
   left: 50%;
   transform: translateX(-50%);
@@ -572,53 +509,37 @@ body {
   pointer-events: none;
 }
 
+/* Background, ring box-shadow and icon color are the custom accent palette. */
 .pv-empty-badge {
-  position: relative;
-  width: 76px;
-  height: 76px;
-  border-radius: 9999px;
   background: var(--pv-accent-bg);
-  border: 1px solid var(--rs-color-border-primary-faded);
   box-shadow: 0 0 0 10px #5a58f20f;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: var(--pv-accent-text);
 }
 
 .pv-empty-heading {
-  position: relative;
   margin-top: 18px;
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 700;
-  color: var(--rs-color-foreground-neutral);
 }
 
+/* 13px — the empty-state subtitle; no token. `text-wrap: pretty` also has no
+   `Text` equivalent (`wrap` only offers `"balance"`, a different algorithm
+   that would change how these two sentences actually break). */
 .pv-empty-body {
-  position: relative;
   margin-top: 4px;
   max-width: 280px;
   font-size: 13px;
   line-height: 20px;
-  color: var(--rs-color-foreground-neutral-faded);
   text-wrap: pretty;
 }
 
 .pv-empty-stats {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   margin-top: 18px;
 }
 
+/* 4/10px padding and 11px type have no tokens; #ffffff0f background is
+   custom. */
 .pv-stat-pill {
-  display: flex;
-  align-items: center;
   gap: 5px;
   padding: 4px 10px;
-  border-radius: 9999px;
   font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -628,17 +549,18 @@ body {
 }
 
 .pv-empty-actions {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   margin-top: 22px;
 }
 
+/*
+ * Same reasoning as `.pv-icon-btn` — no `Button` variant reproduces this
+ * exact palette (a literal accent fill, and a literal `#ffffff14` ghost
+ * hover) without fighting an unreachable internal overlay element.
+ */
 .pv-btn {
   height: 32px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: 8px; /* named fidelity exception, see .pv-icon-btn */
   font-size: 12px;
   font-weight: 600;
   display: flex;
@@ -669,29 +591,24 @@ body {
 
 /* Toast */
 
+/* Anchored via left:50%/transform rather than a layout prop — `View` only
+   aligns within its parent's flex flow, it has no "float centered over the
+   shell, independent of surrounding content" primitive. 9/10/14px padding
+   has no token. */
 .pv-toast {
-  position: absolute;
   left: 50%;
   bottom: 52px;
   transform: translateX(-50%);
   z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 12px;
   padding: 9px 10px 9px 14px;
-  border-radius: 10px;
-  background: var(--rs-color-background-elevation-raised);
-  border: 1px solid var(--rs-color-border-neutral);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
   white-space: nowrap;
 }
 
-.pv-toast-text {
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--rs-color-foreground-neutral);
-}
-
+/*
+ * Same reasoning as `.pv-icon-btn` — the accent-tinted hover has no matching
+ * `Button` variant reachable from outside the component.
+ */
 .pv-toast-undo {
   height: 24px;
   padding: 0 9px;
@@ -699,7 +616,7 @@ body {
   border: 1px solid var(--rs-color-border-neutral);
   background: transparent;
   color: var(--pv-accent-text);
-  font-size: 11px;
+  font-size: 11px; /* no token; see .pv-header-status */
   font-weight: 700;
   cursor: pointer;
 }

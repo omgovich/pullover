@@ -1,4 +1,6 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
+import type { CSSProperties } from 'react'
+import { Avatar, Text, View } from 'reshaped/bundle'
 import type { DropdownMenuInstance } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { ClassifiedPullRequest } from '@shared/types'
@@ -55,70 +57,143 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
     void window.api.openPr(pr.url)
   }
 
+  // `Card`'s `selected` state renders a 2px inset box-shadow ring with no
+  // background tint, and its `onClick` prop marks it "actionable" which adds
+  // an unconditional hover background tint with no prop to turn off — the
+  // design has neither (only this hover/select-driven ring, no tint), so the
+  // card stays a plain `View`, not a `Card`. It also stays a `div` rather
+  // than a `button` (`as="button"`, which `onClick`-handled Views elsewhere
+  // in this file use): it contains the Review and snooze/unsnooze buttons,
+  // and a `<button>` nested inside another `<button>` is invalid HTML —
+  // browsers silently restructure the DOM around it, breaking the inner
+  // buttons' clicks. That's exactly how the original plain div with class
+  // "pv-card" avoided the problem too.
   return (
-    <div
-      ref={cardRef}
+    <View
       className="pv-card"
-      onClick={() => onSelect(pr.id)}
-      onMouseEnter={() => onHover(pr.id)}
-      onMouseLeave={() => onHover(null)}
+      direction="row"
+      align="start"
+      position="relative"
+      borderRadius="large"
+      border
+      borderColor="neutral-faded"
+      backgroundColor="elevation-raised"
+      attributes={{
+        ref: cardRef,
+        onClick: () => onSelect(pr.id),
+        onMouseEnter: () => onHover(pr.id),
+        onMouseLeave: () => onHover(null),
+      }}
     >
-      <div className={`pv-card-ring${isActive ? ' pv-card-ring--active' : ''}`} />
+      <View
+        className={`pv-card-ring${isActive ? ' pv-card-ring--active' : ''}`}
+        position="absolute"
+        inset={0}
+        borderRadius="large"
+        border
+        borderColor="primary"
+      />
 
-      {pr.authorAvatarUrl !== '' ? (
-        <img className="pv-avatar" src={pr.authorAvatarUrl} alt="" />
-      ) : (
-        <div className="pv-avatar-fallback">{initialsOf(pr.authorLogin)}</div>
-      )}
+      <Avatar
+        className="pv-avatar"
+        src={pr.authorAvatarUrl !== '' ? pr.authorAvatarUrl : undefined}
+        initials={initialsOf(pr.authorLogin)}
+        size={8}
+      />
 
-      <div className="pv-card-body">
-        <div className="pv-meta-row">
-          <span className="pv-meta-repo">{pr.repository}</span>
-          <span className="pv-meta-number">#{pr.number}</span>
-          <span className="pv-meta-dot">·</span>
-          <span className="pv-meta-age">{formatAge(pr.updatedAt, now)}</span>
-          <span className="pv-meta-spacer" />
-          {ci !== null && (
-            <span
-              className="pv-ci-pill"
-              style={{ color: ci.text, background: ci.bg, border: `1px solid ${ci.border}` }}
-            >
-              <span className="pv-ci-dot" />
-              {ci.label}
-            </span>
-          )}
-        </div>
+      <View.Item grow>
+        <View className="pv-card-body" direction="column">
+          {/* No `variant` on the children below: this row is 11px, between
+              caption-1 (12px) and caption-2 (10px) — the size comes from the
+              `.pv-meta-row` class instead. */}
+          <View className="pv-meta-row" direction="row" align="center" gap={1}>
+            <Text as="span" className="pv-meta-repo">
+              {pr.repository}
+            </Text>
+            <Text as="span" weight="semibold" className="pv-meta-number">
+              #{pr.number}
+            </Text>
+            <Text as="span" className="pv-meta-dot">
+              ·
+            </Text>
+            <Text as="span" className="pv-meta-age">
+              {formatAge(pr.updatedAt, now)}
+            </Text>
+            <View.Item grow />
+            {ci !== null && (
+              <View
+                className="pv-ci-pill"
+                direction="row"
+                align="center"
+                borderRadius="circular"
+                attributes={{
+                  style: {
+                    '--pv-ci-text': ci.text,
+                    '--pv-ci-bg': ci.bg,
+                    '--pv-ci-border': ci.border,
+                  } as CSSProperties,
+                }}
+              >
+                <span className="pv-ci-dot" />
+                <Text as="span" variant="caption-2" weight="semibold">
+                  {ci.label}
+                </Text>
+              </View>
+            )}
+          </View>
 
-        <div className="pv-title">{pr.title}</div>
+          <Text as="div" variant="body-2" weight="semibold" className="pv-title">
+            {pr.title}
+          </Text>
 
-        <div className="pv-footer-row">
-          <span className="pv-diff">
-            <span className="pv-diff-add">+{pr.additions}</span>
-            <span className="pv-diff-del">{'−'}{pr.deletions}</span>
-          </span>
-          {item.reason !== '' && <span className="pv-reason-pill">{item.reason}</span>}
-
-          {/*
-           * Always in the flow, revealed on hover. Rendering it conditionally
-           * would reflow the row every time the pointer moves between cards.
-           */}
-          <div
-            className={`pv-card-actions${isActive ? ' pv-card-actions--active' : ''}`}
-            aria-hidden={!isActive}
+          <View
+            className="pv-footer-row"
+            direction="row"
+            align="center"
+            gap={2}
+            minHeight={6}
           >
-            <SnoozeMenu
-              prId={pr.id}
-              isSnoozed={item.isSnoozed}
-              instanceRef={snoozeInstanceRef}
-              onSnoozed={() => onSnoozed(item)}
-            />
-            <button type="button" className="pv-review-btn" onClick={openPr} title="Review — ⏎">
-              Review
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+            <Text as="span" className="pv-diff">
+              <Text as="span" className="pv-diff-add">
+                +{pr.additions}
+              </Text>
+              <Text as="span" className="pv-diff-del">
+                {'−'}
+                {pr.deletions}
+              </Text>
+            </Text>
+            {/* No `variant`: 11px, no token (see the meta row above). */}
+            {item.reason !== '' && (
+              <Text as="span" className="pv-reason-pill">
+                {item.reason}
+              </Text>
+            )}
+
+            {/*
+             * Always in the flow, revealed on hover. Rendering it conditionally
+             * would reflow the row every time the pointer moves between cards.
+             */}
+            <View
+              className={`pv-card-actions${isActive ? ' pv-card-actions--active' : ''}`}
+              direction="row"
+              align="center"
+              attributes={{ 'aria-hidden': !isActive }}
+            >
+              <SnoozeMenu
+                prId={pr.id}
+                isSnoozed={item.isSnoozed}
+                instanceRef={snoozeInstanceRef}
+                onSnoozed={() => onSnoozed(item)}
+              />
+              {/* Not `Button`: same reasoning as the header's icon buttons — see Header.tsx. */}
+              <button type="button" className="pv-review-btn" onClick={openPr} title="Review — ⏎">
+                Review
+              </button>
+            </View>
+          </View>
+        </View>
+      </View.Item>
+    </View>
   )
 })
 

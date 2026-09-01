@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { Divider, Icon, Text, View } from 'reshaped/bundle'
 import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
 import PullRequestCard, { type PullRequestCardHandle } from './PullRequestCard'
 
@@ -62,17 +63,34 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
 
   return (
     <div ref={ref}>
-      <button type="button" className="pv-section-header" onClick={onToggle}>
-        <span className="pv-section-label">{CATEGORY_TITLES[category].toUpperCase()}</span>
-        <span className="pv-section-count">{items.length}</span>
-        <span className="pv-section-rule" />
-        <span className="pv-section-chevron">
-          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </span>
-      </button>
+      <View
+        as="button"
+        className="pv-section-header"
+        direction="row"
+        align="center"
+        gap={2}
+        position="sticky"
+        insetTop={0}
+        zIndex={2}
+        backgroundColor="elevation-overlay"
+        attributes={{ type: 'button', onClick: onToggle }}
+      >
+        <Text as="span" weight="bold" color="neutral-faded" className="pv-section-label">
+          {CATEGORY_TITLES[category].toUpperCase()}
+        </Text>
+        <Text as="span" weight="semibold" color="neutral-faded" className="pv-section-count">
+          {items.length}
+        </Text>
+        <View.Item grow>
+          <Divider />
+        </View.Item>
+        <View className="pv-section-chevron">
+          <Icon svg={open ? ChevronDown : ChevronRight} size={14} color="neutral-faded" />
+        </View>
+      </View>
 
       {open && (
-        <div className="pv-card-list">
+        <View className="pv-card-list" direction="column">
           {items.map((item) => (
             <PullRequestCard
               key={item.pr.id}
@@ -85,7 +103,7 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
               onSnoozed={onSnoozed}
             />
           ))}
-        </div>
+        </View>
       )}
     </div>
   )

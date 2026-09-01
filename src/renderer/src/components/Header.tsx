@@ -1,4 +1,5 @@
 import { RefreshCw, Settings } from 'lucide-react'
+import { Icon, Text, View } from 'reshaped/bundle'
 import { formatAge } from '@core/format'
 import type { InboxSnapshot } from '@shared/ipc'
 
@@ -36,23 +37,58 @@ export default function Header({
   const hasError = snapshot.errorMessage !== null
 
   return (
-    <div className="pv-header">
-      <div className="pv-header-left">
+    <View
+      className="pv-header"
+      direction="row"
+      align="start"
+      justify="space-between"
+      gap={3}
+      backgroundColor="elevation-raised"
+      borderColor="neutral"
+      borderBottom
+    >
+      <View className="pv-header-left" direction="row" align="baseline">
         {snapshot.attentionCount > 0 ? (
           <>
-            <span className="pv-header-count">{snapshot.attentionCount}</span>
-            <span className="pv-header-label">waiting on you</span>
+            <Text as="span" className="pv-header-count">
+              {snapshot.attentionCount}
+            </Text>
+            <Text as="span" variant="body-2" weight="semibold" color="neutral">
+              waiting on you
+            </Text>
           </>
         ) : (
-          <span className="pv-header-label">All clear</span>
+          <Text as="span" variant="body-2" weight="semibold" color="neutral">
+            All clear
+          </Text>
         )}
-        <span className="pv-header-status">
-          <span className={`pv-dot${hasError ? ' pv-dot--negative' : ''}`} />
-          {statusText(snapshot, now)}
-        </span>
-      </div>
+        <View className="pv-header-status" direction="row" align="center">
+          <View
+            className={`pv-dot${hasError ? ' pv-dot--negative' : ''}`}
+            borderRadius="circular"
+          />
+          {/* No `variant`: this row is 11px, between caption-1 (12px) and
+              caption-2 (10px) — the size comes from the `.pv-header-status`
+              class instead. */}
+          <Text as="span" color="neutral-faded">
+            {statusText(snapshot, now)}
+          </Text>
+        </View>
+      </View>
 
-      <div className="pv-header-actions">
+      {/*
+       * Not `Button`: its hover/press feedback is painted by an internal
+       * overlay element whose color comes from a `--rs-button-highlight-color`
+       * set per variant/color combination (none of which is this exact
+       * transparent-resting, #ffffff14-hover, accent-tinted-busy treatment),
+       * and that overlay isn't reachable through `className` to retarget.
+       * `variant="outline"` also resolves to a real background
+       * (`--rs-color-background-elevation-base`, oklch 0.2) instead of this
+       * button's transparent rest state, which sits over the header's own
+       * `elevation-raised` (oklch 0.22) — a visibly different rectangle, not
+       * a token swap.
+       */}
+      <View className="pv-header-actions" direction="row" align="center">
         <button
           type="button"
           className={`pv-icon-btn${refreshing ? ' pv-icon-btn--busy' : ''}`}
@@ -61,7 +97,7 @@ export default function Header({
           title="Refresh — R"
           aria-label="Refresh — R"
         >
-          <RefreshCw size={16} className={refreshing ? 'pv-spin' : undefined} />
+          <Icon svg={RefreshCw} size={16} className={refreshing ? 'pv-spin' : undefined} />
         </button>
         <button
           type="button"
@@ -70,9 +106,9 @@ export default function Header({
           title="Settings"
           aria-label="Settings"
         >
-          <Settings size={16} />
+          <Icon svg={Settings} size={16} />
         </button>
-      </div>
-    </div>
+      </View>
+    </View>
   )
 }
