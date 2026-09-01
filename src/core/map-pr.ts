@@ -65,12 +65,10 @@ export interface PullRequestNode {
 }
 
 /**
- * Whether `text` @-mentions `login`. Case-insensitive. GitHub logins are
- * letters, digits and hyphens, so a plain `\b` boundary is not enough: `-` is
- * not a word character, meaning a naive check for `vlad` would also match the
- * unrelated logins `@vlad-2` or `@vlad-bot`. Require that no login-legal
- * character sits on either side instead — the leading lookbehind also stops
- * `me@vlad.io` from matching.
+ * Whether `text` @-mentions `login`. Case-insensitive. GitHub logins allow
+ * hyphens, which aren't word characters, so a plain `\b` boundary would also
+ * match unrelated logins like `@vlad-2` — this requires no login-legal
+ * character on either side instead.
  */
 export function mentionsUser(text: string, login: string): boolean {
   const escaped = login.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -165,11 +163,10 @@ export function mapPullRequest(
         ]
       : [],
   )
-  // Resolved threads are invisible to every rule except `hasParticipated`
-  // (see the invariant documented on `unresolvedThreads` in threads.ts).
-  // `lastMentionAt` drives category selection just like those rules, so it
-  // must honor the same invariant — otherwise a mention in a thread that has
-  // since been resolved would keep the PR in "Mentions" forever.
+  // Only unresolved threads count toward lastMentionAt, matching the
+  // "resolved is invisible" invariant in threads.ts's unresolvedThreads —
+  // otherwise a mention in a resolved thread would keep the PR in "Mentions"
+  // forever.
   const reviewThreadComments = reviewThreads
     .filter((thread) => !thread.isResolved)
     .flatMap((thread) => thread.comments)

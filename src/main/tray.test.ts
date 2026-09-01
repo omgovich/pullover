@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { formatBadgeTitle, formatRefreshItem } from './tray'
 
 // `Tray` needs a running Electron and cannot be constructed headlessly, so
-// only the pure string-building is covered here. `createTray`/`setBadge`
-// themselves stay untested, as they were before this change.
+// only the pure string-building is covered here.
 describe('formatBadgeTitle', () => {
   it('reads "No PRs" for zero', () => {
     expect(formatBadgeTitle(0)).toBe('No PRs')

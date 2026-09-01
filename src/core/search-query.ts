@@ -18,19 +18,14 @@ export function chunk<T>(items: T[], size: number): T[][] {
 }
 
 /**
- * The picker narrows the inbox by *display*, not by search, so every search
- * always runs unfiltered — the picker's own options come from what an
- * unfiltered search turns up. Narrowing the search itself would make the
- * picker only ever offer the repositories already selected.
- *
- * `review-requested:@me` already covers requests that reached the user through
- * a team, so team membership never has to be resolved separately.
+ * Always unfiltered by repository — the settings picker's own options come
+ * from what an unfiltered search turns up, so narrowing the search would make
+ * the picker only ever offer repositories already selected.
  *
  * Sorted by most-recently-updated: `SEARCH_QUERY` fetches only the first 50
- * results with no pagination, and an unfiltered search can easily exceed
- * that — sorting makes the truncation predictable (freshest activity
- * survives) instead of relying on GitHub's best-match ordering, which gives
- * no such guarantee.
+ * results with no pagination, so this ordering makes the truncation
+ * predictable (freshest activity survives) when an unfiltered search exceeds
+ * that limit.
  */
 export function buildSearchQuery(bucket: SearchBucket): string {
   return ['is:pr', 'is:open', BUCKET_QUALIFIERS[bucket], 'sort:updated-desc'].join(' ')

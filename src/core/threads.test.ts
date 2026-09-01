@@ -239,11 +239,8 @@ describe('myLastActivityAt', () => {
   })
 
   it('returns the latest across my reviews, thread comments and conversation comments', () => {
-    // The conversation comment is deliberately the newest of the three
-    // sources (not the thread comment) so this test actually exercises that
-    // source: a mutant that made this function ignore conversation comments
-    // used to slip through here because the thread comment already held the
-    // maximum, so removing the conversation comment didn't change the result.
+    // The conversation comment is deliberately the newest source, so a
+    // mutant that ignored conversation comments would still fail this test.
     const pr = makePullRequest({
       reviews: [
         { authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' },

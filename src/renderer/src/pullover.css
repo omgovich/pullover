@@ -1,30 +1,22 @@
 /*
- * Pullover's redesigned inbox screen.
- *
- * Rebuilt on Reshaped's standard components (View, Text, Icon, Button,
- * Avatar, Card, Actionable, ScrollArea, DropdownMenu) per the owner's rule:
- * use the standard components even where the result doesn't exactly match
- * the original design. What's left below is only what genuinely has no
- * equivalent — colors and effects with no token, one piece of state
- * Reshaped has no prop for ("hidden but still holding its layout space"),
- * and a couple of structural declarations (flex-shrink, a missing `grow`
- * prop) that don't correspond to any design *value* at all, so there's no
- * fidelity trade-off to make.
+ * Pullover's inbox screen, built on Reshaped's standard components. What's
+ * left here is only what has no Reshaped equivalent: colors and effects with
+ * no token, one piece of state Reshaped has no prop for ("hidden but still
+ * holding its layout space"), and a couple of structural declarations that
+ * don't correspond to any design value.
  */
 
 :root {
-  /*
-   * The app's purple identity. Reshaped's `primary` token is blue, so this
-   * isn't a near-miss to swap away — but it's scoped down to just the two
-   * places the owner called out (a PR's `#number`, and the default color for
-   * the card's status pill), set inline via `attributes.style`/a literal
-   * hex kept in sync with this variable rather than through a class here
-   * (see PullRequestCard.tsx). Everywhere else that used to reach for it
-   * (avatars, the old Review button, the old selection ring, etc.) now uses
-   * Reshaped's own `primary` color, or a status-specific hex from the
-   * design, instead.
-   */
+  /* The app's purple identity — Reshaped's own `primary` token is blue. */
   --pv-accent-text: #8b8af7;
+
+  /* Subtle on-dark overlays, shared by hover/active washes and count pills. */
+  --pv-overlay-weak: #ffffff12;
+  --pv-overlay: #ffffff14;
+
+  --pv-green: #18ab66;
+  --pv-red: #f36a6a;
+  --pv-muted: #9aa4b8;
 }
 
 html,
@@ -37,8 +29,7 @@ body,
 /*
  * The BrowserWindow is transparent (see src/main/window.ts) so that the
  * shell's rounded corners and drop shadow composite over the desktop. That
- * only works if the document itself stays transparent too — any opaque
- * background here would again paint a solid rectangle behind the shell.
+ * only works if the document itself stays transparent too.
  */
 html,
 body {
@@ -47,65 +38,42 @@ body {
 
 /* Scroll area */
 
-/*
- * `ScrollArea` (App.tsx) has no `grow` prop, so making it fill the rest of
- * `.pv-shell`'s column — instead of sizing to content — still needs a
- * literal flex declaration, the same `min-height: 0` override used
- * elsewhere in this file that wraps a scrollable region.
- */
+/* `ScrollArea` (App.tsx) has no `grow` prop, so filling the rest of
+   `.pv-shell`'s column still needs an explicit flex declaration. */
 .pv-scroll {
   flex: 1 1 auto;
   min-height: 0;
 }
 
-/*
- * Applied via `ScrollArea`'s `scrollableClassName`, since this padding
- * belongs on the scrolled content, not the scroll container — there's no
- * prop path onto that inner element, only a `className` one. Values are
- * snapped to Reshaped's 4px steps.
- */
+/* Applied via `ScrollArea`'s `scrollableClassName`, since this padding
+   belongs on the scrolled content, not the scroll container. Values are
+   snapped to Reshaped's 4px steps. */
 .pv-scroll-content {
-  /*
-   * The design says 10px, but it never shows the case that exposes: a
-   * collapsed section header landing last, right above the keyboard hints
-   * bar. Its own 6px bottom padding is sized for cards following it, so 10
-   * here left the two nearly touching. 16 gives the last row air whether it
-   * is a header or a card.
-   */
   padding: 0 8px 16px;
   /*
-   * Reshaped's own `.content` class on this element sets `height: 100%`,
-   * which pins the content box to the scroll container's height. The
-   * padding above then sits at the bottom of *that* box — where the
-   * container ends — instead of after the last child, so overflowing
-   * content simply scrolls past it and the bottom padding never appears.
-   * `height: auto` lets the box grow with its children; `min-height: 100%`
-   * (also Reshaped's) still makes short content fill the area.
+   * Reshaped's own `.content` class sets `height: 100%` here, pinning the
+   * content box to the scroll container's height — the padding above then
+   * sits at the container's end rather than after the last child, so
+   * overflowing content scrolls past it and the bottom padding never shows.
+   * `height: auto` lets the box grow with its children instead.
    */
   height: auto;
 }
 
 /* Card list */
 
-/*
- * The snooze pill: always in the flow, revealed on hover/active rather than
- * rendered conditionally, so the pointer moving between cards never reflows
- * the row. No Reshaped prop expresses "hidden but still holding its layout
- * space" — `hidden` props elsewhere in the library remove elements from
- * flow or scale them to 0, neither of which reserves the space — so this
- * stays custom.
- */
-/*
- * Cards are focusable only so the keyboard cursor can carry real focus with
- * it — never reached by Tab. The selected card already reads as selected
- * through its background tint, so the browser's focus ring on top of that is
- * redundant, and it clips oddly against the card's rounded corners.
- */
+/* Cards are focusable only so the keyboard cursor can carry real focus with
+   it — never reached by Tab. The selection already reads through its
+   background tint, so the browser's focus ring on top of that is redundant. */
 .pv-card-focus:focus,
 .pv-card-focus:focus-visible {
   outline: none;
 }
 
+/* The snooze pill: always in the flow, revealed on hover/active rather than
+   rendered conditionally, so the pointer moving between cards never reflows
+   the row. No Reshaped prop expresses "hidden but still holding its layout
+   space", so this stays custom. */
 .pv-card-actions {
   visibility: hidden;
   opacity: 0;
