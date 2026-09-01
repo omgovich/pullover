@@ -34,63 +34,54 @@ export default function Header({
   onRefresh,
   onOpenSettings,
 }: Props): React.JSX.Element {
-  const hasError = snapshot.errorMessage !== null
-
   return (
     <View
       direction="row"
-      align="start"
+      align="center"
       justify="space-between"
       gap={3}
-      paddingTop={3}
-      paddingBottom={3}
-      paddingStart={4}
-      paddingEnd={3}
+      height={11}
+      paddingStart={3}
+      paddingEnd={2}
       backgroundColor="elevation-raised"
       borderColor="neutral"
       borderBottom
     >
-      <View direction="row" align="baseline" gap={2} minWidth={0}>
+      <View direction="row" align="center" gap={2} minWidth={0}>
         {snapshot.attentionCount > 0 ? (
           <>
-            {/* 19px in the design, between `featured-6` (18px) and
-                `featured-5` (20px) — `featured-6` reads better here: its
-                24px line-height stays close to the "waiting on you" label's
-                own line-height, instead of opening up extra vertical space
-                the compact header doesn't have. */}
-            <Text
-              as="span"
-              variant="featured-6"
-              weight="extrabold"
-              numeric
-              attributes={{ style: { color: 'var(--pv-accent-text)' } }}
-            >
+            {/* `primary`/`faded` is Reshaped's closest built-in pairing to
+                the design's dark-indigo chip (muted indigo background,
+                bright indigo foreground) — close enough that the old
+                `--pv-accent-text` override isn't worth carrying over here. */}
+            <Badge color="primary" variant="faded" size="small">
               {snapshot.attentionCount}
-            </Text>
-            <Text as="span" variant="body-2" weight="semibold" color="neutral">
+            </Badge>
+            <Text as="span" variant="caption-1" weight="semibold" color="neutral" maxLines={1}>
               waiting on you
             </Text>
           </>
         ) : (
-          <Text as="span" variant="body-2" weight="semibold" color="neutral">
+          <Text as="span" variant="caption-1" weight="semibold" color="neutral" maxLines={1}>
             All clear
           </Text>
         )}
-        <View direction="row" align="center" gap={1} minWidth={0}>
-          {/* An empty `Badge` is Reshaped's dot: `rounded` makes it
-              circular, and dropping `variant` gives the solid color fill. */}
-          <Badge color={hasError ? 'critical' : 'positive'} size="small" rounded />
-          {/* `maxLines={1}` keeps the status line from wrapping to a second
-              line when the row gets tight — same intent as the old
-              `white-space: nowrap`, just expressed through `Text`'s own
-              truncation prop instead of a CSS class. */}
+        {/* An empty `Badge` is Reshaped's dot: `rounded` makes it circular,
+            and dropping `variant` gives the solid color fill. It's a plain
+            neutral bullet now, not a status light — the error state reads
+            through `statusText` below instead. */}
+        <Badge color="neutral" size="small" rounded />
+        {/* Wrapping in its own `minWidth={0}` `View` is what lets `Text`'s
+            `maxLines={1}` actually truncate instead of overflowing: a flex
+            child's min-width defaults to its content size otherwise. */}
+        <View minWidth={0}>
           <Text as="span" variant="caption-1" color="neutral-faded" maxLines={1}>
             {statusText(snapshot, now)}
           </Text>
         </View>
       </View>
 
-      <View direction="row" align="center" gap={2}>
+      <View direction="row" align="center" gap={0.5}>
         <Button
           variant="outline"
           color="neutral"

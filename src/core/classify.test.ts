@@ -28,7 +28,7 @@ describe('classify — reviewer branch', () => {
     const pr = makePullRequest({ buckets: ['review-requested'] })
     const result = classify(pr, ctx())
     expect(result.category).toBe('needs-review')
-    expect(result.reason).toBe("You're on the reviewers list")
+    expect(result.reason).toBe('Review requested')
   })
 
   it('new-replies when somebody answered my thread', () => {
@@ -45,7 +45,7 @@ describe('classify — reviewer branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('new-replies')
-    expect(result.reason).toBe('1 new reply in your threads')
+    expect(result.reason).toBe('1 new reply')
   })
 
   it('pluralises the reply count', () => {
@@ -61,7 +61,7 @@ describe('classify — reviewer branch', () => {
       buckets: ['involves'],
       reviewThreads: [thread('a'), thread('b'), thread('c')],
     })
-    expect(classify(pr, ctx()).reason).toBe('3 new replies in your threads')
+    expect(classify(pr, ctx()).reason).toBe('3 new replies')
   })
 
   it('ignores a resolved thread that somebody answered', () => {
@@ -90,7 +90,7 @@ describe('classify — reviewer branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('re-review')
-    expect(result.reason).toBe('New commits since your review')
+    expect(result.reason).toBe('New commits')
   })
 
   it('re-review when review was re-requested after I reviewed', () => {
@@ -103,7 +103,7 @@ describe('classify — reviewer branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('re-review')
-    expect(result.reason).toBe('They asked you to look again')
+    expect(result.reason).toBe('Re-review requested')
   })
 
   it('new-replies outranks re-review', () => {
@@ -132,7 +132,7 @@ describe('classify — reviewer branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('mentioned')
-    expect(result.reason).toBe('Someone mentioned you')
+    expect(result.reason).toBe('Mentioned')
   })
 
   it('mentioned when the mention is newer than my last activity, even though I participated', () => {
@@ -146,7 +146,7 @@ describe('classify — reviewer branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('mentioned')
-    expect(result.reason).toBe('Someone mentioned you')
+    expect(result.reason).toBe('Mentioned')
   })
 
   it('not mentioned when the mention predates my last activity — falls through to waiting', () => {
@@ -219,7 +219,7 @@ describe('classify — reviewer branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('waiting')
-    expect(result.reason).toBe('Waiting on the author')
+    expect(result.reason).toBe('Waiting on author')
   })
 })
 
@@ -242,7 +242,7 @@ describe('classify — author branch', () => {
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('my-pr-action')
-    expect(result.reason).toBe('1 thread waiting on you')
+    expect(result.reason).toBe('1 open thread')
   })
 
   it('pluralises the unanswered thread count', () => {
@@ -252,7 +252,7 @@ describe('classify — author branch', () => {
       ...mine,
       reviewThreads: [thread('a'), thread('b')],
     })
-    expect(classify(pr, ctx()).reason).toBe('2 threads waiting on you')
+    expect(classify(pr, ctx()).reason).toBe('2 open threads')
   })
 
   it('ignores resolved threads on my own PR', () => {
@@ -279,7 +279,7 @@ describe('classify — author branch', () => {
     const pr = makePullRequest({ ...mine, reviewDecision: 'APPROVED' })
     const result = classify(pr, ctx())
     expect(result.category).toBe('my-pr-action')
-    expect(result.reason).toBe('Approved — ship it')
+    expect(result.reason).toBe('Ready to merge')
   })
 
   it('CI failure outranks the approval', () => {

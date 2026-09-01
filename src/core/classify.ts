@@ -37,7 +37,7 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
   const participated = hasParticipated(pr, myLogin)
 
   if (requested && !participated) {
-    return { category: 'needs-review', reason: "You're on the reviewers list" }
+    return { category: 'needs-review', reason: 'Review requested' }
   }
 
   const awaiting = threadsAwaitingMyReply(pr, myLogin)
@@ -45,7 +45,7 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
     const word = pluralize(awaiting.length, 'new reply', 'new replies')
     return {
       category: 'new-replies',
-      reason: `${awaiting.length} ${word} in your threads`,
+      reason: `${awaiting.length} ${word}`,
     }
   }
 
@@ -54,10 +54,10 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
     // I already reviewed, so GitHub cleared me from the reviewer list.
     // Being requested again means the author asked for another pass.
     if (requested) {
-      return { category: 're-review', reason: 'They asked you to look again' }
+      return { category: 're-review', reason: 'Re-review requested' }
     }
     if (pr.lastCommitPushedAt > myReview.submittedAt) {
-      return { category: 're-review', reason: 'New commits since your review' }
+      return { category: 're-review', reason: 'New commits' }
     }
   }
 
@@ -72,12 +72,12 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
     const mentionAt = pr.lastMentionAt ?? pr.updatedAt
     const mentionIsNew = lastActivity === null || mentionAt > lastActivity
     if (mentionIsNew) {
-      return { category: 'mentioned', reason: 'Someone mentioned you' }
+      return { category: 'mentioned', reason: 'Mentioned' }
     }
   }
 
   if (participated) {
-    return { category: 'waiting', reason: 'Waiting on the author' }
+    return { category: 'waiting', reason: 'Waiting on author' }
   }
 
   return { category: 'hidden', reason: '' }
@@ -90,8 +90,8 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
 
   const unanswered = unansweredThreads(pr, myLogin)
   if (unanswered.length > 0) {
-    const word = pluralize(unanswered.length, 'thread', 'threads')
-    return { category: 'my-pr-action', reason: `${unanswered.length} ${word} waiting on you` }
+    const word = pluralize(unanswered.length, 'open thread', 'open threads')
+    return { category: 'my-pr-action', reason: `${unanswered.length} ${word}` }
   }
 
   if (pr.ciStatus === 'failure') {
@@ -99,7 +99,7 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
   }
 
   if (pr.reviewDecision === 'APPROVED') {
-    return { category: 'my-pr-action', reason: 'Approved — ship it' }
+    return { category: 'my-pr-action', reason: 'Ready to merge' }
   }
 
   return { category: 'waiting', reason: 'Waiting on reviewers' }
