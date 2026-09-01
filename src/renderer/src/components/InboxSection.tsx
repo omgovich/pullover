@@ -1,47 +1,70 @@
+import { forwardRef } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { Actionable, Badge, Icon, Text, useToggle, View } from 'reshaped/bundle'
 import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
-import { CATEGORY_ICONS } from '../categoryIcons'
-import PullRequestCard from './PullRequestCard'
+import PullRequestCard, { type PullRequestCardHandle } from './PullRequestCard'
 
 interface Props {
   category: Category
   items: ClassifiedPullRequest[]
   now: string
-  /** The waiting section starts collapsed; attention sections start open. */
-  defaultCollapsed: boolean
+  open: boolean
+  onToggle: () => void
+  activePrId: string | null
+  onHoverCard: (prId: string | null) => void
+  onSelectCard: (prId: string) => void
+  onSnoozed: (item: ClassifiedPullRequest) => void
+  registerCard: (prId: string, handle: PullRequestCardHandle | null) => void
 }
 
-export default function InboxSection({
-  category,
-  items,
-  now,
-  defaultCollapsed,
-}: Props): React.JSX.Element | null {
-  const { active: open, toggle } = useToggle(!defaultCollapsed)
-
+const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
+  {
+    category,
+    items,
+    now,
+    open,
+    onToggle,
+    activePrId,
+    onHoverCard,
+    onSelectCard,
+    onSnoozed,
+    registerCard,
+  }: Props,
+  ref,
+) {
   if (items.length === 0) return null
 
   return (
-    <View gap={2}>
-      <Actionable onClick={toggle}>
-        <View direction="row" gap={2} align="center" paddingBlock={1}>
-          <Icon svg={CATEGORY_ICONS[category]} size={4} color="neutral-faded" />
-          <Text variant="caption-1" weight="bold" color="neutral-faded">
-            {CATEGORY_TITLES[category].toUpperCase()}
-          </Text>
-          <Badge size="small" variant="faded">
-            {items.length}
-          </Badge>
-          <View grow />
-          <Icon svg={open ? ChevronDown : ChevronRight} size={4} color="neutral-faded" />
-        </View>
-      </Actionable>
+    <div ref={ref}>
+      <button type="button" className="pv-section-header" onClick={onToggle}>
+        <span className="pv-section-label">{CATEGORY_TITLES[category].toUpperCase()}</span>
+        <span className="pv-section-count">{items.length}</span>
+        <span className="pv-section-rule" />
+        <span className="pv-section-chevron">
+          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </span>
+      </button>
 
-      {open &&
-        items.map((item) => (
-          <PullRequestCard key={item.pr.id} item={item} now={now} />
-        ))}
-    </View>
+      {open && (
+        <div className="pv-card-list">
+          {items.map((item) => (
+            <PullRequestCard
+              key={item.pr.id}
+              ref={(handle) => {
+                registerCard(item.pr.id, handle)
+                return () => registerCard(item.pr.id, null)
+              }}
+              item={item}
+              now={now}
+              isActive={item.pr.id === activePrId}
+              onHover={onHoverCard}
+              onSelect={onSelectCard}
+              onSnoozed={onSnoozed}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   )
-}
+})
+
+export default InboxSection

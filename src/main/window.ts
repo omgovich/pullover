@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import { BrowserWindow, screen, shell, type Rectangle } from 'electron'
 import { isSafeExternalUrl } from './safe-url'
 
-const WIDTH = 420
+const WIDTH = 452
 const HEIGHT = 620
 
 export function createPopupWindow(): BrowserWindow {
