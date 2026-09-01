@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatBadgeTitle } from './tray'
+import { formatBadgeTitle, formatRefreshItem } from './tray'
 
 // `Tray` needs a running Electron and cannot be constructed headlessly, so
 // only the pure string-building is covered here. `createTray`/`setBadge`
@@ -15,5 +15,26 @@ describe('formatBadgeTitle', () => {
 
   it('reads "<n> PRs" for anything else', () => {
     expect(formatBadgeTitle(16)).toBe('16 PRs')
+  })
+})
+
+describe('formatRefreshItem', () => {
+  it('offers a refresh once there is something to refresh', () => {
+    expect(formatRefreshItem('ready')).toEqual({ label: 'Refresh now', enabled: true })
+  })
+
+  it('still offers a refresh after one failed', () => {
+    expect(formatRefreshItem('error')).toEqual({ label: 'Refresh now', enabled: true })
+  })
+
+  it('reports progress instead of queueing a second refresh', () => {
+    expect(formatRefreshItem('loading')).toEqual({ label: 'Refreshing…', enabled: false })
+  })
+
+  it('explains why refreshing is unavailable when signed out', () => {
+    expect(formatRefreshItem('signed-out')).toEqual({
+      label: 'Sign in to refresh',
+      enabled: false,
+    })
   })
 })

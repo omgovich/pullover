@@ -112,16 +112,18 @@ void app.whenReady().then(() => {
   loadClientFromDisk()
   window = createPopupWindow()
 
-  tray = createTray(
-    (bounds) => {
+  tray = createTray({
+    onToggle: (bounds) => {
       if (window === null) return
       const opening = !window.isVisible()
       togglePopup(window, bounds)
       // Opening onto a stale list is the one moment worth spending a fetch on.
       if (opening && client !== null && isStale()) void inbox.refresh()
     },
-    () => app.quit(),
-  )
+    onRefresh: () => void inbox.refresh(),
+    onQuit: () => app.quit(),
+    getStatus: () => inbox.getSnapshot().status,
+  })
 
   registerIpc({
     inbox,
