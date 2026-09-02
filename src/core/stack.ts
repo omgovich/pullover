@@ -184,50 +184,78 @@ export function orderSection(items: ClassifiedPullRequest[]): ClassifiedPullRequ
   return result
 }
 
-/**
- * How a stack row connects to its neighbour in that direction, drawn as a
- * vertical line behind the avatars.
- *
- * - `none` — nothing to connect to: not in a stack, or the very top/bottom
- *   of the chain (`1/N` looking up, `N/N` looking down).
- * - `line` — the adjacent chain member is the neighbouring row.
- * - `gap` — chain members exist in that direction but aren't shown.
- */
-export type Connector = 'none' | 'line' | 'gap'
-
-export interface StackRow {
+/** A pull request card, with the solid line it draws inside its own bounds. */
+export interface StackCardRow {
+  kind: 'card'
   item: ClassifiedPullRequest
-  above: Connector
-  below: Connector
+  /** Solid line from the card's top edge down to the avatar. */
+  lineAbove: boolean
+  /** Solid line from the avatar down to the card's bottom edge. */
+  lineBelow: boolean
 }
 
 /**
- * Derives the connector each row draws above and below itself, from a list
- * already arranged by `orderSection` (so a stack's members, if any are
- * shown, sit contiguously and ascending by `index`).
+ * A dashed break standing between cards, in place of stack members that
+ * exist but aren't shown because they don't need attention.
  */
-export function stackRows(ordered: ClassifiedPullRequest[]): StackRow[] {
-  return ordered.map((item, i) => {
+export interface StackBreakRow {
+  kind: 'break'
+  key: string
+}
+
+export type SectionRow = StackCardRow | StackBreakRow
+
+/**
+ * Lays a section out for rendering, from a list already arranged by
+ * `orderSection` (so a stack's shown members sit contiguously, ascending by
+ * `index`).
+ *
+ * Cards carry only solid line: a stack member draws it upward unless it is
+ * the chain's first, and downward unless it is its last. Everything omitted
+ * from the chain becomes a `break` row *between* cards instead — so a dashed
+ * stretch never runs through a card, only before, after, or between them.
+ *
+ * Two adjacent partial stacks share the single break that falls between
+ * them; drawing one per stack would stack two dashes in the same 1px-apart
+ * space and read no differently.
+ */
+export function sectionRows(ordered: ClassifiedPullRequest[]): SectionRow[] {
+  /** Whether the row at `i` is the chain member `stack` expects at `index`. */
+  function adjoins(i: number, stack: StackPosition, index: number): boolean {
+    const other = ordered[i]?.stack
+    return other != null && other.id === stack.id && other.index === index
+  }
+
+  const rows: SectionRow[] = []
+  // Set when a stack's shown members end before its top: the break it needs
+  // is emitted once the following row (or the end of the list) is known, so
+  // it is never duplicated by that row's own break above.
+  let pendingBreak = false
+
+  ordered.forEach((item, i) => {
     const stack = item.stack
-    if (stack === null) return { item, above: 'none', below: 'none' }
 
-    const prev = ordered[i - 1]
-    const next = ordered[i + 1]
+    if (stack === null) {
+      if (pendingBreak) rows.push({ kind: 'break', key: `break-${item.pr.id}` })
+      pendingBreak = false
+      rows.push({ kind: 'card', item, lineAbove: false, lineBelow: false })
+      return
+    }
 
-    const above: Connector =
-      stack.index === 1
-        ? 'none'
-        : prev !== undefined && prev.stack?.id === stack.id && prev.stack.index === stack.index - 1
-          ? 'line'
-          : 'gap'
+    const breakAbove = stack.index > 1 && !adjoins(i - 1, stack, stack.index - 1)
+    if (breakAbove || pendingBreak) rows.push({ kind: 'break', key: `break-${item.pr.id}` })
+    pendingBreak = false
 
-    const below: Connector =
-      stack.index === stack.total
-        ? 'none'
-        : next !== undefined && next.stack?.id === stack.id && next.stack.index === stack.index + 1
-          ? 'line'
-          : 'gap'
+    rows.push({
+      kind: 'card',
+      item,
+      lineAbove: stack.index > 1,
+      lineBelow: stack.index < stack.total,
+    })
 
-    return { item, above, below }
+    if (stack.index < stack.total && !adjoins(i + 1, stack, stack.index + 1)) pendingBreak = true
   })
+
+  if (pendingBreak) rows.push({ kind: 'break', key: 'break-end' })
+  return rows
 }

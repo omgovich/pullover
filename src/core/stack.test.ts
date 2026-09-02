@@ -1,10 +1,4 @@
-import {
-  type Connector,
-  computeStackPositions,
-  orderSection,
-  type StackPosition,
-  stackRows,
-} from '@core/stack'
+import { computeStackPositions, orderSection, type StackPosition, sectionRows } from '@core/stack'
 import { makePullRequest } from '@core/test-factory'
 import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
 import { describe, expect, it } from 'vitest'
@@ -15,7 +9,7 @@ function pr(overrides: Partial<PullRequest> & { id: string }): PullRequest {
 }
 
 /** A minimal classified PR for ordering/connector fixtures: category and
- * reason never matter to `orderSection` or `stackRows`. */
+ * reason never matter to `orderSection` or `sectionRows`. */
 function classified(
   id: string,
   stack: StackPosition | null,
@@ -286,68 +280,73 @@ describe('orderSection', () => {
   })
 })
 
-describe('stackRows', () => {
-  function rowsOf(items: ClassifiedPullRequest[]): Array<[string, Connector, Connector]> {
-    return stackRows(items).map((row) => [row.item.pr.id, row.above, row.below])
+describe('sectionRows', () => {
+  /** Cards as `id/lineAbove/lineBelow`, breaks as `—`, in render order. */
+  function layoutOf(items: ClassifiedPullRequest[]): string[] {
+    return sectionRows(items).map((row) =>
+      row.kind === 'break'
+        ? '—'
+        : `${row.item.pr.id}/${row.lineAbove ? 'L' : '.'}${row.lineBelow ? 'L' : '.'}`,
+    )
   }
 
-  it('gives a full, unbroken stack a line at every internal join and nothing at the ends', () => {
+  it('runs solid line through a full stack and stops at both ends', () => {
     const items = [1, 2, 3, 4].map((index) =>
       classified(`PR_${index}`, { id: 'stack-1', index, total: 4 }),
     )
 
-    expect(rowsOf(items)).toEqual([
-      ['PR_1', 'none', 'line'],
-      ['PR_2', 'line', 'line'],
-      ['PR_3', 'line', 'line'],
-      ['PR_4', 'line', 'none'],
-    ])
+    expect(layoutOf(items)).toEqual(['PR_1/.L', 'PR_2/LL', 'PR_3/LL', 'PR_4/L.'])
   })
 
-  it('opens a gap where the middle of a stack is missing from the list', () => {
+  it('puts a break between the cards where the middle of a stack is missing', () => {
     // 1, 2, 4, 5 of a 5-long stack: #3 is hidden.
     const items = [1, 2, 4, 5].map((index) =>
       classified(`PR_${index}`, { id: 'stack-1', index, total: 5 }),
     )
 
-    expect(rowsOf(items)).toEqual([
-      ['PR_1', 'none', 'line'],
-      ['PR_2', 'line', 'gap'],
-      ['PR_4', 'gap', 'line'],
-      ['PR_5', 'line', 'none'],
-    ])
+    expect(layoutOf(items)).toEqual(['PR_1/.L', 'PR_2/LL', '—', 'PR_4/LL', 'PR_5/L.'])
   })
 
-  it('opens a gap above a stack that starts at 2', () => {
+  it('emits exactly one break between two non-adjacent members, not one per side', () => {
+    const items = [1, 4].map((index) =>
+      classified(`PR_${index}`, { id: 'stack-1', index, total: 4 }),
+    )
+
+    expect(layoutOf(items).filter((row) => row === '—')).toHaveLength(1)
+  })
+
+  it('puts a break before a stack that starts at 2', () => {
     const items = [2, 3].map((index) =>
       classified(`PR_${index}`, { id: 'stack-1', index, total: 4 }),
     )
 
-    // total is 4, so #3's `below` is also a gap (#4 exists but isn't shown)
-    // — the case under test is #2's `above`.
-    expect(rowsOf(items)).toEqual([
-      ['PR_2', 'gap', 'line'],
-      ['PR_3', 'line', 'gap'],
-    ])
+    // total is 4, so #4 is missing too — hence the trailing break. The case
+    // under test is the leading one.
+    expect(layoutOf(items)).toEqual(['—', 'PR_2/LL', 'PR_3/LL', '—'])
   })
 
-  it('opens a gap below a stack that ends before its top', () => {
+  it('puts a break after a stack that ends before its top', () => {
     const items = [1, 2].map((index) =>
       classified(`PR_${index}`, { id: 'stack-1', index, total: 4 }),
     )
 
-    expect(rowsOf(items)).toEqual([
-      ['PR_1', 'none', 'line'],
-      ['PR_2', 'line', 'gap'],
-    ])
+    expect(layoutOf(items)).toEqual(['PR_1/.L', 'PR_2/LL', '—'])
+  })
+
+  it('closes a trailing break even when a card with no stack follows', () => {
+    const items = [
+      classified('PR_1', { id: 'stack-1', index: 1, total: 4 }),
+      classified('PR_lone', null),
+    ]
+
+    expect(layoutOf(items)).toEqual(['PR_1/.L', '—', 'PR_lone/..'])
   })
 
   it('draws nothing around a pull request with no stack', () => {
-    const items = [classified('PR_lone', null)]
-    expect(rowsOf(items)).toEqual([['PR_lone', 'none', 'none']])
+    expect(layoutOf([classified('PR_lone', null)])).toEqual(['PR_lone/..'])
   })
 
-  it('draws nothing between two stacks placed back to back', () => {
+  it('draws no break between two whole stacks placed back to back', () => {
     const items = [
       classified('PR_a1', { id: 'stack-a', index: 1, total: 2 }),
       classified('PR_a2', { id: 'stack-a', index: 2, total: 2 }),
@@ -355,23 +354,51 @@ describe('stackRows', () => {
       classified('PR_b2', { id: 'stack-b', index: 2, total: 2 }),
     ]
 
-    expect(rowsOf(items)).toEqual([
-      ['PR_a1', 'none', 'line'],
-      ['PR_a2', 'line', 'none'],
-      ['PR_b1', 'none', 'line'],
-      ['PR_b2', 'line', 'none'],
-    ])
+    expect(layoutOf(items)).toEqual(['PR_a1/.L', 'PR_a2/L.', 'PR_b1/.L', 'PR_b2/L.'])
   })
 
-  it('never lets adjacent rows disagree about the connector between them', () => {
-    const items = [1, 2, 4, 6, 7].map((index) =>
+  it('shares one break between two partial stacks that meet', () => {
+    const items = [
+      classified('PR_a1', { id: 'stack-a', index: 1, total: 3 }),
+      classified('PR_b2', { id: 'stack-b', index: 2, total: 2 }),
+    ]
+
+    expect(layoutOf(items)).toEqual(['PR_a1/.L', '—', 'PR_b2/L.'])
+  })
+
+  it('closes a stack cut short even when the next stack starts at its own 1', () => {
+    // The following card has nothing missing above it, so only the unclosed
+    // break carried over from stack-a can put a dash between them.
+    const items = [
+      classified('PR_a1', { id: 'stack-a', index: 1, total: 3 }),
+      classified('PR_b1', { id: 'stack-b', index: 1, total: 2 }),
+      classified('PR_b2', { id: 'stack-b', index: 2, total: 2 }),
+    ]
+
+    expect(layoutOf(items)).toEqual(['PR_a1/.L', '—', 'PR_b1/.L', 'PR_b2/L.'])
+  })
+
+  it('never puts a break directly next to another break', () => {
+    const items = [1, 3, 6].map((index) =>
+      classified(`PR_${index}`, { id: 'stack-1', index, total: 8 }),
+    )
+
+    const rows = layoutOf(items)
+    for (let i = 0; i < rows.length - 1; i++) {
+      expect([rows[i], rows[i + 1]]).not.toEqual(['—', '—'])
+    }
+  })
+
+  it('gives every card keys unique enough for React to tell breaks apart', () => {
+    const items = [1, 3, 5].map((index) =>
       classified(`PR_${index}`, { id: 'stack-1', index, total: 7 }),
     )
 
-    const rows = stackRows(items)
-    for (let i = 0; i < rows.length - 1; i++) {
-      expect(rows[i].below).toBe(rows[i + 1].above)
-    }
+    const keys = sectionRows(items)
+      .filter((row) => row.kind === 'break')
+      .map((row) => (row.kind === 'break' ? row.key : ''))
+
+    expect(new Set(keys).size).toBe(keys.length)
   })
 
   it('the worked example: a stack of 7 showing only 2, 3, 5, 6, 7', () => {
@@ -379,12 +406,16 @@ describe('stackRows', () => {
       classified(`PR_${index}`, { id: 'stack-1', index, total: 7 }),
     )
 
-    expect(rowsOf(items)).toEqual([
-      ['PR_2', 'gap', 'line'],
-      ['PR_3', 'line', 'gap'],
-      ['PR_5', 'gap', 'line'],
-      ['PR_6', 'line', 'line'],
-      ['PR_7', 'line', 'none'],
+    // Dashed above the group, solid through 2-3, dashed across the missing
+    // 4, solid through 5-6-7, nothing below the top of the chain.
+    expect(layoutOf(items)).toEqual([
+      '—',
+      'PR_2/LL',
+      'PR_3/LL',
+      '—',
+      'PR_5/LL',
+      'PR_6/LL',
+      'PR_7/L.',
     ])
   })
 })

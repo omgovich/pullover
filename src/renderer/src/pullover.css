@@ -72,17 +72,23 @@ body {
   opacity: 1;
 }
 
-/* Stack connector: a vertical line joining a pull request's neighbours in
-   its stack. No Reshaped prop draws a line behind a sibling, so this stays
-   plain CSS. `--gap` marks a stretch where stack members aren't shown. */
+/* Stack connector: the solid line joining a pull request to its neighbours
+   in the stack, drawn behind the avatar. No Reshaped prop draws a line
+   behind a sibling, so this stays plain CSS. Geometry (width, left offset)
+   comes from PullRequestCard, which derives it from the card's own layout. */
 .pv-stack-connector {
   position: absolute;
   width: 0;
-  border-left: 1px solid var(--rs-color-border-neutral);
+  border-left: 2px solid var(--rs-color-border-neutral);
 }
 
-.pv-stack-connector--gap {
-  border-left-style: dashed;
+/* The dashed stand-in for stack members that aren't shown. It sits between
+   cards rather than inside one, so a dashed stretch never crosses a card. */
+.pv-stack-break {
+  align-self: flex-start;
+  width: 0;
+  height: 10px;
+  border-left: 2px dashed var(--rs-color-border-neutral);
 }
 
 /* Segmented controls */

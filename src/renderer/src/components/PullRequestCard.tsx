@@ -1,5 +1,4 @@
 import { formatAge } from '@core/format'
-import type { Connector } from '@core/stack'
 import type { ClassifiedPullRequest } from '@shared/types'
 import { Layers } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
@@ -10,9 +9,9 @@ interface Props {
   item: ClassifiedPullRequest
   now: string
   isActive: boolean
-  /** Connector this row draws above/below the avatar; see `stackRows` (@core/stack). */
-  connectorAbove: Connector
-  connectorBelow: Connector
+  /** Solid stack line this row draws above/below the avatar; see `sectionRows` (@core/stack). */
+  lineAbove: boolean
+  lineBelow: boolean
   onHover: (prId: string | null) => void
   onSelect: (prId: string) => void
   onSnoozed: (item: ClassifiedPullRequest) => void
@@ -26,7 +25,9 @@ interface Props {
 const AVATAR_SIZE_PX = 32
 const ROW_PADDING_INLINE_PX = 10
 const ROW_PADDING_TOP_PX = 9
-const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2
+export const CONNECTOR_WIDTH_PX = 2
+/** Exported so a section's dashed breaks line up with the cards' own line. */
+export const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
 const CONNECTOR_BELOW_TOP_PX = ROW_PADDING_TOP_PX + AVATAR_SIZE_PX
 
 /** Imperative surface App needs for keyboard navigation. */
@@ -106,7 +107,7 @@ function initialsOf(login: string): string {
 }
 
 const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRequestCard(
-  { item, now, isActive, connectorAbove, connectorBelow, onHover, onSelect, onSnoozed }: Props,
+  { item, now, isActive, lineAbove, lineBelow, onHover, onSelect, onSnoozed }: Props,
   ref,
 ) {
   const { pr } = item
@@ -154,19 +155,19 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           },
         }}
       >
-        {/* Stack connector: a vertical line behind the avatar, joining this
-            row to its neighbours in the stack. Rendered before `Avatar` so
-            it paints underneath it. See `.pv-stack-connector` for why this
-            is plain CSS instead of a Reshaped prop. */}
-        {connectorAbove !== 'none' && (
+        {/* Stack connector: the solid line behind the avatar joining this row
+            to the chain. Rendered before `Avatar` so it paints underneath it.
+            Anything omitted from the chain is a dashed break between cards
+            (see `sectionRows`), never a dashed stretch inside one. */}
+        {lineAbove && (
           <div
-            className={`pv-stack-connector${connectorAbove === 'gap' ? ' pv-stack-connector--gap' : ''}`}
+            className="pv-stack-connector"
             style={{ left: CONNECTOR_LEFT_PX, top: 0, height: ROW_PADDING_TOP_PX }}
           />
         )}
-        {connectorBelow !== 'none' && (
+        {lineBelow && (
           <div
-            className={`pv-stack-connector${connectorBelow === 'gap' ? ' pv-stack-connector--gap' : ''}`}
+            className="pv-stack-connector"
             style={{ left: CONNECTOR_LEFT_PX, top: CONNECTOR_BELOW_TOP_PX, bottom: 0 }}
           />
         )}

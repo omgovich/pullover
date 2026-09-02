@@ -1,9 +1,9 @@
-import { orderSection, stackRows } from '@core/stack'
+import { orderSection, sectionRows } from '@core/stack'
 import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { forwardRef, useEffect, useRef } from 'react'
 import { Actionable, Icon, Text, View } from 'reshaped/bundle'
-import PullRequestCard, { type PullRequestCardHandle } from './PullRequestCard'
+import PullRequestCard, { CONNECTOR_LEFT_PX, type PullRequestCardHandle } from './PullRequestCard'
 
 interface Props {
   category: Category
@@ -61,8 +61,9 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
 
   // Gathers each stack's members into one contiguous run (display order
   // only — the classifier's category-then-recency sort stays untouched),
-  // then derives the connector each row draws above/below itself.
-  const rows = stackRows(orderSection(items))
+  // then lays it out as cards interleaved with the dashed breaks that stand
+  // in for stack members not shown.
+  const rows = sectionRows(orderSection(items))
 
   return (
     <div ref={ref}>
@@ -104,20 +105,29 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
 
       {open && (
         <View direction="column" gap={0.25}>
-          {rows.map(({ item, above, below }) => (
-            <PullRequestCard
-              key={item.pr.id}
-              ref={getCardRefCallback(item.pr.id)}
-              item={item}
-              now={now}
-              isActive={item.pr.id === activePrId}
-              connectorAbove={above}
-              connectorBelow={below}
-              onHover={onHoverCard}
-              onSelect={onSelectCard}
-              onSnoozed={onSnoozed}
-            />
-          ))}
+          {rows.map((row) =>
+            row.kind === 'break' ? (
+              <div
+                key={row.key}
+                className="pv-stack-break"
+                style={{ marginLeft: CONNECTOR_LEFT_PX }}
+                aria-hidden="true"
+              />
+            ) : (
+              <PullRequestCard
+                key={row.item.pr.id}
+                ref={getCardRefCallback(row.item.pr.id)}
+                item={row.item}
+                now={now}
+                isActive={row.item.pr.id === activePrId}
+                lineAbove={row.lineAbove}
+                lineBelow={row.lineBelow}
+                onHover={onHoverCard}
+                onSelect={onSelectCard}
+                onSnoozed={onSnoozed}
+              />
+            ),
+          )}
         </View>
       )}
     </div>
