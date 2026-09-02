@@ -1,3 +1,4 @@
+import { formatAge } from '@core/format'
 import type { InboxSnapshot } from '@shared/ipc'
 import { Menu, nativeImage, type Rectangle, Tray } from 'electron'
 
@@ -11,12 +12,24 @@ export function formatBadgeTitle(count: number): string {
 }
 
 /**
- * The context menu's refresh entry. Only signing out disables it: `refresh()`
- * coalesces a call made during an in-flight pass into a single follow-up, so
- * clicking mid-refresh is harmless — and refusing the click was worse than
- * accepting it, since opening the popup already kicks off a refresh whenever
- * the data is over a minute old, which meant the entry read "Refreshing…" for
- * most of the moments somebody would reach for it.
+ * The disabled line at the top of the menu, saying what the inbox is doing.
+ * It exists so the menu and the popup's own spinner never disagree about
+ * whether a refresh is running — they now read the same `status`.
+ */
+export function formatStatusLine(snapshot: InboxSnapshot, now: string): string {
+  if (snapshot.status === 'signed-out') return 'Not signed in'
+  if (snapshot.status === 'loading') return 'Refreshing…'
+  if (snapshot.errorMessage !== null) return "Couldn't refresh"
+  if (snapshot.lastUpdatedAt === null) return 'Not fetched yet'
+  return `Updated ${formatAge(snapshot.lastUpdatedAt, now)}`
+}
+
+/**
+ * The refresh entry stays clickable while a refresh is running: `refresh()`
+ * coalesces a call made mid-pass into a single follow-up, so accepting the
+ * click is harmless, and refusing it was worse than useless when opening the
+ * popup already starts a refresh whenever the data is over a minute old. The
+ * status line above carries the state instead.
  */
 export function formatRefreshItem(status: InboxSnapshot['status']): {
   label: string
@@ -30,8 +43,8 @@ export interface TrayCallbacks {
   onToggle: (bounds: Rectangle) => void
   onRefresh: () => void
   onQuit: () => void
-  /** Read when the menu is built, so the refresh entry reflects the moment. */
-  getStatus: () => InboxSnapshot['status']
+  /** Read when the menu is built, so the menu reflects the moment it opened. */
+  getSnapshot: () => InboxSnapshot
 }
 
 export function createTray(callbacks: TrayCallbacks): Tray {
@@ -45,9 +58,12 @@ export function createTray(callbacks: TrayCallbacks): Tray {
   tray.on('right-click', () => {
     // Built fresh on every right-click rather than once, so the refresh entry
     // can reflect whatever the inbox is doing right now.
-    const refresh = formatRefreshItem(callbacks.getStatus())
+    const snapshot = callbacks.getSnapshot()
+    const refresh = formatRefreshItem(snapshot.status)
     tray.popUpContextMenu(
       Menu.buildFromTemplate([
+        { label: formatStatusLine(snapshot, new Date().toISOString()), enabled: false },
+        { type: 'separator' },
         { label: refresh.label, enabled: refresh.enabled, click: callbacks.onRefresh },
         { type: 'separator' },
         { label: 'Quit', click: callbacks.onQuit },

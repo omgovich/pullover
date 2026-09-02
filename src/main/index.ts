@@ -126,7 +126,7 @@ void app.whenReady().then(() => {
     },
     onRefresh: () => void inbox.refresh(),
     onQuit: () => app.quit(),
-    getStatus: () => inbox.getSnapshot().status,
+    getSnapshot: () => inbox.getSnapshot(),
   })
 
   registerIpc({

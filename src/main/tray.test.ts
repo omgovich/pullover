@@ -1,5 +1,6 @@
+import type { InboxSnapshot } from '@shared/ipc'
 import { describe, expect, it } from 'vitest'
-import { formatBadgeTitle, formatRefreshItem } from './tray'
+import { formatBadgeTitle, formatRefreshItem, formatStatusLine } from './tray'
 
 // `Tray` needs a running Electron and cannot be constructed headlessly, so
 // only the pure string-building is covered here.
@@ -35,5 +36,46 @@ describe('formatRefreshItem', () => {
       label: 'Sign in to refresh',
       enabled: false,
     })
+  })
+})
+
+describe('formatStatusLine', () => {
+  const NOW = '2026-09-02T12:00:00Z'
+  const base: InboxSnapshot = {
+    status: 'ready',
+    items: [],
+    attentionCount: 0,
+    lastUpdatedAt: '2026-09-02T11:55:00Z',
+    errorMessage: null,
+    myLogin: 'vlad',
+    knownRepositories: [],
+  }
+
+  it('says a refresh is running, matching the spinner in the window', () => {
+    expect(formatStatusLine({ ...base, status: 'loading' }, NOW)).toBe('Refreshing…')
+  })
+
+  it('reports how stale the data is when idle', () => {
+    expect(formatStatusLine(base, NOW)).toBe('Updated 5m ago')
+  })
+
+  it('reports a failed refresh without the raw API message', () => {
+    expect(formatStatusLine({ ...base, status: 'error', errorMessage: 'boom' }, NOW)).toBe(
+      "Couldn't refresh",
+    )
+  })
+
+  it('prefers the running refresh over a previous error', () => {
+    expect(formatStatusLine({ ...base, status: 'loading', errorMessage: 'boom' }, NOW)).toBe(
+      'Refreshing…',
+    )
+  })
+
+  it('says so before the first fetch', () => {
+    expect(formatStatusLine({ ...base, lastUpdatedAt: null }, NOW)).toBe('Not fetched yet')
+  })
+
+  it('says so when signed out', () => {
+    expect(formatStatusLine({ ...base, status: 'signed-out' }, NOW)).toBe('Not signed in')
   })
 })
