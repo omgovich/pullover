@@ -1,13 +1,14 @@
 import { type NativeImage, nativeImage } from 'electron'
 
 /**
- * The menu-bar glyph: lucide's `git-pull-request`, drawn by
- * `scripts/make-tray-icon.py` and pasted here as data URLs.
+ * The menu-bar glyph: lucide's `git-pull-request`, rasterised at 16 and 32
+ * pixels and embedded as data URLs.
  *
  * Embedded rather than shipped as files because a menu-bar glyph is a few
  * hundred bytes, and a path would have to resolve differently in development
- * and inside the packaged asar — this cannot go missing. Rerun the script
- * and replace both strings to change the shape.
+ * and inside the packaged asar — this cannot go missing. To change the shape,
+ * rasterise the replacement at both sizes as plain alpha on a transparent
+ * background and swap both strings.
  */
 const ICON_1X =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABCElEQVR42pXTvy4FQRTH8c+OdUUoFApEIh5Cr6H2AFcn3kCi8wqeQDQiEiqNl9DrVP4kNyoa/3Y1Z9ns3bvunWbPnjPznd/M+Q1/I9XiKROOrAbpNXIZ8i5oVdjGM17Rb1FVhw4le3jBBY7xiaWob+IKR23QhDIgc3jAfUiejjkLWMc+rlE0lVRH6AesxEHLbqu4w0mbkjy+l7htTMgwE/FZQH7rqXGcrIVe4jtys3gzovdFbceio+Wp3tI0gVcKfOArFI0NSLFoCzvYwG4AUz6GQ8vwyXn44TE6cYPBOAoqn8xjgKfoWl5v3yi7lnFh79jDafwfBig1F61grQO6iOWud/HfZQ7FPxpILTyyRwgLAAAAAElFTkSuQmCC'
