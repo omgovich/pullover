@@ -82,9 +82,11 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           npm install -g @anthropic-ai/claude-code
-          claude -p \
-            --allowedTools 'Bash(git:*),Bash(gh:*),Write' \
-            "$(cat <<'PROMPT'
+          # Prompt on stdin, not as a trailing argument: `--allowedTools` takes
+          # a variadic <tools...>, so it swallowed the prompt that followed it
+          # and the v0.2.0 run died with "Input must be provided either through
+          # stdin or as a prompt argument". stdin sidesteps the ambiguity.
+          claude -p --allowedTools 'Bash(git:*),Bash(gh:*),Write' <<'PROMPT'
           You are running inside GitHub Actions — the `publish` job of Pullover's release workflow, non-interactive, nobody to ask questions. Your only task is to finish the release for tag ${{ github.ref_name }}.
 
           Ignore the release playbook in AGENTS.md — it is for the local agent, and its part is already done: the version is bumped, the tag is pushed, and the build job has attached the dmg to a DRAFT GitHub release for this tag. You are the CI half. Your job:
@@ -94,7 +96,6 @@ jobs:
           3. Write user-facing release notes from the commits since the previous tag: find it with `git describe --tags --abbrev=0 ${{ github.ref_name }}^` (if the command fails, this is the first release — write a 2-3 sentence introduction of the app from README.md instead of a changelog). Notes style: a flat bullet list, no headings — one short bullet per user-visible change, present tense, no commit hashes, skip internal refactors/CI/docs changes users can't feel.
           4. Publish: write the notes to a file and run `gh release edit ${{ github.ref_name }} --notes-file <file> --draft=false`.
           PROMPT
-          )"
 
       - name: Verify the release is published
         env:
