@@ -460,6 +460,80 @@ describe('Inbox.refresh', () => {
     expect(snapshot.status).toBe('ready')
     expect(snapshot.items.map((item) => item.pr.id)).toEqual(['PR_1'])
   })
+
+  it('attaches each item its stack position', async () => {
+    store.updateSettings({ watchAllRepositories: true })
+    const inbox = build([], {
+      fetchPrs: async () => [
+        makePullRequest({
+          id: 'PR_1',
+          repository: 'acme/web',
+          buckets: ['review-requested'],
+          headRefName: 'part-1',
+          baseRefName: 'main',
+        }),
+        makePullRequest({
+          id: 'PR_2',
+          repository: 'acme/web',
+          buckets: ['review-requested'],
+          headRefName: 'part-2',
+          baseRefName: 'part-1',
+        }),
+        // Not part of the stack above -- an ordinary PR.
+        makePullRequest({ id: 'PR_3', repository: 'acme/web', buckets: ['review-requested'] }),
+      ],
+    })
+
+    await inbox.refresh()
+    const byId = new Map(inbox.getSnapshot().items.map((item) => [item.pr.id, item]))
+
+    expect(byId.get('PR_1')?.stack).toEqual({ index: 1, total: 2 })
+    expect(byId.get('PR_2')?.stack).toEqual({ index: 2, total: 2 })
+    expect(byId.get('PR_3')?.stack).toBeNull()
+  })
+
+  it('keeps a stack whole even when one of its PRs is filtered out of the classified items', async () => {
+    // The classifier drops draft PRs from its output entirely (category
+    // "hidden"), so if stacks were computed from the classified items
+    // instead of the unfiltered fetch, losing the middle PR here would make
+    // the remaining two look like a 2-long stack instead of the real 3-long
+    // one.
+    store.updateSettings({ watchAllRepositories: true })
+    const inbox = build([], {
+      fetchPrs: async () => [
+        makePullRequest({
+          id: 'PR_1',
+          repository: 'acme/web',
+          buckets: ['review-requested'],
+          headRefName: 'part-1',
+          baseRefName: 'main',
+        }),
+        makePullRequest({
+          id: 'PR_2',
+          repository: 'acme/web',
+          isDraft: true,
+          headRefName: 'part-2',
+          baseRefName: 'part-1',
+        }),
+        makePullRequest({
+          id: 'PR_3',
+          repository: 'acme/web',
+          buckets: ['review-requested'],
+          headRefName: 'part-3',
+          baseRefName: 'part-2',
+        }),
+      ],
+    })
+
+    await inbox.refresh()
+    const items = inbox.getSnapshot().items
+
+    // The draft is excluded from the classified items, as always.
+    expect(items.map((item) => item.pr.id)).toEqual(['PR_1', 'PR_3'])
+    // But its two non-draft neighbours still know the stack is 3 long.
+    expect(items.find((item) => item.pr.id === 'PR_1')?.stack).toEqual({ index: 1, total: 3 })
+    expect(items.find((item) => item.pr.id === 'PR_3')?.stack).toEqual({ index: 3, total: 3 })
+  })
 })
 
 describe('Inbox.start / stop', () => {
@@ -624,6 +698,36 @@ describe('Inbox.reclassify', () => {
     // PR_2 (acme/api) falls outside the now-active repositories list and
     // must disappear; PR_1 (acme/web) must remain.
     expect(inbox.getSnapshot().items.map((item) => item.pr.id)).toEqual(['PR_1'])
+    expect(fetchPrs).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps stack positions attached, without refetching', async () => {
+    store.updateSettings({ watchAllRepositories: true })
+    const fetchPrs = vi.fn(async () => [
+      makePullRequest({
+        id: 'PR_1',
+        repository: 'acme/web',
+        buckets: ['review-requested'],
+        headRefName: 'part-1',
+        baseRefName: 'main',
+      }),
+      makePullRequest({
+        id: 'PR_2',
+        repository: 'acme/web',
+        buckets: ['review-requested'],
+        headRefName: 'part-2',
+        baseRefName: 'part-1',
+      }),
+    ])
+    const inbox = build([], { fetchPrs })
+    await inbox.refresh()
+
+    store.snooze('PR_1', 'until-time', NOW, 2)
+    inbox.reclassify()
+
+    const byId = new Map(inbox.getSnapshot().items.map((item) => [item.pr.id, item]))
+    expect(byId.get('PR_1')?.stack).toEqual({ index: 1, total: 2 })
+    expect(byId.get('PR_2')?.stack).toEqual({ index: 2, total: 2 })
     expect(fetchPrs).toHaveBeenCalledTimes(1)
   })
 })

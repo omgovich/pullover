@@ -158,9 +158,16 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   {pr.repository}
                 </Text>
               </View>
-              <Text as="span" variant="caption-1" numeric color="primary">
-                #{pr.number}
-              </Text>
+              <View as="span" direction="row" gap={1}>
+                <Text as="span" variant="caption-1" numeric color="primary">
+                  #{pr.number}
+                </Text>
+                {item.stack !== null && (
+                  <Text as="span" variant="caption-1" numeric color="neutral-faded">
+                    {item.stack.index}/{item.stack.total}
+                  </Text>
+                )}
+              </View>
               <Text
                 as="span"
                 variant="caption-1"

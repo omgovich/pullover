@@ -1,7 +1,8 @@
 import { classifyAll, countAttention } from '@core/classify'
 import { collectRepositories, filterByRepositories } from '@core/repo-filter'
+import { computeStackPositions } from '@core/stack'
 import type { InboxSnapshot } from '@shared/ipc'
-import type { PullRequest } from '@shared/types'
+import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
 import { isAuthError } from './github/auth-error'
 import { fetchPullRequests, fetchViewerLogin, type GraphQLClient } from './github/fetch-prs'
 import type { AppStore } from './store'
@@ -66,6 +67,17 @@ export class Inbox {
   }
 
   /**
+   * Attaches each item's stack position, computed from `this.prs` — the
+   * unfiltered fetch — so a stack stays whole even when the repository
+   * filter hides part of it. Shared by `doRefresh` and `reclassify`, the two
+   * places that produce items, so the step isn't duplicated between them.
+   */
+  private attachStacks(items: Omit<ClassifiedPullRequest, 'stack'>[]): ClassifiedPullRequest[] {
+    const stacks = computeStackPositions(this.prs)
+    return items.map((item) => ({ ...item, stack: stacks.get(item.pr.id) ?? null }))
+  }
+
+  /**
    * Re-runs the classifier over PRs already in memory. No network. This is
    * also how a changed repository selection takes effect: `this.prs` always
    * holds the unfiltered fetch, and narrowing happens here, so ticking a
@@ -78,11 +90,13 @@ export class Inbox {
       this.prs,
       settings.watchAllRepositories ? null : settings.repositories,
     )
-    const items = classifyAll(filtered, {
-      myLogin: this.myLogin,
-      snoozes: this.deps.store.getSnoozes(),
-      now: this.now(),
-    })
+    const items = this.attachStacks(
+      classifyAll(filtered, {
+        myLogin: this.myLogin,
+        snoozes: this.deps.store.getSnoozes(),
+        now: this.now(),
+      }),
+    )
     this.emit({
       items,
       attentionCount: countAttention(items),
@@ -167,11 +181,13 @@ export class Inbox {
       )
 
       const now = this.now()
-      const items = classifyAll(filtered, {
-        myLogin: this.myLogin,
-        snoozes: this.deps.store.getSnoozes(),
-        now,
-      })
+      const items = this.attachStacks(
+        classifyAll(filtered, {
+          myLogin: this.myLogin,
+          snoozes: this.deps.store.getSnoozes(),
+          now,
+        }),
+      )
 
       this.emit({
         status: 'ready',

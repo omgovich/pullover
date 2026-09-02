@@ -13,6 +13,8 @@ function node(overrides: Partial<PullRequestNode> = {}): PullRequestNode {
     updatedAt: '2026-08-02T10:00:00Z',
     additions: 12,
     deletions: 3,
+    headRefName: 'feature-branch',
+    baseRefName: 'main',
     reviewDecision: 'REVIEW_REQUIRED',
     author: { login: 'alice', avatarUrl: 'https://avatars.example/alice.png' },
     repository: { nameWithOwner: 'acme/web' },
@@ -54,6 +56,8 @@ describe('mapPullRequest', () => {
     expect(pr.isDraft).toBe(true)
     expect(pr.additions).toBe(12)
     expect(pr.deletions).toBe(3)
+    expect(pr.headRefName).toBe('feature-branch')
+    expect(pr.baseRefName).toBe('main')
     expect(pr.createdAt).toBe('2026-08-01T10:00:00Z')
     expect(pr.updatedAt).toBe('2026-08-02T10:00:00Z')
     expect(pr.reviewDecision).toBe('REVIEW_REQUIRED')

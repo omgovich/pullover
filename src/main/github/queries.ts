@@ -27,6 +27,8 @@ export const DETAILS_QUERY = `
         updatedAt
         additions
         deletions
+        headRefName
+        baseRefName
         reviewDecision
         bodyText
         author { login avatarUrl }

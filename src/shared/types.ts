@@ -1,3 +1,5 @@
+import type { StackPosition } from '@core/stack'
+
 export type CiStatus = 'success' | 'failure' | 'pending' | 'none'
 
 export type SearchBucket = 'review-requested' | 'author' | 'involves' | 'mentions'
@@ -49,6 +51,8 @@ export interface PullRequest {
   isDraft: boolean
   additions: number
   deletions: number
+  headRefName: string
+  baseRefName: string
   ciStatus: CiStatus
   lastCommitPushedAt: string
   reviewDecision: ReviewDecision
@@ -97,6 +101,8 @@ export interface ClassifiedPullRequest {
   category: Category
   reason: string
   isSnoozed: boolean
+  /** This pull request's position within its stack, or null when it isn't part of one. */
+  stack: StackPosition | null
 }
 
 export type SnoozeType = 'until-activity' | 'until-time'

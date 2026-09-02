@@ -102,7 +102,13 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
   return { category: 'waiting', reason: 'Waiting on reviewers' }
 }
 
-export function classify(pr: PullRequest, ctx: ClassifyContext): ClassifiedPullRequest {
+// `stack` is deliberately absent from these return types: a stack position is
+// a separate fact about a pull request, unrelated to the categories, reasons,
+// and snooze semantics decided here. `Inbox` attaches it afterward.
+export function classify(
+  pr: PullRequest,
+  ctx: ClassifyContext,
+): Omit<ClassifiedPullRequest, 'stack'> {
   if (pr.isDraft) {
     return { pr, category: 'hidden', reason: '', isSnoozed: false }
   }
@@ -124,7 +130,10 @@ export function classify(pr: PullRequest, ctx: ClassifyContext): ClassifiedPullR
   return { pr, ...verdict, isSnoozed: false }
 }
 
-export function classifyAll(prs: PullRequest[], ctx: ClassifyContext): ClassifiedPullRequest[] {
+export function classifyAll(
+  prs: PullRequest[],
+  ctx: ClassifyContext,
+): Omit<ClassifiedPullRequest, 'stack'>[] {
   return prs
     .map((pr) => classify(pr, ctx))
     .filter((item) => item.category !== 'hidden')
@@ -137,6 +146,6 @@ export function classifyAll(prs: PullRequest[], ctx: ClassifyContext): Classifie
     })
 }
 
-export function countAttention(items: ClassifiedPullRequest[]): number {
+export function countAttention(items: Omit<ClassifiedPullRequest, 'stack'>[]): number {
   return items.filter((item) => ATTENTION_CATEGORIES.includes(item.category)).length
 }
