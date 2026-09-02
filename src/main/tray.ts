@@ -1,6 +1,7 @@
 import { formatAge } from '@core/format'
 import type { InboxSnapshot } from '@shared/ipc'
-import { Menu, nativeImage, type Rectangle, Tray } from 'electron'
+import { Menu, type Rectangle, Tray } from 'electron'
+import { createTrayIcon } from './tray-icon'
 
 /**
  * Pure string-building for the tray title, kept separate so it can be unit
@@ -48,9 +49,7 @@ export interface TrayCallbacks {
 }
 
 export function createTray(callbacks: TrayCallbacks): Tray {
-  // An empty image plus a title renders as a text-only menu-bar item, which
-  // means the app ships without an icon asset.
-  const tray = new Tray(nativeImage.createEmpty())
+  const tray = new Tray(createTrayIcon())
   tray.setToolTip('Pullover')
   tray.setTitle(formatBadgeTitle(0))
 
