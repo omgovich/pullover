@@ -95,10 +95,10 @@ describe('computeStackPositions', () => {
     expect(positions.has('PR_c')).toBe(false)
   })
 
-  it('still positions the unambiguous part of a stack ahead of a fork', () => {
-    // A -> B -> C, then C's branch forks into D and E. The A/B/C prefix is
-    // still a single unambiguous chain and keeps its numbers; only the
-    // forked continuation is withheld.
+  it('withholds the whole component when a stack forks partway up', () => {
+    // A -> B -> C, then C forks into D and E. Nothing here gets a number,
+    // including the unambiguous A/B/C prefix: calling C "3/3" would say it
+    // is the top of the stack when two pull requests sit on top of it.
     const prs = [
       pr({ id: 'PR_a', headRefName: 'a', baseRefName: 'main' }),
       pr({ id: 'PR_b', headRefName: 'b', baseRefName: 'a' }),
@@ -107,11 +107,25 @@ describe('computeStackPositions', () => {
       pr({ id: 'PR_e', headRefName: 'e', baseRefName: 'c' }),
     ]
     const positions = computeStackPositions(prs)
-    expect(positions.get('PR_a')).toEqual({ index: 1, total: 3 })
-    expect(positions.get('PR_b')).toEqual({ index: 2, total: 3 })
-    expect(positions.get('PR_c')).toEqual({ index: 3, total: 3 })
-    expect(positions.has('PR_d')).toBe(false)
-    expect(positions.has('PR_e')).toBe(false)
+    for (const id of ['PR_a', 'PR_b', 'PR_c', 'PR_d', 'PR_e']) {
+      expect(positions.has(id)).toBe(false)
+    }
+  })
+
+  it('leaves a separate linear stack in the same repo untouched by a fork', () => {
+    // The fork above must disqualify its own component only — an unrelated
+    // chain beside it still gets its numbers.
+    const prs = [
+      pr({ id: 'PR_a', headRefName: 'a', baseRefName: 'main' }),
+      pr({ id: 'PR_d', headRefName: 'd', baseRefName: 'a' }),
+      pr({ id: 'PR_e', headRefName: 'e', baseRefName: 'a' }),
+      pr({ id: 'PR_x', headRefName: 'x', baseRefName: 'main' }),
+      pr({ id: 'PR_y', headRefName: 'y', baseRefName: 'x' }),
+    ]
+    const positions = computeStackPositions(prs)
+    expect(positions.has('PR_a')).toBe(false)
+    expect(positions.get('PR_x')).toEqual({ index: 1, total: 2 })
+    expect(positions.get('PR_y')).toEqual({ index: 2, total: 2 })
   })
 
   it('gives no position when two pull requests share a headRefName', () => {
