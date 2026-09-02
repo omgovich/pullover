@@ -1,11 +1,4 @@
-import type { PullRequest } from '@shared/types'
-
-export interface StackPosition {
-  /** 1-based position within the chain, counted from the root. */
-  index: number
-  /** Length of the chain. */
-  total: number
-}
+import type { ClassifiedPullRequest, PullRequest, StackPosition } from '@shared/types'
 
 /**
  * Groups `items` by the key `keyOf` produces.
@@ -130,10 +123,126 @@ export function computeStackPositions(prs: PullRequest[]): Map<string, StackPosi
       if (chain.length < 2) continue
 
       chain.forEach((chainPr, i) => {
-        result.set(chainPr.id, { index: i + 1, total: chain.length })
+        result.set(chainPr.id, { id: root, index: i + 1, total: chain.length })
       })
     }
   }
 
   return result
+}
+
+/**
+ * Reorders `items` so each stack's members sit together, in one contiguous
+ * run, ascending by `index` — the incoming order is otherwise preserved
+ * (that order is already the classifier's category-then-recency sort).
+ *
+ * A stack takes the position of its earliest-appearing member, so the most
+ * relevant stack still floats to the top of its section. Pull requests with
+ * no stack keep their place. Ordering within a section is a display
+ * concern, so this stays out of the classifier.
+ */
+export function orderSection(items: ClassifiedPullRequest[]): ClassifiedPullRequest[] {
+  const groups = new Map<string, ClassifiedPullRequest[]>()
+  for (const item of items) {
+    const id = item.stack?.id
+    if (id === undefined) continue
+    const group = groups.get(id)
+    if (group) group.push(item)
+    else groups.set(id, [item])
+  }
+  for (const group of groups.values()) {
+    group.sort((a, b) => (a.stack?.index ?? 0) - (b.stack?.index ?? 0))
+  }
+
+  const emitted = new Set<string>()
+  const result: ClassifiedPullRequest[] = []
+  for (const item of items) {
+    const id = item.stack?.id
+    if (id === undefined) {
+      result.push(item)
+      continue
+    }
+    if (emitted.has(id)) continue
+    emitted.add(id)
+    // Non-null: `groups` was built from this same list, keyed by this id.
+    const group = groups.get(id)
+    if (group) result.push(...group)
+  }
+  return result
+}
+
+/** A pull request card, with the solid line it draws inside its own bounds. */
+export interface StackCardRow {
+  kind: 'card'
+  item: ClassifiedPullRequest
+  /** Solid line from the card's top edge down to the avatar. */
+  lineAbove: boolean
+  /** Solid line from the avatar down to the card's bottom edge. */
+  lineBelow: boolean
+}
+
+/**
+ * A dashed break standing between cards, in place of stack members that
+ * exist but aren't shown because they don't need attention.
+ */
+export interface StackBreakRow {
+  kind: 'break'
+  id: string
+}
+
+export type SectionRow = StackCardRow | StackBreakRow
+
+/**
+ * Lays a section out for rendering, from a list already arranged by
+ * `orderSection` (so a stack's shown members sit contiguously, ascending by
+ * `index`).
+ *
+ * Cards carry only solid line: a stack member draws it upward unless it is
+ * the chain's first, and downward unless it is its last. Everything omitted
+ * from the chain becomes a `break` row *between* cards instead — so a dashed
+ * stretch never runs through a card, only before, after, or between them.
+ *
+ * Two adjacent partial stacks share the single break that falls between
+ * them; drawing one per stack would stack two dashes in the same 1px-apart
+ * space and read no differently.
+ */
+export function sectionRows(ordered: ClassifiedPullRequest[]): SectionRow[] {
+  /** Whether the row at `i` is the chain member `stack` expects at `index`. */
+  function adjoins(i: number, stack: StackPosition, index: number): boolean {
+    const other = ordered[i]?.stack
+    return other != null && other.id === stack.id && other.index === index
+  }
+
+  const rows: SectionRow[] = []
+  // Set when a stack's shown members end before its top: the break it needs
+  // is emitted once the following row (or the end of the list) is known, so
+  // it is never duplicated by that row's own break above.
+  let pendingBreak = false
+
+  ordered.forEach((item, i) => {
+    const stack = item.stack
+
+    if (stack === null) {
+      if (pendingBreak) rows.push({ kind: 'break', id: `break-${item.pr.id}` })
+      pendingBreak = false
+      rows.push({ kind: 'card', item, lineAbove: false, lineBelow: false })
+      return
+    }
+
+    const breakAbove = stack.index > 1 && !adjoins(i - 1, stack, stack.index - 1)
+    if (breakAbove || pendingBreak) rows.push({ kind: 'break', id: `break-${item.pr.id}` })
+    pendingBreak = false
+
+    rows.push({
+      kind: 'card',
+      item,
+      lineAbove: stack.index > 1,
+      lineBelow: stack.index < stack.total,
+    })
+
+    if (stack.index < stack.total && !adjoins(i + 1, stack, stack.index + 1)) pendingBreak = true
+  })
+
+  if (pendingBreak) rows.push({ kind: 'break', id: 'break-end' })
+  return rows
 }

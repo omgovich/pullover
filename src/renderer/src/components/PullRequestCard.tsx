@@ -1,17 +1,40 @@
 import { formatAge } from '@core/format'
 import type { ClassifiedPullRequest } from '@shared/types'
+import { Layers } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { Avatar, Text, type TextProps, View, type ViewProps } from 'reshaped/bundle'
+import { Avatar, Badge, Text, type TextProps, View, type ViewProps } from 'reshaped/bundle'
 import SnoozeMenu from './SnoozeMenu'
 
 interface Props {
   item: ClassifiedPullRequest
   now: string
   isActive: boolean
+  /** Solid stack line this row draws above/below the avatar; see `sectionRows` (@core/stack). */
+  lineAbove: boolean
+  lineBelow: boolean
   onHover: (prId: string | null) => void
   onSelect: (prId: string) => void
   onSnoozed: (item: ClassifiedPullRequest) => void
 }
+
+// The connector's geometry is derived from this row's own layout rather
+// than tuned by hand: the constants below are the values the props further
+// down are actually given, so changing the padding or the avatar moves the
+// line with it.
+const UNIT_PX = 4
+// Reshaped units, spent directly on the props below, so the connector and
+// the layout it hides behind cannot drift apart.
+const AVATAR_SIZE = 8
+const ROW_PADDING_INLINE = 2.5
+const ROW_PADDING_TOP = 2.25
+const AVATAR_SIZE_PX = AVATAR_SIZE * UNIT_PX
+const ROW_PADDING_INLINE_PX = ROW_PADDING_INLINE * UNIT_PX
+const ROW_PADDING_TOP_PX = ROW_PADDING_TOP * UNIT_PX
+
+const CONNECTOR_WIDTH_PX = 2
+/** Exported so a section's dashed breaks line up with the cards' own line. */
+export const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
+const CONNECTOR_BELOW_TOP_PX = ROW_PADDING_TOP_PX + AVATAR_SIZE_PX
 
 /** Imperative surface App needs for keyboard navigation. */
 export interface PullRequestCardHandle {
@@ -90,7 +113,7 @@ function initialsOf(login: string): string {
 }
 
 const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRequestCard(
-  { item, now, isActive, onHover, onSelect, onSnoozed }: Props,
+  { item, now, isActive, lineAbove, lineBelow, onHover, onSelect, onSnoozed }: Props,
   ref,
 ) {
   const { pr } = item
@@ -121,11 +144,12 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
         direction="row"
         align="start"
         gap={2.75}
-        paddingTop={2.25}
-        paddingInline={2.5}
+        paddingTop={ROW_PADDING_TOP}
+        paddingInline={ROW_PADDING_INLINE}
         paddingBottom={2.5}
         borderRadius="large"
         backgroundColor={isActive ? 'neutral-faded' : undefined}
+        position="relative"
         attributes={{
           role: 'button',
           onClick: handleOpen,
@@ -137,10 +161,31 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           },
         }}
       >
+        {/* Stack connector: the solid line behind the avatar joining this row
+            to the chain. Rendered before `Avatar` so it paints underneath it.
+            Anything omitted from the chain is a dotted break between cards
+            (see `sectionRows`), never a broken stretch inside one. The
+            section list sets no gap between cards, so consecutive segments
+            meet exactly and the stack reads as one rule. */}
+        {lineAbove && (
+          <div
+            className="pv-stack-connector"
+            style={{ left: CONNECTOR_LEFT_PX, top: 0, height: ROW_PADDING_TOP_PX }}
+            aria-hidden="true"
+          />
+        )}
+        {lineBelow && (
+          <div
+            className="pv-stack-connector"
+            style={{ left: CONNECTOR_LEFT_PX, top: CONNECTOR_BELOW_TOP_PX, bottom: 0 }}
+            aria-hidden="true"
+          />
+        )}
+
         <Avatar
           src={pr.authorAvatarUrl !== '' ? pr.authorAvatarUrl : undefined}
           initials={initialsOf(pr.authorLogin)}
-          size={8}
+          size={AVATAR_SIZE}
           variant="faded"
           color="primary"
           // No `Avatar` prop reaches `letter-spacing` or lets font-size be
@@ -158,14 +203,16 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   {pr.repository}
                 </Text>
               </View>
-              <View as="span" direction="row" gap={1}>
+              <View as="span" direction="row" align="center" gap={1}>
                 <Text as="span" variant="caption-1" numeric color="primary">
                   #{pr.number}
                 </Text>
                 {item.stack !== null && (
-                  <Text as="span" variant="caption-1" numeric color="neutral-faded">
-                    {item.stack.index}/{item.stack.total}
-                  </Text>
+                  <Badge size="small" color="primary" variant="faded" icon={Layers}>
+                    <Text as="span" numeric>
+                      {item.stack.index}/{item.stack.total}
+                    </Text>
+                  </Badge>
                 )}
               </View>
               <Text

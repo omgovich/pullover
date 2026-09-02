@@ -72,6 +72,42 @@ body {
   opacity: 1;
 }
 
+/* Stack connector: the solid line joining a pull request to its neighbours
+   in the stack, drawn behind the avatar. No Reshaped prop draws a line
+   behind a sibling, so this stays plain CSS. Geometry (width, left offset)
+   comes from PullRequestCard, which derives it from the card's own layout. */
+.pv-stack-connector {
+  position: absolute;
+  width: 0;
+  border-left: 2px solid var(--rs-color-border-neutral);
+}
+
+/* The dotted stand-in for stack members that aren't shown. It sits between
+   cards rather than inside one, so a broken stretch never crosses a card.
+   Same 2px width and same colour token as the solid run above — only the
+   stroke differs, so the two read as one rule.
+
+   Painted as a gradient rather than `border-style: dotted`: the browser
+   distributes its own dots to fit the length and clips whichever fall on
+   the ends. Here the arithmetic is exact — a 6px period of 2px dot plus 4px
+   gap, over 14px (3 * 6 - 4), so it begins and ends on a whole dot and is
+   never cut off. Keep height at `n * 6 - 4` to stay whole.
+
+   Between two cards the end dots merge into the solid segments they abut,
+   which is the intended reading: the rule breaks into two gaps around a
+   single free dot. In isolation (first or last row of a section) all three
+   dots show. */
+.pv-stack-break {
+  align-self: flex-start;
+  width: 2px;
+  height: 14px;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--rs-color-border-neutral) 0 2px,
+    transparent 2px 6px
+  );
+}
+
 /* Segmented controls */
 
 /*

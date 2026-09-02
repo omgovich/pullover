@@ -1,11 +1,14 @@
+import { sectionRows } from '@core/stack'
 import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { forwardRef, useEffect, useRef } from 'react'
 import { Actionable, Icon, Text, View } from 'reshaped/bundle'
-import PullRequestCard, { type PullRequestCardHandle } from './PullRequestCard'
+import PullRequestCard, { CONNECTOR_LEFT_PX, type PullRequestCardHandle } from './PullRequestCard'
 
 interface Props {
   category: Category
+  /** Already in draw order (App applies `orderSection`, so the keyboard
+      cursor and the screen agree on where each card sits). */
   items: ClassifiedPullRequest[]
   now: string
   open: boolean
@@ -58,6 +61,10 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
 
   if (items.length === 0) return null
 
+  // Lays the section out as cards interleaved with the dotted breaks that
+  // stand in for stack members not shown.
+  const rows = sectionRows(items)
+
   return (
     <div ref={ref}>
       <Actionable onClick={onToggle} fullWidth>
@@ -96,20 +103,35 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
         </View>
       </Actionable>
 
+      {/* No gap between cards: the stack connector runs from card to card, and
+          any gap would break the line (bridging it with overshoot and negative
+          margins only traded the seam for overlap artefacts). The cards' own
+          padding already separates them. */}
       {open && (
-        <View direction="column" gap={0.25}>
-          {items.map((item) => (
-            <PullRequestCard
-              key={item.pr.id}
-              ref={getCardRefCallback(item.pr.id)}
-              item={item}
-              now={now}
-              isActive={item.pr.id === activePrId}
-              onHover={onHoverCard}
-              onSelect={onSelectCard}
-              onSnoozed={onSnoozed}
-            />
-          ))}
+        <View direction="column">
+          {rows.map((row) =>
+            row.kind === 'break' ? (
+              <div
+                key={row.id}
+                className="pv-stack-break"
+                style={{ marginLeft: CONNECTOR_LEFT_PX }}
+                aria-hidden="true"
+              />
+            ) : (
+              <PullRequestCard
+                key={row.item.pr.id}
+                ref={getCardRefCallback(row.item.pr.id)}
+                item={row.item}
+                now={now}
+                isActive={row.item.pr.id === activePrId}
+                lineAbove={row.lineAbove}
+                lineBelow={row.lineBelow}
+                onHover={onHoverCard}
+                onSelect={onSelectCard}
+                onSnoozed={onSnoozed}
+              />
+            ),
+          )}
         </View>
       )}
     </div>
