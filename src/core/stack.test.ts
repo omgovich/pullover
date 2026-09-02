@@ -1,6 +1,6 @@
-import { computeStackPositions, orderSection, type StackPosition, sectionRows } from '@core/stack'
+import { computeStackPositions, orderSection, sectionRows } from '@core/stack'
 import { makePullRequest } from '@core/test-factory'
-import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
+import type { ClassifiedPullRequest, PullRequest, StackPosition } from '@shared/types'
 import { describe, expect, it } from 'vitest'
 
 /** A minimal open PR for stack fixtures: only the branch fields matter here. */
@@ -389,16 +389,16 @@ describe('sectionRows', () => {
     }
   })
 
-  it('gives every card keys unique enough for React to tell breaks apart', () => {
+  it('gives every break an id unique enough for React to tell them apart', () => {
     const items = [1, 3, 5].map((index) =>
       classified(`PR_${index}`, { id: 'stack-1', index, total: 7 }),
     )
 
-    const keys = sectionRows(items)
+    const ids = sectionRows(items)
       .filter((row) => row.kind === 'break')
-      .map((row) => (row.kind === 'break' ? row.key : ''))
+      .map((row) => (row.kind === 'break' ? row.id : ''))
 
-    expect(new Set(keys).size).toBe(keys.length)
+    expect(new Set(ids).size).toBe(ids.length)
   })
 
   // App walks `orderSection`'s output with the keyboard while the screen

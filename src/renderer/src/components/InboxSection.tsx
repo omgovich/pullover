@@ -112,7 +112,7 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
           {rows.map((row) =>
             row.kind === 'break' ? (
               <div
-                key={row.key}
+                key={row.id}
                 className="pv-stack-break"
                 style={{ marginLeft: CONNECTOR_LEFT_PX }}
                 aria-hidden="true"

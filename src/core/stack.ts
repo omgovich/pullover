@@ -1,17 +1,4 @@
-import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
-
-export interface StackPosition {
-  /**
-   * Identifies the stack this position belongs to, so two different chains
-   * of the same length can be told apart. The root pull request's id is the
-   * natural choice — every member of a chain walks back to the same root.
-   */
-  id: string
-  /** 1-based position within the chain, counted from the root. */
-  index: number
-  /** Length of the chain. */
-  total: number
-}
+import type { ClassifiedPullRequest, PullRequest, StackPosition } from '@shared/types'
 
 /**
  * Groups `items` by the key `keyOf` produces.
@@ -200,7 +187,7 @@ export interface StackCardRow {
  */
 export interface StackBreakRow {
   kind: 'break'
-  key: string
+  id: string
 }
 
 export type SectionRow = StackCardRow | StackBreakRow
@@ -236,14 +223,14 @@ export function sectionRows(ordered: ClassifiedPullRequest[]): SectionRow[] {
     const stack = item.stack
 
     if (stack === null) {
-      if (pendingBreak) rows.push({ kind: 'break', key: `break-${item.pr.id}` })
+      if (pendingBreak) rows.push({ kind: 'break', id: `break-${item.pr.id}` })
       pendingBreak = false
       rows.push({ kind: 'card', item, lineAbove: false, lineBelow: false })
       return
     }
 
     const breakAbove = stack.index > 1 && !adjoins(i - 1, stack, stack.index - 1)
-    if (breakAbove || pendingBreak) rows.push({ kind: 'break', key: `break-${item.pr.id}` })
+    if (breakAbove || pendingBreak) rows.push({ kind: 'break', id: `break-${item.pr.id}` })
     pendingBreak = false
 
     rows.push({
@@ -256,6 +243,6 @@ export function sectionRows(ordered: ClassifiedPullRequest[]): SectionRow[] {
     if (stack.index < stack.total && !adjoins(i + 1, stack, stack.index + 1)) pendingBreak = true
   })
 
-  if (pendingBreak) rows.push({ kind: 'break', key: 'break-end' })
+  if (pendingBreak) rows.push({ kind: 'break', id: 'break-end' })
   return rows
 }

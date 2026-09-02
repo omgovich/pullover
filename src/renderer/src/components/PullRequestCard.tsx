@@ -18,13 +18,18 @@ interface Props {
 }
 
 // The connector's geometry is derived from this row's own layout rather
-// than tuned by hand: each constant below is the literal prop value used
-// further down, times Reshaped's spacing unit. Change a prop and the line
-// follows it.
+// than tuned by hand: the constants below are the values the props further
+// down are actually given, so changing the padding or the avatar moves the
+// line with it.
 const UNIT_PX = 4
-const AVATAR_SIZE_PX = 8 * UNIT_PX // <Avatar size={8} />
-const ROW_PADDING_INLINE_PX = 2.5 * UNIT_PX // paddingInline={2.5}
-const ROW_PADDING_TOP_PX = 2.25 * UNIT_PX // paddingTop={2.25}
+// Reshaped units, spent directly on the props below, so the connector and
+// the layout it hides behind cannot drift apart.
+const AVATAR_SIZE = 8
+const ROW_PADDING_INLINE = 2.5
+const ROW_PADDING_TOP = 2.25
+const AVATAR_SIZE_PX = AVATAR_SIZE * UNIT_PX
+const ROW_PADDING_INLINE_PX = ROW_PADDING_INLINE * UNIT_PX
+const ROW_PADDING_TOP_PX = ROW_PADDING_TOP * UNIT_PX
 
 const CONNECTOR_WIDTH_PX = 2
 /** Exported so a section's dashed breaks line up with the cards' own line. */
@@ -139,8 +144,8 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
         direction="row"
         align="start"
         gap={2.75}
-        paddingTop={2.25}
-        paddingInline={2.5}
+        paddingTop={ROW_PADDING_TOP}
+        paddingInline={ROW_PADDING_INLINE}
         paddingBottom={2.5}
         borderRadius="large"
         backgroundColor={isActive ? 'neutral-faded' : undefined}
@@ -166,19 +171,21 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           <div
             className="pv-stack-connector"
             style={{ left: CONNECTOR_LEFT_PX, top: 0, height: ROW_PADDING_TOP_PX }}
+            aria-hidden="true"
           />
         )}
         {lineBelow && (
           <div
             className="pv-stack-connector"
             style={{ left: CONNECTOR_LEFT_PX, top: CONNECTOR_BELOW_TOP_PX, bottom: 0 }}
+            aria-hidden="true"
           />
         )}
 
         <Avatar
           src={pr.authorAvatarUrl !== '' ? pr.authorAvatarUrl : undefined}
           initials={initialsOf(pr.authorLogin)}
-          size={8}
+          size={AVATAR_SIZE}
           variant="faded"
           color="primary"
           // No `Avatar` prop reaches `letter-spacing` or lets font-size be

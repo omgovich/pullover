@@ -90,8 +90,13 @@ body {
    Painted as a gradient rather than `border-style: dotted`: the browser
    distributes its own dots to fit the length and clips whichever fall on
    the ends. Here the arithmetic is exact — a 6px period of 2px dot plus 4px
-   gap, over 14px (3 * 6 - 4), which is three whole dots and two gaps that
-   begin and end on a dot. Keep height at `n * 6 - 4` to stay whole. */
+   gap, over 14px (3 * 6 - 4), so it begins and ends on a whole dot and is
+   never cut off. Keep height at `n * 6 - 4` to stay whole.
+
+   Between two cards the end dots merge into the solid segments they abut,
+   which is the intended reading: the rule breaks into two gaps around a
+   single free dot. In isolation (first or last row of a section) all three
+   dots show. */
 .pv-stack-break {
   align-self: flex-start;
   width: 2px;

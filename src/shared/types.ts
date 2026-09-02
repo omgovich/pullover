@@ -1,5 +1,15 @@
-import type { StackPosition } from '@core/stack'
-
+export interface StackPosition {
+  /**
+   * Identifies the stack this position belongs to, so two different chains
+   * of the same length can be told apart. The root pull request's id is the
+   * natural choice — every member of a chain walks back to the same root.
+   */
+  id: string
+  /** 1-based position within the chain, counted from the root. */
+  index: number
+  /** Length of the chain. */
+  total: number
+}
 export type CiStatus = 'success' | 'failure' | 'pending' | 'none'
 
 export type SearchBucket = 'review-requested' | 'author' | 'involves' | 'mentions'
