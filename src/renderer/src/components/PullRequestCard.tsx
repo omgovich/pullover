@@ -26,14 +26,6 @@ const AVATAR_SIZE_PX = 8 * UNIT_PX // <Avatar size={8} />
 const ROW_PADDING_INLINE_PX = 2.5 * UNIT_PX // paddingInline={2.5}
 const ROW_PADDING_TOP_PX = 2.25 * UNIT_PX // paddingTop={2.25}
 
-/**
- * The gap InboxSection sets between cards, in Reshaped units. It lives here
- * because the connector has to bridge it: without the overshoot the line
- * below applies, a stack's rule breaks at every card boundary.
- */
-export const LIST_GAP = 0.25
-export const LIST_GAP_PX = LIST_GAP * UNIT_PX
-
 const CONNECTOR_WIDTH_PX = 2
 /** Exported so a section's dashed breaks line up with the cards' own line. */
 export const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
@@ -166,8 +158,10 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
       >
         {/* Stack connector: the solid line behind the avatar joining this row
             to the chain. Rendered before `Avatar` so it paints underneath it.
-            Anything omitted from the chain is a dashed break between cards
-            (see `sectionRows`), never a dashed stretch inside one. */}
+            Anything omitted from the chain is a dotted break between cards
+            (see `sectionRows`), never a broken stretch inside one. The
+            section list sets no gap between cards, so consecutive segments
+            meet exactly and the stack reads as one rule. */}
         {lineAbove && (
           <div
             className="pv-stack-connector"
@@ -177,11 +171,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
         {lineBelow && (
           <div
             className="pv-stack-connector"
-            style={{
-              left: CONNECTOR_LEFT_PX,
-              top: CONNECTOR_BELOW_TOP_PX,
-              bottom: -LIST_GAP_PX,
-            }}
+            style={{ left: CONNECTOR_LEFT_PX, top: CONNECTOR_BELOW_TOP_PX, bottom: 0 }}
           />
         )}
 

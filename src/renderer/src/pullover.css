@@ -82,13 +82,15 @@ body {
   border-left: 2px solid var(--rs-color-border-neutral);
 }
 
-/* The dashed stand-in for stack members that aren't shown. It sits between
-   cards rather than inside one, so a dashed stretch never crosses a card. */
+/* The dotted stand-in for stack members that aren't shown. It sits between
+   cards rather than inside one, so a broken stretch never crosses a card.
+   Same width and same colour token as the solid run above — only the stroke
+   style differs, so the two read as one rule. */
 .pv-stack-break {
   align-self: flex-start;
   width: 0;
   height: 10px;
-  border-left: 2px dashed var(--rs-color-border-neutral);
+  border-left: 2px dotted var(--rs-color-border-neutral);
 }
 
 /* Segmented controls */
