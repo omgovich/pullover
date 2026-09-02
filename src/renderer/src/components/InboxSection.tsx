@@ -1,4 +1,4 @@
-import { orderSection, sectionRows } from '@core/stack'
+import { sectionRows } from '@core/stack'
 import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { forwardRef, useEffect, useRef } from 'react'
@@ -7,6 +7,8 @@ import PullRequestCard, { CONNECTOR_LEFT_PX, type PullRequestCardHandle } from '
 
 interface Props {
   category: Category
+  /** Already in draw order (App applies `orderSection`, so the keyboard
+      cursor and the screen agree on where each card sits). */
   items: ClassifiedPullRequest[]
   now: string
   open: boolean
@@ -59,11 +61,9 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
 
   if (items.length === 0) return null
 
-  // Gathers each stack's members into one contiguous run (display order
-  // only — the classifier's category-then-recency sort stays untouched),
-  // then lays it out as cards interleaved with the dashed breaks that stand
-  // in for stack members not shown.
-  const rows = sectionRows(orderSection(items))
+  // Lays the section out as cards interleaved with the dotted breaks that
+  // stand in for stack members not shown.
+  const rows = sectionRows(items)
 
   return (
     <div ref={ref}>

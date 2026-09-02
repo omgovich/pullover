@@ -401,6 +401,40 @@ describe('sectionRows', () => {
     expect(new Set(keys).size).toBe(keys.length)
   })
 
+  // App walks `orderSection`'s output with the keyboard while the screen
+  // renders `sectionRows`. If the latter ever reordered or dropped a card,
+  // the cursor would silently drift out of step with what is drawn.
+  it('keeps cards in the order given, so the keyboard cursor matches the screen', () => {
+    const cases: ClassifiedPullRequest[][] = [
+      [1, 2, 3].map((i) => classified(`PR_${i}`, { id: 's', index: i, total: 3 })),
+      [2, 5, 6].map((i) => classified(`PR_${i}`, { id: 's', index: i, total: 8 })),
+      [
+        classified('PR_x', null),
+        classified('PR_a2', { id: 'a', index: 2, total: 4 }),
+        classified('PR_y', null),
+      ],
+    ]
+
+    for (const ordered of cases) {
+      const cards = sectionRows(ordered)
+        .filter((row) => row.kind === 'card')
+        .map((row) => (row.kind === 'card' ? row.item.pr.id : ''))
+      expect(cards).toEqual(ordered.map((item) => item.pr.id))
+    }
+  })
+
+  it('is unchanged by ordering an already-ordered section again', () => {
+    const items = [
+      classified('PR_b1', { id: 'b', index: 1, total: 2 }),
+      classified('PR_a2', { id: 'a', index: 2, total: 2 }),
+      classified('PR_a1', { id: 'a', index: 1, total: 2 }),
+      classified('PR_b2', { id: 'b', index: 2, total: 2 }),
+    ]
+
+    const once = orderSection(items)
+    expect(orderSection(once).map((item) => item.pr.id)).toEqual(once.map((item) => item.pr.id))
+  })
+
   it('the worked example: a stack of 7 showing only 2, 3, 5, 6, 7', () => {
     const items = [2, 3, 5, 6, 7].map((index) =>
       classified(`PR_${index}`, { id: 'stack-1', index, total: 7 }),

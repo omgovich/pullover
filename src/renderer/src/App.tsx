@@ -1,4 +1,5 @@
-import { type ClassifiedPullRequest, VISIBLE_CATEGORIES } from '@shared/types'
+import { orderSection } from '@core/stack'
+import { type Category, type ClassifiedPullRequest, VISIBLE_CATEGORIES } from '@shared/types'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader, ScrollArea, Text, useHotkeys, View } from 'reshaped/bundle'
 import EmptyState from './components/EmptyState'
@@ -53,17 +54,30 @@ export default function App(): React.JSX.Element {
     void window.api.refresh()
   }, [])
 
+  // Each section's items in the order they are drawn — stacks gathered into
+  // contiguous runs. Ordering happens here, once, because both the rendered
+  // sections and the keyboard cursor below read from it; deriving it twice is
+  // what let the cursor drift out of step with the screen.
+  const orderedByCategory = useMemo(() => {
+    const byCategory = new Map<Category, ClassifiedPullRequest[]>()
+    for (const category of VISIBLE_CATEGORIES) {
+      byCategory.set(
+        category,
+        orderSection(snapshot.items.filter((item) => item.category === category)),
+      )
+    }
+    return byCategory
+  }, [snapshot.items])
+
   // The order the keyboard cursor travels: visual order, skipping collapsed sections.
   const visibleItems = useMemo(() => {
     const result: ClassifiedPullRequest[] = []
     for (const category of VISIBLE_CATEGORIES) {
       if (collapsed.has(category)) continue
-      for (const item of snapshot.items) {
-        if (item.category === category) result.push(item)
-      }
+      result.push(...(orderedByCategory.get(category) ?? []))
     }
     return result
-  }, [snapshot.items, collapsed])
+  }, [orderedByCategory, collapsed])
 
   const { activeId, selectedId, setHoveredId, setSelectedId, moveSelection, registerCard } =
     useSelection(visibleItems)
@@ -187,7 +201,7 @@ export default function App(): React.JSX.Element {
             <InboxSection
               key={category}
               category={category}
-              items={snapshot.items.filter((item) => item.category === category)}
+              items={orderedByCategory.get(category) ?? []}
               now={now}
               open={!collapsed.has(category)}
               onToggle={() => toggleCategory(category)}
