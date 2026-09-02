@@ -72,6 +72,19 @@ body {
   opacity: 1;
 }
 
+/* Stack connector: a vertical line joining a pull request's neighbours in
+   its stack. No Reshaped prop draws a line behind a sibling, so this stays
+   plain CSS. `--gap` marks a stretch where stack members aren't shown. */
+.pv-stack-connector {
+  position: absolute;
+  width: 0;
+  border-left: 1px solid var(--rs-color-border-neutral);
+}
+
+.pv-stack-connector--gap {
+  border-left-style: dashed;
+}
+
 /* Segmented controls */
 
 /*

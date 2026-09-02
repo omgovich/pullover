@@ -1,17 +1,33 @@
 import { formatAge } from '@core/format'
+import type { Connector } from '@core/stack'
 import type { ClassifiedPullRequest } from '@shared/types'
+import { Layers } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { Avatar, Text, type TextProps, View, type ViewProps } from 'reshaped/bundle'
+import { Avatar, Badge, Text, type TextProps, View, type ViewProps } from 'reshaped/bundle'
 import SnoozeMenu from './SnoozeMenu'
 
 interface Props {
   item: ClassifiedPullRequest
   now: string
   isActive: boolean
+  /** Connector this row draws above/below the avatar; see `stackRows` (@core/stack). */
+  connectorAbove: Connector
+  connectorBelow: Connector
   onHover: (prId: string | null) => void
   onSelect: (prId: string) => void
   onSnoozed: (item: ClassifiedPullRequest) => void
 }
+
+// The connector's geometry mirrors this row's own layout below, rather than
+// being independently tuned: the avatar is `size={8}` (32px, Reshaped's 4px
+// unit) and the row's `paddingInline`/`paddingTop` are 2.5/2.25 units (10px
+// /9px). Centring on the avatar and stopping at its edges keeps the line
+// from ever needing to know about the avatar directly.
+const AVATAR_SIZE_PX = 32
+const ROW_PADDING_INLINE_PX = 10
+const ROW_PADDING_TOP_PX = 9
+const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2
+const CONNECTOR_BELOW_TOP_PX = ROW_PADDING_TOP_PX + AVATAR_SIZE_PX
 
 /** Imperative surface App needs for keyboard navigation. */
 export interface PullRequestCardHandle {
@@ -90,7 +106,7 @@ function initialsOf(login: string): string {
 }
 
 const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRequestCard(
-  { item, now, isActive, onHover, onSelect, onSnoozed }: Props,
+  { item, now, isActive, connectorAbove, connectorBelow, onHover, onSelect, onSnoozed }: Props,
   ref,
 ) {
   const { pr } = item
@@ -126,6 +142,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
         paddingBottom={2.5}
         borderRadius="large"
         backgroundColor={isActive ? 'neutral-faded' : undefined}
+        position="relative"
         attributes={{
           role: 'button',
           onClick: handleOpen,
@@ -137,6 +154,23 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           },
         }}
       >
+        {/* Stack connector: a vertical line behind the avatar, joining this
+            row to its neighbours in the stack. Rendered before `Avatar` so
+            it paints underneath it. See `.pv-stack-connector` for why this
+            is plain CSS instead of a Reshaped prop. */}
+        {connectorAbove !== 'none' && (
+          <div
+            className={`pv-stack-connector${connectorAbove === 'gap' ? ' pv-stack-connector--gap' : ''}`}
+            style={{ left: CONNECTOR_LEFT_PX, top: 0, height: ROW_PADDING_TOP_PX }}
+          />
+        )}
+        {connectorBelow !== 'none' && (
+          <div
+            className={`pv-stack-connector${connectorBelow === 'gap' ? ' pv-stack-connector--gap' : ''}`}
+            style={{ left: CONNECTOR_LEFT_PX, top: CONNECTOR_BELOW_TOP_PX, bottom: 0 }}
+          />
+        )}
+
         <Avatar
           src={pr.authorAvatarUrl !== '' ? pr.authorAvatarUrl : undefined}
           initials={initialsOf(pr.authorLogin)}
@@ -163,9 +197,11 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   #{pr.number}
                 </Text>
                 {item.stack !== null && (
-                  <Text as="span" variant="caption-1" numeric color="neutral-faded">
-                    {item.stack.index}/{item.stack.total}
-                  </Text>
+                  <Badge color="primary" variant="faded" icon={Layers}>
+                    <Text as="span" numeric>
+                      {item.stack.index}/{item.stack.total}
+                    </Text>
+                  </Badge>
                 )}
               </View>
               <Text

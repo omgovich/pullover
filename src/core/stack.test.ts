@@ -1,11 +1,33 @@
-import { computeStackPositions } from '@core/stack'
+import {
+  type Connector,
+  computeStackPositions,
+  orderSection,
+  type StackPosition,
+  stackRows,
+} from '@core/stack'
 import { makePullRequest } from '@core/test-factory'
-import type { PullRequest } from '@shared/types'
+import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
 import { describe, expect, it } from 'vitest'
 
 /** A minimal open PR for stack fixtures: only the branch fields matter here. */
 function pr(overrides: Partial<PullRequest> & { id: string }): PullRequest {
   return makePullRequest(overrides)
+}
+
+/** A minimal classified PR for ordering/connector fixtures: category and
+ * reason never matter to `orderSection` or `stackRows`. */
+function classified(
+  id: string,
+  stack: StackPosition | null,
+  overrides: Partial<PullRequest> = {},
+): ClassifiedPullRequest {
+  return {
+    pr: makePullRequest({ id, ...overrides }),
+    category: 'needs-review',
+    reason: '',
+    isSnoozed: false,
+    stack,
+  }
 }
 
 describe('computeStackPositions', () => {
@@ -64,14 +86,15 @@ describe('computeStackPositions', () => {
 
     const positions = computeStackPositions(prs)
 
-    expect(positions.get('PR_641')).toEqual({ index: 1, total: 8 })
-    expect(positions.get('PR_642')).toEqual({ index: 2, total: 8 })
-    expect(positions.get('PR_647')).toEqual({ index: 3, total: 8 })
-    expect(positions.get('PR_648')).toEqual({ index: 4, total: 8 })
-    expect(positions.get('PR_643')).toEqual({ index: 5, total: 8 })
-    expect(positions.get('PR_644')).toEqual({ index: 6, total: 8 })
-    expect(positions.get('PR_645')).toEqual({ index: 7, total: 8 })
-    expect(positions.get('PR_650')).toEqual({ index: 8, total: 8 })
+    // The root PR's id, #641, identifies the whole chain.
+    expect(positions.get('PR_641')).toEqual({ id: 'PR_641', index: 1, total: 8 })
+    expect(positions.get('PR_642')).toEqual({ id: 'PR_641', index: 2, total: 8 })
+    expect(positions.get('PR_647')).toEqual({ id: 'PR_641', index: 3, total: 8 })
+    expect(positions.get('PR_648')).toEqual({ id: 'PR_641', index: 4, total: 8 })
+    expect(positions.get('PR_643')).toEqual({ id: 'PR_641', index: 5, total: 8 })
+    expect(positions.get('PR_644')).toEqual({ id: 'PR_641', index: 6, total: 8 })
+    expect(positions.get('PR_645')).toEqual({ id: 'PR_641', index: 7, total: 8 })
+    expect(positions.get('PR_650')).toEqual({ id: 'PR_641', index: 8, total: 8 })
     // The unrelated PR isn't touched.
     expect(positions.has('PR_999')).toBe(false)
   })
@@ -124,8 +147,31 @@ describe('computeStackPositions', () => {
     ]
     const positions = computeStackPositions(prs)
     expect(positions.has('PR_a')).toBe(false)
-    expect(positions.get('PR_x')).toEqual({ index: 1, total: 2 })
-    expect(positions.get('PR_y')).toEqual({ index: 2, total: 2 })
+    expect(positions.get('PR_x')).toEqual({ id: 'PR_x', index: 1, total: 2 })
+    expect(positions.get('PR_y')).toEqual({ id: 'PR_x', index: 2, total: 2 })
+  })
+
+  it('gives two separate stacks of equal length in one repository different ids', () => {
+    const prs = [
+      pr({ id: 'PR_a1', headRefName: 'a1', baseRefName: 'main' }),
+      pr({ id: 'PR_a2', headRefName: 'a2', baseRefName: 'a1' }),
+      pr({ id: 'PR_b1', headRefName: 'b1', baseRefName: 'main' }),
+      pr({ id: 'PR_b2', headRefName: 'b2', baseRefName: 'b1' }),
+    ]
+    const positions = computeStackPositions(prs)
+
+    const stackA = positions.get('PR_a1')
+    const stackB = positions.get('PR_b1')
+    expect(stackA).toBeDefined()
+    expect(stackB).toBeDefined()
+    // Same shape (both 1/2, 2/2) but must not be mistaken for one another.
+    expect(stackA?.id).not.toBe(stackB?.id)
+
+    // Every member of one stack shares that stack's id.
+    expect(positions.get('PR_a1')?.id).toBe(stackA?.id)
+    expect(positions.get('PR_a2')?.id).toBe(stackA?.id)
+    expect(positions.get('PR_b1')?.id).toBe(stackB?.id)
+    expect(positions.get('PR_b2')?.id).toBe(stackB?.id)
   })
 
   it('gives no position when two pull requests share a headRefName', () => {
@@ -153,8 +199,8 @@ describe('computeStackPositions', () => {
       pr({ id: 'PR_other_1', repository: 'acme/other', headRefName: 'x', baseRefName: 'main' }),
     ]
     const positions = computeStackPositions(prs)
-    expect(positions.get('PR_web_1')).toEqual({ index: 1, total: 2 })
-    expect(positions.get('PR_web_2')).toEqual({ index: 2, total: 2 })
+    expect(positions.get('PR_web_1')).toEqual({ id: 'PR_web_1', index: 1, total: 2 })
+    expect(positions.get('PR_web_2')).toEqual({ id: 'PR_web_1', index: 2, total: 2 })
     // Alone in its own repo, so it's an ordinary PR, not a stack.
     expect(positions.has('PR_other_1')).toBe(false)
   })
@@ -196,7 +242,149 @@ describe('computeStackPositions', () => {
       pr({ id: 'PR_647', headRefName: 'text-search-perf', baseRefName: 'text-search-controller' }),
     ]
     const positions = computeStackPositions(prs)
-    expect(positions.get('PR_642')).toEqual({ index: 1, total: 2 })
-    expect(positions.get('PR_647')).toEqual({ index: 2, total: 2 })
+    expect(positions.get('PR_642')).toEqual({ id: 'PR_642', index: 1, total: 2 })
+    expect(positions.get('PR_647')).toEqual({ id: 'PR_642', index: 2, total: 2 })
+  })
+})
+
+describe('orderSection', () => {
+  it('leaves pull requests with no stack in place', () => {
+    const items = [classified('PR_a', null), classified('PR_b', null), classified('PR_c', null)]
+    expect(orderSection(items)).toEqual(items)
+  })
+
+  it("gathers a stack's members into one contiguous run at the earliest member's position", () => {
+    // #2 of the stack appears first; #1 and #3 are scattered after it and
+    // after an unrelated PR. The whole stack should collapse to where #2
+    // was, ordered ascending by index, with the unrelated PR undisturbed.
+    const items = [
+      classified('PR_2', { id: 'stack-1', index: 2, total: 3 }),
+      classified('PR_x', null),
+      classified('PR_1', { id: 'stack-1', index: 1, total: 3 }),
+      classified('PR_3', { id: 'stack-1', index: 3, total: 3 }),
+    ]
+
+    const ordered = orderSection(items)
+
+    expect(ordered.map((item) => item.pr.id)).toEqual(['PR_1', 'PR_2', 'PR_3', 'PR_x'])
+  })
+
+  it('keeps a category-then-recency order between stacks and lets the earliest-appearing stack float up', () => {
+    const items = [
+      classified('PR_b1', { id: 'stack-b', index: 1, total: 2 }),
+      classified('PR_a2', { id: 'stack-a', index: 2, total: 2 }),
+      classified('PR_b2', { id: 'stack-b', index: 2, total: 2 }),
+      classified('PR_a1', { id: 'stack-a', index: 1, total: 2 }),
+    ]
+
+    const ordered = orderSection(items)
+
+    // Stack "b" appeared first in the incoming order, so it keeps that lead
+    // position. Stack "a" collapses to where its earliest-appearing member
+    // (#2, at index 1 of the input) was, sorted ascending by index.
+    expect(ordered.map((item) => item.pr.id)).toEqual(['PR_b1', 'PR_b2', 'PR_a1', 'PR_a2'])
+  })
+})
+
+describe('stackRows', () => {
+  function rowsOf(items: ClassifiedPullRequest[]): Array<[string, Connector, Connector]> {
+    return stackRows(items).map((row) => [row.item.pr.id, row.above, row.below])
+  }
+
+  it('gives a full, unbroken stack a line at every internal join and nothing at the ends', () => {
+    const items = [1, 2, 3, 4].map((index) =>
+      classified(`PR_${index}`, { id: 'stack-1', index, total: 4 }),
+    )
+
+    expect(rowsOf(items)).toEqual([
+      ['PR_1', 'none', 'line'],
+      ['PR_2', 'line', 'line'],
+      ['PR_3', 'line', 'line'],
+      ['PR_4', 'line', 'none'],
+    ])
+  })
+
+  it('opens a gap where the middle of a stack is missing from the list', () => {
+    // 1, 2, 4, 5 of a 5-long stack: #3 is hidden.
+    const items = [1, 2, 4, 5].map((index) =>
+      classified(`PR_${index}`, { id: 'stack-1', index, total: 5 }),
+    )
+
+    expect(rowsOf(items)).toEqual([
+      ['PR_1', 'none', 'line'],
+      ['PR_2', 'line', 'gap'],
+      ['PR_4', 'gap', 'line'],
+      ['PR_5', 'line', 'none'],
+    ])
+  })
+
+  it('opens a gap above a stack that starts at 2', () => {
+    const items = [2, 3].map((index) =>
+      classified(`PR_${index}`, { id: 'stack-1', index, total: 4 }),
+    )
+
+    // total is 4, so #3's `below` is also a gap (#4 exists but isn't shown)
+    // — the case under test is #2's `above`.
+    expect(rowsOf(items)).toEqual([
+      ['PR_2', 'gap', 'line'],
+      ['PR_3', 'line', 'gap'],
+    ])
+  })
+
+  it('opens a gap below a stack that ends before its top', () => {
+    const items = [1, 2].map((index) =>
+      classified(`PR_${index}`, { id: 'stack-1', index, total: 4 }),
+    )
+
+    expect(rowsOf(items)).toEqual([
+      ['PR_1', 'none', 'line'],
+      ['PR_2', 'line', 'gap'],
+    ])
+  })
+
+  it('draws nothing around a pull request with no stack', () => {
+    const items = [classified('PR_lone', null)]
+    expect(rowsOf(items)).toEqual([['PR_lone', 'none', 'none']])
+  })
+
+  it('draws nothing between two stacks placed back to back', () => {
+    const items = [
+      classified('PR_a1', { id: 'stack-a', index: 1, total: 2 }),
+      classified('PR_a2', { id: 'stack-a', index: 2, total: 2 }),
+      classified('PR_b1', { id: 'stack-b', index: 1, total: 2 }),
+      classified('PR_b2', { id: 'stack-b', index: 2, total: 2 }),
+    ]
+
+    expect(rowsOf(items)).toEqual([
+      ['PR_a1', 'none', 'line'],
+      ['PR_a2', 'line', 'none'],
+      ['PR_b1', 'none', 'line'],
+      ['PR_b2', 'line', 'none'],
+    ])
+  })
+
+  it('never lets adjacent rows disagree about the connector between them', () => {
+    const items = [1, 2, 4, 6, 7].map((index) =>
+      classified(`PR_${index}`, { id: 'stack-1', index, total: 7 }),
+    )
+
+    const rows = stackRows(items)
+    for (let i = 0; i < rows.length - 1; i++) {
+      expect(rows[i].below).toBe(rows[i + 1].above)
+    }
+  })
+
+  it('the worked example: a stack of 7 showing only 2, 3, 5, 6, 7', () => {
+    const items = [2, 3, 5, 6, 7].map((index) =>
+      classified(`PR_${index}`, { id: 'stack-1', index, total: 7 }),
+    )
+
+    expect(rowsOf(items)).toEqual([
+      ['PR_2', 'gap', 'line'],
+      ['PR_3', 'line', 'gap'],
+      ['PR_5', 'gap', 'line'],
+      ['PR_6', 'line', 'line'],
+      ['PR_7', 'line', 'none'],
+    ])
   })
 })

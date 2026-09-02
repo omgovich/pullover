@@ -1,6 +1,12 @@
-import type { PullRequest } from '@shared/types'
+import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
 
 export interface StackPosition {
+  /**
+   * Identifies the stack this position belongs to, so two different chains
+   * of the same length can be told apart. The root pull request's id is the
+   * natural choice — every member of a chain walks back to the same root.
+   */
+  id: string
   /** 1-based position within the chain, counted from the root. */
   index: number
   /** Length of the chain. */
@@ -130,10 +136,98 @@ export function computeStackPositions(prs: PullRequest[]): Map<string, StackPosi
       if (chain.length < 2) continue
 
       chain.forEach((chainPr, i) => {
-        result.set(chainPr.id, { index: i + 1, total: chain.length })
+        result.set(chainPr.id, { id: root, index: i + 1, total: chain.length })
       })
     }
   }
 
   return result
+}
+
+/**
+ * Reorders `items` so each stack's members sit together, in one contiguous
+ * run, ascending by `index` — the incoming order is otherwise preserved
+ * (that order is already the classifier's category-then-recency sort).
+ *
+ * A stack takes the position of its earliest-appearing member, so the most
+ * relevant stack still floats to the top of its section. Pull requests with
+ * no stack keep their place. Ordering within a section is a display
+ * concern, so this stays out of the classifier.
+ */
+export function orderSection(items: ClassifiedPullRequest[]): ClassifiedPullRequest[] {
+  const groups = new Map<string, ClassifiedPullRequest[]>()
+  for (const item of items) {
+    const id = item.stack?.id
+    if (id === undefined) continue
+    const group = groups.get(id)
+    if (group) group.push(item)
+    else groups.set(id, [item])
+  }
+  for (const group of groups.values()) {
+    group.sort((a, b) => (a.stack?.index ?? 0) - (b.stack?.index ?? 0))
+  }
+
+  const emitted = new Set<string>()
+  const result: ClassifiedPullRequest[] = []
+  for (const item of items) {
+    const id = item.stack?.id
+    if (id === undefined) {
+      result.push(item)
+      continue
+    }
+    if (emitted.has(id)) continue
+    emitted.add(id)
+    // Non-null: `groups` was built from this same list, keyed by this id.
+    const group = groups.get(id)
+    if (group) result.push(...group)
+  }
+  return result
+}
+
+/**
+ * How a stack row connects to its neighbour in that direction, drawn as a
+ * vertical line behind the avatars.
+ *
+ * - `none` — nothing to connect to: not in a stack, or the very top/bottom
+ *   of the chain (`1/N` looking up, `N/N` looking down).
+ * - `line` — the adjacent chain member is the neighbouring row.
+ * - `gap` — chain members exist in that direction but aren't shown.
+ */
+export type Connector = 'none' | 'line' | 'gap'
+
+export interface StackRow {
+  item: ClassifiedPullRequest
+  above: Connector
+  below: Connector
+}
+
+/**
+ * Derives the connector each row draws above and below itself, from a list
+ * already arranged by `orderSection` (so a stack's members, if any are
+ * shown, sit contiguously and ascending by `index`).
+ */
+export function stackRows(ordered: ClassifiedPullRequest[]): StackRow[] {
+  return ordered.map((item, i) => {
+    const stack = item.stack
+    if (stack === null) return { item, above: 'none', below: 'none' }
+
+    const prev = ordered[i - 1]
+    const next = ordered[i + 1]
+
+    const above: Connector =
+      stack.index === 1
+        ? 'none'
+        : prev !== undefined && prev.stack?.id === stack.id && prev.stack.index === stack.index - 1
+          ? 'line'
+          : 'gap'
+
+    const below: Connector =
+      stack.index === stack.total
+        ? 'none'
+        : next !== undefined && next.stack?.id === stack.id && next.stack.index === stack.index + 1
+          ? 'line'
+          : 'gap'
+
+    return { item, above, below }
+  })
 }

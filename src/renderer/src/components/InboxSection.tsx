@@ -1,3 +1,4 @@
+import { orderSection, stackRows } from '@core/stack'
 import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { forwardRef, useEffect, useRef } from 'react'
@@ -58,6 +59,11 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
 
   if (items.length === 0) return null
 
+  // Gathers each stack's members into one contiguous run (display order
+  // only — the classifier's category-then-recency sort stays untouched),
+  // then derives the connector each row draws above/below itself.
+  const rows = stackRows(orderSection(items))
+
   return (
     <div ref={ref}>
       <Actionable onClick={onToggle} fullWidth>
@@ -98,13 +104,15 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
 
       {open && (
         <View direction="column" gap={0.25}>
-          {items.map((item) => (
+          {rows.map(({ item, above, below }) => (
             <PullRequestCard
               key={item.pr.id}
               ref={getCardRefCallback(item.pr.id)}
               item={item}
               now={now}
               isActive={item.pr.id === activePrId}
+              connectorAbove={above}
+              connectorBelow={below}
               onHover={onHoverCard}
               onSelect={onSelectCard}
               onSnoozed={onSnoozed}

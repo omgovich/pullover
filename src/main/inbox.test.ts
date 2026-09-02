@@ -487,8 +487,8 @@ describe('Inbox.refresh', () => {
     await inbox.refresh()
     const byId = new Map(inbox.getSnapshot().items.map((item) => [item.pr.id, item]))
 
-    expect(byId.get('PR_1')?.stack).toEqual({ index: 1, total: 2 })
-    expect(byId.get('PR_2')?.stack).toEqual({ index: 2, total: 2 })
+    expect(byId.get('PR_1')?.stack).toEqual({ id: 'PR_1', index: 1, total: 2 })
+    expect(byId.get('PR_2')?.stack).toEqual({ id: 'PR_1', index: 2, total: 2 })
     expect(byId.get('PR_3')?.stack).toBeNull()
   })
 
@@ -531,8 +531,16 @@ describe('Inbox.refresh', () => {
     // The draft is excluded from the classified items, as always.
     expect(items.map((item) => item.pr.id)).toEqual(['PR_1', 'PR_3'])
     // But its two non-draft neighbours still know the stack is 3 long.
-    expect(items.find((item) => item.pr.id === 'PR_1')?.stack).toEqual({ index: 1, total: 3 })
-    expect(items.find((item) => item.pr.id === 'PR_3')?.stack).toEqual({ index: 3, total: 3 })
+    expect(items.find((item) => item.pr.id === 'PR_1')?.stack).toEqual({
+      id: 'PR_1',
+      index: 1,
+      total: 3,
+    })
+    expect(items.find((item) => item.pr.id === 'PR_3')?.stack).toEqual({
+      id: 'PR_1',
+      index: 3,
+      total: 3,
+    })
   })
 })
 
@@ -726,8 +734,8 @@ describe('Inbox.reclassify', () => {
     inbox.reclassify()
 
     const byId = new Map(inbox.getSnapshot().items.map((item) => [item.pr.id, item]))
-    expect(byId.get('PR_1')?.stack).toEqual({ index: 1, total: 2 })
-    expect(byId.get('PR_2')?.stack).toEqual({ index: 2, total: 2 })
+    expect(byId.get('PR_1')?.stack).toEqual({ id: 'PR_1', index: 1, total: 2 })
+    expect(byId.get('PR_2')?.stack).toEqual({ id: 'PR_1', index: 2, total: 2 })
     expect(fetchPrs).toHaveBeenCalledTimes(1)
   })
 })
