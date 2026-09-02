@@ -160,22 +160,22 @@ describe('computeStackPositions', () => {
   })
 
   it('terminates and gives no position when the links form a cycle', () => {
-    // A -> B -> C -> A. Every PR in this component has a parent (each other),
-    // so without the visited-set guard in the backward root-finding walk,
-    // repeatedly following `parentOf` from any of them never reaches a PR
-    // with no parent and loops forever. This fixture is built specifically
-    // so that walk cannot terminate on its own.
+    // A -> B -> C -> A. Every PR in this component has exactly one parent
+    // (each other) and one child, so it passes the "simple chain" shape
+    // check, yet the component has no PR with zero parents to serve as a
+    // root -- that absence is what marks it a cycle rather than a chain.
+    // Without that explicit check, an implementation tempted to fall back to
+    // an arbitrary starting point and walk `childrenOf` forward from it
+    // would never run out of pointers to follow (verified by hand:
+    // temporarily doing exactly that makes this fixture's walk grow without
+    // bound instead of terminating) -- a synchronous infinite loop blocks
+    // the event loop, so no test-level timeout can catch it after the fact.
     const prs = [
       pr({ id: 'PR_a', headRefName: 'a', baseRefName: 'c' }),
       pr({ id: 'PR_b', headRefName: 'b', baseRefName: 'a' }),
       pr({ id: 'PR_c', headRefName: 'c', baseRefName: 'b' }),
     ]
 
-    // Without the visited-set guard in `computeStackPositions`'s backward
-    // root-finding walk, this call hangs the process rather than returning
-    // (verified by hand: temporarily removing the guard makes this exact
-    // test hang instead of failing) — a synchronous infinite loop blocks the
-    // event loop, so no test-level timeout can catch it after the fact.
     const positions = computeStackPositions(prs)
 
     expect(positions.has('PR_a')).toBe(false)
