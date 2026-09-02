@@ -89,6 +89,19 @@ export default function App(): React.JSX.Element {
     { disabled: showSettings, preventDefault: true },
   )
 
+  // Its own call, deliberately without `{ disabled: showSettings }`: the
+  // other hotkey groups go inert while settings is open, but Esc must still
+  // close the popup in that state. Scoped to closing the window only — not
+  // closing settings, stepping back a screen, or clearing the selection.
+  useHotkeys(
+    {
+      escape: () => {
+        void window.api.hidePopup()
+      },
+    },
+    [],
+  )
+
   useHotkeys(
     {
       enter: (event?: KeyboardEvent) => {

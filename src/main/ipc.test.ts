@@ -38,17 +38,19 @@ class MemoryStore implements KeyValueStore {
 
 let store: AppStore
 let send: ReturnType<typeof vi.fn>
+let hide: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   handlers.clear()
   store = new AppStore(new MemoryStore())
   send = vi.fn()
+  hide = vi.fn()
   const inbox = new Inbox({ store, getClient: () => null, onChange: () => {} })
 
   registerIpc({
     inbox,
     store,
-    getWindow: () => ({ webContents: { send } }) as unknown as BrowserWindow,
+    getWindow: () => ({ webContents: { send }, hide }) as unknown as BrowserWindow,
     signIn: async () => {},
     signOut: () => {},
     restartPolling: () => {},
@@ -85,5 +87,12 @@ describe('settings push', () => {
   it('does not push when addRepository rejects an invalid name', () => {
     expect(() => call(IPC.addRepository, 'nonsense' as never)).toThrow(/owner\/repo/)
     expect(send).not.toHaveBeenCalled()
+  })
+})
+
+describe('hidePopup', () => {
+  it('hides the window', () => {
+    call(IPC.hidePopup)
+    expect(hide).toHaveBeenCalledTimes(1)
   })
 })
