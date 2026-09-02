@@ -35,6 +35,8 @@ export function makePullRequest(overrides: Partial<PullRequest> = {}): PullReque
     isDraft: false,
     additions: 10,
     deletions: 2,
+    headRefName: 'feature-1',
+    baseRefName: 'main',
     ciStatus: 'success',
     lastCommitPushedAt: '2026-08-01T10:00:00Z',
     reviewDecision: 'REVIEW_REQUIRED',

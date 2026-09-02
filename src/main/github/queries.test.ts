@@ -8,6 +8,11 @@ describe('DETAILS_QUERY', () => {
     expect(DETAILS_QUERY).toContain('state submittedAt bodyText')
   })
 
+  it('fetches the branch names a stack position is derived from', () => {
+    expect(DETAILS_QUERY).toContain('headRefName')
+    expect(DETAILS_QUERY).toContain('baseRefName')
+  })
+
   it('paginates review threads from the newest end', () => {
     // `first: 50` takes the OLDEST 50 threads on a busy PR, dropping exactly
     // the newest thread — where a fresh mention is most likely to live.

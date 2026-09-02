@@ -30,6 +30,8 @@ export interface PullRequestNode {
   updatedAt: string
   additions: number
   deletions: number
+  headRefName: string
+  baseRefName: string
   reviewDecision: ReviewDecision
   bodyText: string
   author: ActorNode | null
@@ -192,6 +194,8 @@ export function mapPullRequest(
     isDraft: node.isDraft,
     additions: node.additions,
     deletions: node.deletions,
+    headRefName: node.headRefName,
+    baseRefName: node.baseRefName,
     ciStatus: mapCiStatus(lastCommit?.statusCheckRollup?.state),
     lastCommitPushedAt: lastCommit?.committedDate ?? node.createdAt,
     reviewDecision: node.reviewDecision,
