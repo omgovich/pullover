@@ -197,7 +197,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   #{pr.number}
                 </Text>
                 {item.stack !== null && (
-                  <Badge color="primary" variant="faded" icon={Layers}>
+                  <Badge size="small" color="primary" variant="faded" icon={Layers}>
                     <Text as="span" numeric>
                       {item.stack.index}/{item.stack.total}
                     </Text>
