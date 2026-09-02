@@ -50,7 +50,26 @@ Paste the `.p8` **verbatim**, including the `-----BEGIN PRIVATE KEY-----` and `-
 
 No Team ID secret is needed: the API key already identifies the team.
 
-## 3. Add the secrets to GitHub
+## 3. Keep the originals
+
+GitHub secrets are write-only: once stored they can be replaced but never read back, so the repository is not a copy of anything. If these files exist nowhere else, they are gone. Keep them in a password manager — one item, with the files attached rather than pasted as text:
+
+| Keep | Why |
+| --- | --- |
+| `Certificates.p12` (secret) | The certificate and its private key. |
+| Its export password (secret) | Useless without the file, and the file is useless without it. |
+| `AuthKey_….p8` (secret) | The one file Apple will not give you twice. |
+| Key ID | Not sensitive, but needed beside the key to use it. |
+| Issuer ID | Same — also visible in App Store Connect. |
+| Team ID | The code in `Developer ID Application: … (TEAMID)`. |
+
+Worth noting alongside them: the certificate expires five years from issue, and Apple caps how many Developer ID certificates an account may hold, so they are not something to re-create casually.
+
+Losing them is not equally bad. The `.p8` is unrecoverable — revoke the key and make another. The `.p12` is merely painful: a fresh certificate can be issued within the same team, and because Gatekeeper and the updater key on the team rather than the individual certificate, released builds keep working.
+
+None of this belongs in the repository, a note app, or a chat window.
+
+## 4. Add the secrets to GitHub
 
 github.com/omgovich/pullover → Settings → Secrets and variables → Actions → Secrets → New repository secret, five times:
 
