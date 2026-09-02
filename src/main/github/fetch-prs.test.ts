@@ -4,6 +4,15 @@ import { DETAILS_QUERY, SEARCH_QUERY, VIEWER_QUERY } from './queries'
 
 const DETAIL_BATCH_SIZE = 25
 
+/** A promise plus its resolver, pulled out so a test can settle it on its own schedule. */
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
 function detailNode(id: string, overrides: Record<string, unknown> = {}) {
   return {
     id,
@@ -150,5 +159,115 @@ describe('fetchPullRequests', () => {
     ])
     const prs = await fetchPullRequests(client, 'vlad')
     expect(prs[0]!.lastMentionAt).not.toBeNull()
+  })
+
+  it('issues all four bucket searches concurrently rather than waiting for each to resolve', async () => {
+    // Every SEARCH_QUERY call hangs on a deferred the test controls. A
+    // sequential `collectIds` (a for-await loop over the buckets) would only
+    // ever have the FIRST bucket's request in flight at this point, because
+    // it awaits each call before starting the next — so this assertion fails
+    // against the sequential implementation and only passes once every
+    // bucket's request has actually gone out before any of them settles.
+    const pending: Array<{ promise: Promise<unknown>; resolve: (value: unknown) => void }> = []
+    const client = vi.fn(async (query: string) => {
+      if (query === VIEWER_QUERY) return { viewer: { login: 'vlad' } }
+      if (query === SEARCH_QUERY) {
+        const d = deferred<unknown>()
+        pending.push(d)
+        return d.promise
+      }
+      throw new Error(`unexpected query: ${query}`)
+    })
+
+    const result = fetchPullRequests(client, 'vlad')
+
+    // Give the microtask queue a bounded number of turns to let every
+    // concurrent call start — a sequential implementation would still be
+    // stuck on the first one no matter how many turns this takes.
+    for (let i = 0; i < 20 && pending.length < 4; i++) {
+      await Promise.resolve()
+    }
+
+    const searchCalls = client.mock.calls.filter(([q]) => q === SEARCH_QUERY)
+    expect(searchCalls).toHaveLength(4)
+    expect(pending).toHaveLength(4)
+
+    for (const d of pending) d.resolve({ search: { nodes: [] } })
+    await expect(result).resolves.toEqual([])
+  })
+
+  it('issues detail batches concurrently rather than waiting for each to resolve', async () => {
+    const ids = Array.from({ length: 60 }, (_, i) => `PR_${i}`)
+    const pending: Array<{ promise: Promise<unknown>; resolve: (value: unknown) => void }> = []
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === VIEWER_QUERY) return { viewer: { login: 'vlad' } }
+      if (query === SEARCH_QUERY) return { search: { nodes: ids.map((id) => ({ id })) } }
+      if (query === DETAILS_QUERY) {
+        void variables
+        const d = deferred<unknown>()
+        pending.push(d)
+        return d.promise
+      }
+      throw new Error(`unexpected query: ${query}`)
+    })
+
+    const result = fetchPullRequests(client, 'vlad')
+
+    // Flush the microtask queue until the detail batches start (their exact
+    // depth depends on how collectIds is implemented) — bounded so a
+    // regression that never issues them fails instead of hanging.
+    for (let i = 0; i < 20 && pending.length === 0; i++) {
+      await Promise.resolve()
+    }
+
+    // 60 ids over a batch size of 25 is 3 batches — a sequential
+    // implementation would only have the first one in flight here.
+    const detailCalls = client.mock.calls.filter(([q]) => q === DETAILS_QUERY)
+    expect(detailCalls).toHaveLength(3)
+    expect(pending).toHaveLength(3)
+
+    for (const d of pending) d.resolve({ nodes: [] })
+    await expect(result).resolves.toEqual([])
+  })
+
+  it('rebuilds the result in the order ids were collected, not the order detail batches resolve', async () => {
+    // Two batches of ids collected in a fixed order; resolve the SECOND
+    // batch first to prove the output order follows collection order, not
+    // arrival order.
+    const batchA = Array.from({ length: 25 }, (_, i) => `A_${i}`)
+    const batchB = Array.from({ length: 10 }, (_, i) => `B_${i}`)
+    const allIds = [...batchA, ...batchB]
+    const pending: Array<{
+      ids: string[]
+      resolve: (value: unknown) => void
+    }> = []
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === VIEWER_QUERY) return { viewer: { login: 'vlad' } }
+      if (query === SEARCH_QUERY) return { search: { nodes: allIds.map((id) => ({ id })) } }
+      if (query === DETAILS_QUERY) {
+        const ids = variables.ids as string[]
+        const d = deferred<unknown>()
+        pending.push({ ids, resolve: d.resolve })
+        return d.promise
+      }
+      throw new Error(`unexpected query: ${query}`)
+    })
+
+    const result = fetchPullRequests(client, 'vlad')
+    for (let i = 0; i < 20 && pending.length < 2; i++) {
+      await Promise.resolve()
+    }
+
+    expect(pending).toHaveLength(2)
+    const first = pending.find((p) => p.ids[0] === 'A_0')!
+    const second = pending.find((p) => p.ids[0] === 'B_0')!
+
+    // Resolve the second (B) batch before the first (A) batch.
+    second.resolve({ nodes: batchB.map((id) => detailNode(id)) })
+    await Promise.resolve()
+    first.resolve({ nodes: batchA.map((id) => detailNode(id)) })
+
+    const prs = await result
+    expect(prs.map((pr) => pr.id)).toEqual(allIds)
   })
 })

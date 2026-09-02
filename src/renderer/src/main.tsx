@@ -5,6 +5,7 @@ import 'reshaped/themes/slate/theme.css'
 import 'reshaped/bundle.css'
 import './pullover.css'
 import App from './App'
+import ErrorBoundary from './components/ErrorBoundary'
 import { systemColorMode, useColorMode } from './useColorMode'
 import { useSettings } from './useSettings'
 
@@ -49,7 +50,9 @@ createRoot(container).render(
   <StrictMode>
     <Reshaped theme="slate" defaultColorMode={initialMode}>
       <ColorModeSync />
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </Reshaped>
   </StrictMode>,
 )

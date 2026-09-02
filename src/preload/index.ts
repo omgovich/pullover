@@ -28,6 +28,7 @@ const api: RendererApi = {
   removeRepository: (fullName: string) => ipcRenderer.invoke(IPC.removeRepository, fullName),
   startAuth: () => ipcRenderer.invoke(IPC.startAuth),
   signOut: () => ipcRenderer.invoke(IPC.signOut),
+  hidePopup: () => ipcRenderer.invoke(IPC.hidePopup),
 }
 
 contextBridge.exposeInMainWorld('api', api)

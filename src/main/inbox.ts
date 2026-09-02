@@ -2,6 +2,7 @@ import { classifyAll, countAttention } from '@core/classify'
 import { collectRepositories, filterByRepositories } from '@core/repo-filter'
 import type { InboxSnapshot } from '@shared/ipc'
 import type { PullRequest } from '@shared/types'
+import { isAuthError } from './github/auth-error'
 import { fetchPullRequests, fetchViewerLogin, type GraphQLClient } from './github/fetch-prs'
 import type { AppStore } from './store'
 
@@ -10,6 +11,13 @@ export interface InboxDeps {
   /** Returns null while the user is signed out. */
   getClient: () => GraphQLClient | null
   onChange: (snapshot: InboxSnapshot) => void
+  /**
+   * Called from the refresh catch block when the failure looks like a dead
+   * token (see `isAuthError`) rather than a network blip. `Inbox` never
+   * touches token storage itself — it only knows `getClient` — so it hands
+   * the decision of what "sign out" means back to the caller.
+   */
+  onAuthError?: () => void
   now?: () => string
   fetchPrs?: typeof fetchPullRequests
   fetchLogin?: typeof fetchViewerLogin
@@ -180,6 +188,11 @@ export class Inbox {
         status: 'error',
         errorMessage: error instanceof Error ? error.message : String(error),
       })
+      // A dead token fails every refresh the same way forever, so recognise
+      // it specifically and hand off to whatever "sign out" means to the
+      // caller instead of leaving the user staring at a permanently stale
+      // list with a red line in the header.
+      if (isAuthError(error)) this.deps.onAuthError?.()
     }
   }
 
