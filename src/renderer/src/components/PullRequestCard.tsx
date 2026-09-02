@@ -17,15 +17,24 @@ interface Props {
   onSnoozed: (item: ClassifiedPullRequest) => void
 }
 
-// The connector's geometry mirrors this row's own layout below, rather than
-// being independently tuned: the avatar is `size={8}` (32px, Reshaped's 4px
-// unit) and the row's `paddingInline`/`paddingTop` are 2.5/2.25 units (10px
-// /9px). Centring on the avatar and stopping at its edges keeps the line
-// from ever needing to know about the avatar directly.
-const AVATAR_SIZE_PX = 32
-const ROW_PADDING_INLINE_PX = 10
-const ROW_PADDING_TOP_PX = 9
-export const CONNECTOR_WIDTH_PX = 2
+// The connector's geometry is derived from this row's own layout rather
+// than tuned by hand: each constant below is the literal prop value used
+// further down, times Reshaped's spacing unit. Change a prop and the line
+// follows it.
+const UNIT_PX = 4
+const AVATAR_SIZE_PX = 8 * UNIT_PX // <Avatar size={8} />
+const ROW_PADDING_INLINE_PX = 2.5 * UNIT_PX // paddingInline={2.5}
+const ROW_PADDING_TOP_PX = 2.25 * UNIT_PX // paddingTop={2.25}
+
+/**
+ * The gap InboxSection sets between cards, in Reshaped units. It lives here
+ * because the connector has to bridge it: without the overshoot the line
+ * below applies, a stack's rule breaks at every card boundary.
+ */
+export const LIST_GAP = 0.25
+export const LIST_GAP_PX = LIST_GAP * UNIT_PX
+
+const CONNECTOR_WIDTH_PX = 2
 /** Exported so a section's dashed breaks line up with the cards' own line. */
 export const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
 const CONNECTOR_BELOW_TOP_PX = ROW_PADDING_TOP_PX + AVATAR_SIZE_PX
@@ -168,7 +177,11 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
         {lineBelow && (
           <div
             className="pv-stack-connector"
-            style={{ left: CONNECTOR_LEFT_PX, top: CONNECTOR_BELOW_TOP_PX, bottom: 0 }}
+            style={{
+              left: CONNECTOR_LEFT_PX,
+              top: CONNECTOR_BELOW_TOP_PX,
+              bottom: -LIST_GAP_PX,
+            }}
           />
         )}
 
@@ -193,7 +206,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   {pr.repository}
                 </Text>
               </View>
-              <View as="span" direction="row" gap={1}>
+              <View as="span" direction="row" align="center" gap={1}>
                 <Text as="span" variant="caption-1" numeric color="primary">
                   #{pr.number}
                 </Text>

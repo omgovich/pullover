@@ -3,7 +3,12 @@ import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@sha
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { forwardRef, useEffect, useRef } from 'react'
 import { Actionable, Icon, Text, View } from 'reshaped/bundle'
-import PullRequestCard, { CONNECTOR_LEFT_PX, type PullRequestCardHandle } from './PullRequestCard'
+import PullRequestCard, {
+  CONNECTOR_LEFT_PX,
+  LIST_GAP,
+  LIST_GAP_PX,
+  type PullRequestCardHandle,
+} from './PullRequestCard'
 
 interface Props {
   category: Category
@@ -104,13 +109,16 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
       </Actionable>
 
       {open && (
-        <View direction="column" gap={0.25}>
+        <View direction="column" gap={LIST_GAP}>
           {rows.map((row) =>
             row.kind === 'break' ? (
               <div
                 key={row.key}
                 className="pv-stack-break"
-                style={{ marginLeft: CONNECTOR_LEFT_PX }}
+                // Negative block margins swallow the list gap on both
+                // sides, so the dashes butt against the cards instead of
+                // leaving a bright 1px seam at each end.
+                style={{ marginLeft: CONNECTOR_LEFT_PX, marginBlock: -LIST_GAP_PX }}
                 aria-hidden="true"
               />
             ) : (
