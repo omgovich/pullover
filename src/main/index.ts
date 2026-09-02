@@ -27,6 +27,10 @@ const inbox = new Inbox({
     window?.webContents.send(IPC.snapshotChanged, snapshot)
     if (tray !== null) setBadge(tray, snapshot.attentionCount)
   },
+  // A revoked or expired token fails every refresh identically, so a
+  // refresh that recognises one signs the user out instead of leaving them
+  // staring at a stale list forever.
+  onAuthError: () => signOut(),
 })
 
 function loadClientFromDisk(): void {

@@ -413,6 +413,29 @@ describe('Inbox.refresh', () => {
     expect(fetchPrs).toHaveBeenCalledTimes(2)
   })
 
+  it('calls onAuthError when a refresh fails with a dead-token error', async () => {
+    const authError = Object.assign(new Error('Bad credentials'), { status: 401 })
+    const fetchPrs = vi.fn().mockRejectedValueOnce(authError)
+    const onAuthError = vi.fn()
+    const inbox = build([], { fetchPrs, onAuthError })
+
+    await inbox.refresh()
+
+    expect(inbox.getSnapshot().status).toBe('error')
+    expect(onAuthError).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not call onAuthError for an ordinary network failure', async () => {
+    const fetchPrs = vi.fn().mockRejectedValueOnce(new Error('network down'))
+    const onAuthError = vi.fn()
+    const inbox = build([], { fetchPrs, onAuthError })
+
+    await inbox.refresh()
+
+    expect(inbox.getSnapshot().status).toBe('error')
+    expect(onAuthError).not.toHaveBeenCalled()
+  })
+
   it('lets a queued refresh run to completion, settling every caller, even when the pass ahead of it throws', async () => {
     let calls = 0
     const getClient = vi.fn(() => {
