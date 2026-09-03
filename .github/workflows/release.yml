@@ -16,12 +16,16 @@ name: Release
 #     It is baked into the build so released binaries can sign in out of the box.
 #   Secrets
 #   - ANTHROPIC_API_KEY      — for the release-notes step.
-#   - CSC_LINK               — Developer ID Application cert, .p12 as base64.
+#   - CSC_LINK               — Developer ID Application cert, .p12 as base64
+#                              (`base64 -i Certificates.p12`). Export it from
+#                              Keychain Access with the private key included.
 #   - CSC_KEY_PASSWORD       — the password that .p12 was exported with.
-#   - APPLE_API_KEY_CONTENT  — the App Store Connect .p8 key, verbatim.
+#   - APPLE_API_KEY_CONTENT  — an App Store Connect API key (.p8), verbatim.
+#                              Apple allows downloading it exactly once.
 #   - APPLE_API_KEY_ID       — that key's ID.
 #   - APPLE_API_ISSUER       — the issuer UUID it belongs to.
-# docs/signing.md explains where each of these comes from.
+# Only the account holder can issue the certificate, so only they can cut a
+# release; a fork's CI will fail this job's secret check, which is correct.
 
 on:
   push:
@@ -70,7 +74,7 @@ jobs:
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
-            echo "::error::Missing repository secrets:$missing — see docs/signing.md for how to produce each one."
+            echo "::error::Missing repository secrets:$missing — signing needs CSC_LINK (Developer ID .p12 as base64), CSC_KEY_PASSWORD, and an App Store Connect key as APPLE_API_KEY_CONTENT + APPLE_API_KEY_ID + APPLE_API_ISSUER. See the header of this file."
             exit 1
           fi
 
