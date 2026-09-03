@@ -7,6 +7,7 @@ import { Inbox } from './inbox'
 import { registerIpc } from './ipc'
 import { createAppStore } from './store'
 import { createTray, setBadge } from './tray'
+import { Updater } from './updater'
 import { createPopupWindow, togglePopup } from './window'
 
 const CLIENT_ID = import.meta.env.MAIN_VITE_GITHUB_CLIENT_ID as string | undefined
@@ -110,6 +111,14 @@ function restartPolling(): void {
   inbox.start()
 }
 
+// Pushes a changed update state to both surfaces that show it, so the tray
+// menu and the window header can never disagree about whether one is ready.
+const updater = new Updater({
+  onStateChange: (state) => {
+    window?.webContents.send(IPC.updateChanged, state)
+  },
+})
+
 app.dock?.hide()
 
 void app.whenReady().then(() => {
@@ -126,7 +135,9 @@ void app.whenReady().then(() => {
     },
     onRefresh: () => void inbox.refresh(),
     onQuit: () => app.quit(),
+    onInstallUpdate: () => updater.install(),
     getSnapshot: () => inbox.getSnapshot(),
+    getUpdate: () => updater.getState(),
   })
 
   registerIpc({
@@ -136,9 +147,12 @@ void app.whenReady().then(() => {
     signIn,
     signOut,
     restartPolling,
+    getUpdate: () => updater.getState(),
+    installUpdate: () => updater.install(),
   })
 
   if (client !== null) inbox.start()
+  updater.start()
 })
 
 // The app lives in the menu bar, so closing the popup must not quit it.

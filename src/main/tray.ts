@@ -1,5 +1,6 @@
 import { formatAge } from '@core/format'
 import type { InboxSnapshot } from '@shared/ipc'
+import type { UpdateState } from '@shared/types'
 import { Menu, type Rectangle, Tray } from 'electron'
 import { createTrayIcon } from './tray-icon'
 
@@ -40,12 +41,24 @@ export function formatRefreshItem(status: InboxSnapshot['status']): {
   return { label: 'Refresh now', enabled: true }
 }
 
+/**
+ * The update line, or null when there is nothing to say. A download in
+ * progress stays silent on purpose: it needs nothing from the user, and a
+ * menu entry that appears and vanishes on its own is just noise.
+ */
+export function formatUpdateItem(state: UpdateState): { label: string } | null {
+  if (state.status !== 'ready' || state.version === null) return null
+  return { label: `Restart to update to ${state.version}` }
+}
+
 export interface TrayCallbacks {
   onToggle: (bounds: Rectangle) => void
   onRefresh: () => void
   onQuit: () => void
+  onInstallUpdate: () => void
   /** Read when the menu is built, so the menu reflects the moment it opened. */
   getSnapshot: () => InboxSnapshot
+  getUpdate: () => UpdateState
 }
 
 export function createTray(callbacks: TrayCallbacks): Tray {
@@ -59,8 +72,16 @@ export function createTray(callbacks: TrayCallbacks): Tray {
     // can reflect whatever the inbox is doing right now.
     const snapshot = callbacks.getSnapshot()
     const refresh = formatRefreshItem(snapshot.status)
+    const update = formatUpdateItem(callbacks.getUpdate())
     tray.popUpContextMenu(
       Menu.buildFromTemplate([
+        // Above the status line: it is the one entry here that is news.
+        ...(update === null
+          ? []
+          : ([
+              { label: update.label, click: callbacks.onInstallUpdate },
+              { type: 'separator' },
+            ] as const)),
         { label: formatStatusLine(snapshot, new Date().toISOString()), enabled: false },
         { type: 'separator' },
         { label: refresh.label, enabled: refresh.enabled, click: callbacks.onRefresh },

@@ -87,8 +87,8 @@ jobs:
           umask 077
           printf '%s' "$APPLE_API_KEY_CONTENT" > "$RUNNER_TEMP/asc-api-key.p8"
 
-      - name: Build the universal dmg and attach it to a draft release
-        run: npx electron-builder --mac dmg --universal --publish always
+      - name: Build the universal dmg and zip, and attach them to a draft release
+        run: npx electron-builder --mac dmg zip --universal --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Developer ID Application certificate, as base64 of the .p12.
@@ -102,16 +102,24 @@ jobs:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
 
-      # Proves the artifact users download is really signed and notarized,
-      # rather than trusting that the build step did it.
-      - name: Verify the dmg is signed, notarized and stapled
+      # Proves the app users end up running is really signed and notarized,
+      # rather than trusting that the build step did it. The checks target the
+      # .app, not the dmg: electron-builder notarizes and staples the app and
+      # then packages the stapled copy into an unsigned disk image, which is
+      # deliberate — `dmg.sign` defaults to false because, in its own words,
+      # signing the image "will lead to unwanted errors in combination with
+      # notarization requirements". The ticket travels with the app, so the
+      # app is what Gatekeeper judges on first launch.
+      - name: Verify the app is signed, notarized and stapled
         run: |
-          dmg=$(ls dist/Pullover-*.dmg)
-          echo "Checking $dmg"
-          xcrun stapler validate "$dmg"
           app=$(ls -d dist/mac-universal/*.app)
+          echo "Checking $app"
+          xcrun stapler validate "$app"
           codesign --verify --deep --strict --verbose=2 "$app"
-          spctl --assess --type execute -vv "$app"
+          # Must report `source=Notarized Developer ID`; anything else means
+          # the build produced something Gatekeeper would still block.
+          spctl --assess --type execute -vv "$app" 2>&1 | tee /tmp/spctl.txt
+          grep -q "source=Notarized Developer ID" /tmp/spctl.txt
 
   publish:
     needs: build
@@ -122,7 +130,7 @@ jobs:
           KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           if [ -z "$KEY" ]; then
-            echo "::error::Set the ANTHROPIC_API_KEY repository secret — the publish job uses Claude to write the release notes. The draft release with the dmgs is ready; you can also write notes and publish it by hand."
+            echo "::error::Set the ANTHROPIC_API_KEY repository secret — the publish job uses Claude to write the release notes. The draft release with the dmg, the zip and latest-mac.yml is ready; you can also write notes and publish it by hand."
             exit 1
           fi
 
@@ -147,10 +155,16 @@ jobs:
 
           Ignore the release playbook in AGENTS.md — it is for the local agent, and its part is already done: the version is bumped, the tag is pushed, and the build job has attached the dmg to a DRAFT GitHub release for this tag. You are the CI half. Your job:
 
-          1. List every release for this tag: `gh api repos/${{ github.repository }}/releases --jq '.[] | select(.tag_name == "${{ github.ref_name }}") | {id, draft, assets: [.assets[].name]}'`. electron-builder sometimes races itself and leaves TWO drafts for the same tag with the assets split between them. If that happened, consolidate: for each stray asset, download it (`gh api -H "Accept: application/octet-stream" repos/${{ github.repository }}/releases/assets/<asset-id> > <name>`) and re-upload it to the draft that holds the dmgs (`curl -sS -f -X POST -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/octet-stream" --data-binary @<name> "https://uploads.github.com/repos/${{ github.repository }}/releases/<id>/assets?name=<name>"`), then delete the now-empty extra draft (`gh api -X DELETE repos/${{ github.repository }}/releases/<id>`).
-          2. Verify the single remaining draft holds `Pullover-<version>.dmg` — one universal build, no arch suffix. If it's missing, print what's wrong and exit with `exit 1` — do NOT publish a broken release.
-          3. Write user-facing release notes from the commits since the previous tag: find it with `git describe --tags --abbrev=0 ${{ github.ref_name }}^` (if the command fails, this is the first release — write a 2-3 sentence introduction of the app from README.md instead of a changelog). Notes style: a flat bullet list, no headings — one short bullet per user-visible change, present tense, no commit hashes, skip internal refactors/CI/docs changes users can't feel.
-          4. Publish: write the notes to a file and run `gh release edit ${{ github.ref_name }} --notes-file <file> --draft=false`.
+          1. List every release for this tag: `gh api repos/${{ github.repository }}/releases --jq '.[] | select(.tag_name == "${{ github.ref_name }}") | {id, draft, assets: [.assets[].name]}'`. electron-builder sometimes races itself and leaves TWO drafts for the same tag with the assets split between them. If that happened, consolidate: for each stray asset, download it (`gh api -H "Accept: application/octet-stream" repos/${{ github.repository }}/releases/assets/<asset-id> > <name>`) and re-upload it to the draft that holds the dmg (`curl -sS -f -X POST -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/octet-stream" --data-binary @<name> "https://uploads.github.com/repos/${{ github.repository }}/releases/<id>/assets?name=<name>"`), then delete the now-empty extra draft (`gh api -X DELETE repos/${{ github.repository }}/releases/<id>`).
+          2. Verify the single remaining draft holds all three of `Pullover-<version>.dmg` (what people download), `Pullover-<version>.zip` and `latest-mac.yml` (what the auto-updater reads — without them installed copies will never see this release). One universal build, no arch suffix. If any is missing, print what's wrong and exit with `exit 1` — do NOT publish a broken release.
+          3. Write user-facing release notes from the commits since the previous tag: find it with `git describe --tags --abbrev=0 ${{ github.ref_name }}^` (if the command fails, this is the first release — write a 2-3 sentence introduction of the app from README.md instead of a changelog). Notes style: a flat bullet list, no headings. One bullet per user-visible change, present tense, no commit hashes, and skip internal refactors, CI and docs work nobody can feel — if a change does not alter what someone sees or does, leave it out.
+
+          Write each bullet as: an emoji, then the change named in bold, then a sentence saying what it means for the person using the app. For example: `- 🔔 **Mentions** — a pull request that mentions you now shows up even when you are not a reviewer.` Pick each emoji for that specific change rather than repeating one down the list, and use at most one per bullet. Lead with the change people will care about most.
+
+          Two things override the cheerfulness. Anything that loses data, signs the user out, resets settings or otherwise requires action gets ⚠️ and says plainly what will happen — that bullet goes first, whatever else is in the release. And a fix is described by what stopped being broken, not by praising the fix.
+
+          Do not invent significance. A small release stays a short list; padding two bug fixes into a triumphant announcement reads as noise, and the next release then has to shout louder to compete.
+          4. Publish: write the notes to a file and run `gh release edit ${{ github.ref_name }} --title '${{ github.ref_name }}' --notes-file <file> --draft=false`. Passing `--title` is not optional: electron-builder names the draft after the version (`0.3.0`) rather than the tag (`v0.3.0`), so without it every release is titled inconsistently with the others and has to be renamed by hand.
           PROMPT
 
       - name: Verify the release is published
@@ -158,6 +172,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "$(gh release view '${{ github.ref_name }}' --repo '${{ github.repository }}' --json isDraft --jq .isDraft)" != "false" ]; then
-            echo "::error::The release is still a draft — Claude did not publish it. Check the step above; the dmgs are attached, so you can publish it by hand."
+            echo "::error::The release is still a draft — Claude did not publish it. Check the step above; the artifacts are attached, so you can publish it by hand."
             exit 1
           fi

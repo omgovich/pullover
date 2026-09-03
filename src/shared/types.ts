@@ -10,6 +10,19 @@ export interface StackPosition {
   /** Length of the chain. */
   total: number
 }
+/**
+ * What the auto-updater is doing, as far as the interface needs to know.
+ *
+ * `downloading` is deliberately not surfaced anywhere yet — the download is
+ * meant to be unnoticed — but the state exists so the tray and the header
+ * cannot disagree about whether one is in flight.
+ */
+export interface UpdateState {
+  status: 'idle' | 'downloading' | 'ready'
+  /** The version waiting to be installed; only set once `status` is `ready`. */
+  version: string | null
+}
+
 export type CiStatus = 'success' | 'failure' | 'pending' | 'none'
 
 export type SearchBucket = 'review-requested' | 'author' | 'involves' | 'mentions'

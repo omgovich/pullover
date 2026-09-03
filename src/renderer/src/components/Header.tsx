@@ -1,13 +1,16 @@
 import { formatAge } from '@core/format'
 import type { InboxSnapshot } from '@shared/ipc'
-import { RefreshCw, Settings } from 'lucide-react'
+import type { UpdateState } from '@shared/types'
+import { ArrowDownToLine, RefreshCw, Settings } from 'lucide-react'
 import { Button, Text, View } from 'reshaped/bundle'
 
 interface Props {
   snapshot: InboxSnapshot
   now: string
+  update: UpdateState
   onRefresh: () => void
   onOpenSettings: () => void
+  onInstallUpdate: () => void
 }
 
 /**
@@ -40,9 +43,13 @@ const iconButtonStyle = {
 export default function Header({
   snapshot,
   now,
+  update,
   onRefresh,
   onOpenSettings,
+  onInstallUpdate,
 }: Props): React.JSX.Element {
+  const updateReady = update.status === 'ready' && update.version !== null
+  const updateLabel = `Restart to update to ${update.version}`
   return (
     <View
       direction="row"
@@ -86,6 +93,30 @@ export default function Header({
       </View>
 
       <View direction="row" align="center" gap={1}>
+        {/* The one coloured control in a row of neutral ones, so a waiting
+            update is noticeable without a banner taking up the header. */}
+        {/* Named rather than drawn: an icon alone said something had happened
+            but not what. The label carries the news; the tooltip carries the
+            version and what clicking does. Ghost like its neighbours, but in
+            the accent colour, so it reads as the one piece of news here
+            without turning the header into a banner. */}
+        {updateReady && (
+          <Button
+            variant="ghost"
+            color="primary"
+            size="small"
+            icon={ArrowDownToLine}
+            onClick={onInstallUpdate}
+            attributes={{
+              title: updateLabel,
+              'aria-label': updateLabel,
+              style: { height: '32px', minHeight: '32px', borderRadius: '9px' },
+            }}
+          >
+            New version
+          </Button>
+        )}
+
         <Button
           variant="ghost"
           color="neutral"

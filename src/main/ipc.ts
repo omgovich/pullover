@@ -1,5 +1,5 @@
 import { type DeviceCodePayload, IPC } from '@shared/ipc'
-import type { Settings, SnoozeType } from '@shared/types'
+import type { Settings, SnoozeType, UpdateState } from '@shared/types'
 import { type BrowserWindow, ipcMain, shell } from 'electron'
 import type { Inbox } from './inbox'
 import { isSafeExternalUrl } from './safe-url'
@@ -12,6 +12,8 @@ export interface IpcDeps {
   signIn: (onDeviceCode: (payload: DeviceCodePayload) => void) => Promise<void>
   signOut: () => void
   restartPolling: () => void
+  getUpdate: () => UpdateState
+  installUpdate: () => void
 }
 
 export function registerIpc(deps: IpcDeps): void {
@@ -23,6 +25,9 @@ export function registerIpc(deps: IpcDeps): void {
   const pushSettings = (): void => {
     deps.getWindow()?.webContents.send(IPC.settingsChanged, deps.store.getSettings())
   }
+
+  ipcMain.handle(IPC.getUpdate, () => deps.getUpdate())
+  ipcMain.handle(IPC.installUpdate, () => deps.installUpdate())
 
   ipcMain.handle(IPC.getSnapshot, () => deps.inbox.getSnapshot())
   ipcMain.handle(IPC.refresh, () => deps.inbox.refresh())

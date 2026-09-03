@@ -6,22 +6,21 @@ directories:
 files:
   - out/**/*
   - package.json
-dmg:
-  # The app has no auto-update (no electron-updater), so don't generate the
-  # update artifacts (*.blockmap, latest-mac.yml) — releases stay just the
-  # dmgs. Flip back to true if auto-update ever lands.
-  writeUpdateInfo: false
 publish:
   provider: github
   owner: omgovich
   repo: pullover
   # The release workflow runs `electron-builder --publish always`, which
   # makes electron-builder itself create the GitHub release for the pushed
-  # tag and upload the dmgs into it — as a draft, per this setting.
+  # tag and upload the artifacts into it — as a draft, per this setting.
   releaseType: draft
 mac:
   target:
+    # The dmg is what a person downloads; the zip is what electron-updater
+    # consumes. Both are needed: app-builder-lib writes the `latest-mac.yml`
+    # feed only from a zip artifact, so a dmg-only release cannot auto-update.
     - dmg
+    - zip
     - dir
   # Releases ship one universal dmg (see release.yml), so no arch suffix.
   artifactName: ${productName}-${version}.${ext}
