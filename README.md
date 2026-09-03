@@ -7,6 +7,10 @@
 <p align="center"><b>Your code-review inbox, in the macOS menu bar.</b><br />Only the pull requests that need <i>you</i> — everything you're waiting on stays hidden.</p>
 
 <p align="center">
+  <a href="https://github.com/omgovich/pullover/releases/latest"><img src="https://img.shields.io/badge/Download%20for%20macOS-1a1a1a?style=for-the-badge&logo=apple&logoColor=white" alt="Download Pullover for macOS" /></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/omgovich/pullover/releases/latest"><img src="https://img.shields.io/github/v/release/omgovich/pullover" alt="latest release" /></a>
   <a href="https://github.com/omgovich/pullover/actions/workflows/ci.yml"><img src="https://github.com/omgovich/pullover/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license" /></a>
@@ -34,7 +38,10 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 
 ## 📦 Install
 
-Download the `.dmg` from the [latest release](https://github.com/omgovich/pullover/releases/latest) and drag Pullover into Applications — one build, works on both Apple Silicon and Intel Macs. Signed and notarized, so it just opens.
+> [!TIP]
+> **[⬇️ Download the latest release](https://github.com/omgovich/pullover/releases/latest)** — one universal build for Apple Silicon and Intel. Signed and notarized, so it just opens.
+
+Drag Pullover into Applications and launch it.
 
 Sign in with GitHub and you're done — out of the box Pullover watches every repo you're involved in. If that's too much, narrow it down to specific repos in **Settings**.
 
