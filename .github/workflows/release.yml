@@ -122,7 +122,7 @@ jobs:
           KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           if [ -z "$KEY" ]; then
-            echo "::error::Set the ANTHROPIC_API_KEY repository secret — the publish job uses Claude to write the release notes. The draft release with the dmgs is ready; you can also write notes and publish it by hand."
+            echo "::error::Set the ANTHROPIC_API_KEY repository secret — the publish job uses Claude to write the release notes. The draft release with the dmg, the zip and latest-mac.yml is ready; you can also write notes and publish it by hand."
             exit 1
           fi
 
@@ -147,7 +147,7 @@ jobs:
 
           Ignore the release playbook in AGENTS.md — it is for the local agent, and its part is already done: the version is bumped, the tag is pushed, and the build job has attached the dmg to a DRAFT GitHub release for this tag. You are the CI half. Your job:
 
-          1. List every release for this tag: `gh api repos/${{ github.repository }}/releases --jq '.[] | select(.tag_name == "${{ github.ref_name }}") | {id, draft, assets: [.assets[].name]}'`. electron-builder sometimes races itself and leaves TWO drafts for the same tag with the assets split between them. If that happened, consolidate: for each stray asset, download it (`gh api -H "Accept: application/octet-stream" repos/${{ github.repository }}/releases/assets/<asset-id> > <name>`) and re-upload it to the draft that holds the dmgs (`curl -sS -f -X POST -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/octet-stream" --data-binary @<name> "https://uploads.github.com/repos/${{ github.repository }}/releases/<id>/assets?name=<name>"`), then delete the now-empty extra draft (`gh api -X DELETE repos/${{ github.repository }}/releases/<id>`).
+          1. List every release for this tag: `gh api repos/${{ github.repository }}/releases --jq '.[] | select(.tag_name == "${{ github.ref_name }}") | {id, draft, assets: [.assets[].name]}'`. electron-builder sometimes races itself and leaves TWO drafts for the same tag with the assets split between them. If that happened, consolidate: for each stray asset, download it (`gh api -H "Accept: application/octet-stream" repos/${{ github.repository }}/releases/assets/<asset-id> > <name>`) and re-upload it to the draft that holds the dmg (`curl -sS -f -X POST -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/octet-stream" --data-binary @<name> "https://uploads.github.com/repos/${{ github.repository }}/releases/<id>/assets?name=<name>"`), then delete the now-empty extra draft (`gh api -X DELETE repos/${{ github.repository }}/releases/<id>`).
           2. Verify the single remaining draft holds all three of `Pullover-<version>.dmg` (what people download), `Pullover-<version>.zip` and `latest-mac.yml` (what the auto-updater reads — without them installed copies will never see this release). One universal build, no arch suffix. If any is missing, print what's wrong and exit with `exit 1` — do NOT publish a broken release.
           3. Write user-facing release notes from the commits since the previous tag: find it with `git describe --tags --abbrev=0 ${{ github.ref_name }}^` (if the command fails, this is the first release — write a 2-3 sentence introduction of the app from README.md instead of a changelog). Notes style: a flat bullet list, no headings — one short bullet per user-visible change, present tense, no commit hashes, skip internal refactors/CI/docs changes users can't feel.
           4. Publish: write the notes to a file and run `gh release edit ${{ github.ref_name }} --notes-file <file> --draft=false`.
@@ -158,6 +158,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "$(gh release view '${{ github.ref_name }}' --repo '${{ github.repository }}' --json isDraft --jq .isDraft)" != "false" ]; then
-            echo "::error::The release is still a draft — Claude did not publish it. Check the step above; the dmgs are attached, so you can publish it by hand."
+            echo "::error::The release is still a draft — Claude did not publish it. Check the step above; the artifacts are attached, so you can publish it by hand."
             exit 1
           fi

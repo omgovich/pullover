@@ -27,7 +27,6 @@ export interface UpdaterDeps {
  */
 export class Updater {
   private state: UpdateState = { status: 'idle', version: null }
-  private timer: NodeJS.Timeout | null = null
 
   constructor(private readonly deps: UpdaterDeps) {}
 
@@ -64,13 +63,10 @@ export class Updater {
       if (this.state.status !== 'ready') this.setState({ status: 'idle', version: null })
     })
 
-    this.timer = setInterval(() => this.check(), CHECK_INTERVAL_MS)
+    // Neither timer is ever cleared: both live as long as the process, and
+    // the app has no state in which it keeps running but stops updating.
+    setInterval(() => this.check(), CHECK_INTERVAL_MS)
     setTimeout(() => this.check(), FIRST_CHECK_DELAY_MS)
-  }
-
-  stop(): void {
-    if (this.timer !== null) clearInterval(this.timer)
-    this.timer = null
   }
 
   /** Quits and relaunches into the downloaded version. */
