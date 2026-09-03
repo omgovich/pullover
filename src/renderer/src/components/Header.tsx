@@ -1,7 +1,7 @@
 import { formatAge } from '@core/format'
 import type { InboxSnapshot } from '@shared/ipc'
 import type { UpdateState } from '@shared/types'
-import { ArrowUpCircle, RefreshCw, Settings } from 'lucide-react'
+import { ArrowDownToLine, RefreshCw, Settings } from 'lucide-react'
 import { Button, Text, View } from 'reshaped/bundle'
 
 interface Props {
@@ -95,20 +95,28 @@ export default function Header({
       <View direction="row" align="center" gap={1}>
         {/* The one coloured control in a row of neutral ones, so a waiting
             update is noticeable without a banner taking up the header. */}
+        {/* Named rather than drawn: an icon alone said something had happened
+            but not what. The label carries the news; the tooltip carries the
+            version and what clicking does. Ghost like its neighbours, but in
+            the accent colour, so it reads as the one piece of news here
+            without turning the header into a banner. */}
         {updateReady && (
           <Button
             variant="ghost"
             color="primary"
             size="small"
-            icon={ArrowUpCircle}
+            icon={ArrowDownToLine}
             onClick={onInstallUpdate}
             attributes={{
               title: updateLabel,
               'aria-label': updateLabel,
-              style: iconButtonStyle,
+              style: { height: '32px', minHeight: '32px', borderRadius: '9px' },
             }}
-          />
+          >
+            New version
+          </Button>
         )}
+
         <Button
           variant="ghost"
           color="neutral"
