@@ -54,6 +54,8 @@ beforeEach(() => {
     signIn: async () => {},
     signOut: () => {},
     restartPolling: () => {},
+    getUpdate: () => ({ status: 'idle', version: null }),
+    installUpdate: () => {},
   })
 })
 

@@ -1,6 +1,6 @@
 import type { InboxSnapshot } from '@shared/ipc'
 import { describe, expect, it } from 'vitest'
-import { formatBadgeTitle, formatRefreshItem, formatStatusLine } from './tray'
+import { formatBadgeTitle, formatRefreshItem, formatStatusLine, formatUpdateItem } from './tray'
 
 // `Tray` needs a running Electron and cannot be constructed headlessly, so
 // only the pure string-building is covered here.
@@ -77,5 +77,33 @@ describe('formatStatusLine', () => {
 
   it('says so when signed out', () => {
     expect(formatStatusLine({ ...base, status: 'signed-out' }, NOW)).toBe('Not signed in')
+  })
+})
+
+describe('formatUpdateItem', () => {
+  it('offers the restart once a version is downloaded', () => {
+    expect(formatUpdateItem({ status: 'ready', version: '0.4.0' })).toEqual({
+      label: 'Restart to update to 0.4.0',
+    })
+  })
+
+  it('names the version that is actually waiting', () => {
+    expect(formatUpdateItem({ status: 'ready', version: '1.2.3' })?.label).toContain('1.2.3')
+  })
+
+  it('stays silent while nothing is waiting', () => {
+    expect(formatUpdateItem({ status: 'idle', version: null })).toBeNull()
+  })
+
+  // The download needs nothing from the user, and an entry that appears and
+  // disappears on its own is noise.
+  it('stays silent while a download is in flight', () => {
+    expect(formatUpdateItem({ status: 'downloading', version: null })).toBeNull()
+  })
+
+  // Defends the `version !== null` half of the guard: a ready state with no
+  // version would otherwise render "Restart to update to null".
+  it('stays silent if a ready state somehow carries no version', () => {
+    expect(formatUpdateItem({ status: 'ready', version: null })).toBeNull()
   })
 })

@@ -1,5 +1,5 @@
 import { type DeviceCodePayload, type InboxSnapshot, IPC, type RendererApi } from '@shared/ipc'
-import type { Settings, SnoozeType } from '@shared/types'
+import type { Settings, SnoozeType, UpdateState } from '@shared/types'
 import { contextBridge, type IpcRendererEvent, ipcRenderer } from 'electron'
 
 function subscribe<T>(channel: string, listener: (payload: T) => void): () => void {
@@ -29,6 +29,9 @@ const api: RendererApi = {
   startAuth: () => ipcRenderer.invoke(IPC.startAuth),
   signOut: () => ipcRenderer.invoke(IPC.signOut),
   hidePopup: () => ipcRenderer.invoke(IPC.hidePopup),
+  getUpdate: () => ipcRenderer.invoke(IPC.getUpdate),
+  onUpdate: (listener: (state: UpdateState) => void) => subscribe(IPC.updateChanged, listener),
+  installUpdate: () => ipcRenderer.invoke(IPC.installUpdate),
 }
 
 contextBridge.exposeInMainWorld('api', api)

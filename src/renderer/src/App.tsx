@@ -13,6 +13,7 @@ import { useSectionCollapse } from './useSectionCollapse'
 import { useSelection } from './useSelection'
 import { useSnapshot } from './useSnapshot'
 import { useToast } from './useToast'
+import { useUpdate } from './useUpdate'
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -38,6 +39,7 @@ function KeyCap({ children }: { children: string }): React.JSX.Element {
 
 export default function App(): React.JSX.Element {
   const snapshot = useSnapshot()
+  const update = useUpdate()
   const scroll = useScrollMemory()
   const [showSettings, setShowSettings] = useState(false)
   const [now, setNow] = useState(() => new Date().toISOString())
@@ -184,8 +186,10 @@ export default function App(): React.JSX.Element {
         <Header
           snapshot={snapshot}
           now={now}
+          update={update}
           onRefresh={refresh}
           onOpenSettings={() => setShowSettings(true)}
+          onInstallUpdate={() => void window.api.installUpdate()}
         />
 
         <ScrollArea

@@ -1,4 +1,4 @@
-import type { ClassifiedPullRequest, Settings, SnoozeType } from './types'
+import type { ClassifiedPullRequest, Settings, SnoozeType, UpdateState } from './types'
 
 export interface InboxSnapshot {
   status: 'signed-out' | 'loading' | 'ready' | 'error'
@@ -32,6 +32,9 @@ export const IPC = {
   deviceCode: 'auth:device-code',
   signOut: 'auth:sign-out',
   hidePopup: 'window:hide-popup',
+  getUpdate: 'update:get',
+  updateChanged: 'update:changed',
+  installUpdate: 'update:install',
 } as const
 
 export interface RendererApi {
@@ -50,4 +53,8 @@ export interface RendererApi {
   startAuth: () => Promise<void>
   signOut: () => Promise<void>
   hidePopup: () => Promise<void>
+  getUpdate: () => Promise<UpdateState>
+  onUpdate: (listener: (state: UpdateState) => void) => () => void
+  /** Quits and relaunches into the downloaded version. */
+  installUpdate: () => Promise<void>
 }
