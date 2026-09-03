@@ -34,9 +34,7 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 
 ## 📦 Install
 
-Download the `.dmg` from the [latest release](https://github.com/omgovich/pullover/releases/latest) and drag Pullover into Applications — one build, works on both Apple Silicon and Intel Macs.
-
-Releases are signed with a Developer ID certificate and notarized by Apple, so it just opens — no Gatekeeper warning, nothing to clear from the command line. (Releases before v0.3.0 were unsigned and do need that; their notes say so.)
+Download the `.dmg` from the [latest release](https://github.com/omgovich/pullover/releases/latest) and drag Pullover into Applications — one build, works on both Apple Silicon and Intel Macs. Signed and notarized, so it just opens.
 
 Sign in with GitHub and you're done — out of the box Pullover watches every repo you're involved in. If that's too much, narrow it down to specific repos in **Settings**.
 
