@@ -24,9 +24,11 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 
 - 🎯 **Only what needs you.** Fresh review requests, re-reviews after new commits, unanswered comment threads, mentions — each PR lands in the inbox with the reason it's there. PRs where the ball is in someone else's court stay out of sight.
 - 🧑‍💻 **Your own PRs, too.** They surface only when there's something for you to do: changes requested, a comment you haven't answered, red CI, or approved and ready to merge.
+- 🧬 **Stacks stay together.** A stacked PR shows its place in the chain (`4/8`), and the stack is drawn as one connected run — with a dotted break standing in for the parts that don't need you, so you can see the shape of it without the noise.
 - 💤 **Snooze that un-snoozes itself.** Park a PR for a while — it wakes up on its own when something actually happens: new commits or a new reply.
 - 📌 **Lives in the menu bar.** A quiet count of PRs waiting on you; no Dock icon, no window to manage.
 - 🌗 **Light and dark themes.** Follows your macOS appearance out of the box, or pick one in Settings.
+- ⬇️ **Updates itself quietly.** New versions download in the background; Pullover then offers a restart and waits for you to take it.
 - 👀 **Read-only by design.** Pullover never comments, approves, or merges. Clicking a PR opens it on github.com — you act where you always did.
 - 🔒 **Private repos and team review requests** work out of the box (that's what the `repo` and `read:org` scopes are for — details below).
 
@@ -34,13 +36,7 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 
 Download the `.dmg` from the [latest release](https://github.com/omgovich/pullover/releases/latest) and drag Pullover into Applications — one build, works on both Apple Silicon and Intel Macs.
 
-The builds aren't signed or notarized (there's no Apple Developer account behind the project yet), so macOS quarantines them on download. Clear the flag once and it launches normally from then on:
-
-```bash
-xattr -dr com.apple.quarantine /Applications/Pullover.app
-```
-
-Alternatively, launch it once, let macOS refuse, then approve it under System Settings → Privacy & Security → "Open Anyway".
+Releases are signed with a Developer ID certificate and notarized by Apple, so it just opens — no Gatekeeper warning, nothing to clear from the command line. (Releases before v0.3.0 were unsigned and do need that; their notes say so.)
 
 Sign in with GitHub and you're done — out of the box Pullover watches every repo you're involved in. If that's too much, narrow it down to specific repos in **Settings**.
 
@@ -87,7 +83,7 @@ Click the menu-bar item, hit **Sign in with GitHub**. Pullover shows you a short
 - `npm run typecheck` — type checking
 - `npm run lint` — lint + formatting check ([Biome](https://biomejs.dev), config in `biome.json`)
 - `npm run lint:fix` — apply every safe lint fix and reformat
-- `npm run dist` — local unsigned build; clear the quarantine flag before the first launch (see [Install](#-install)) if you move it out of `dist/`.
+- `npm run dist` — local build into `dist/`. It signs with whatever Developer ID sits in your keychain, or not at all if there is none; either way it is not notarized, so a local build moved out of `dist/` may need `xattr -dr com.apple.quarantine` before it will launch. Released builds are notarized in CI.
 
 </details>
 
