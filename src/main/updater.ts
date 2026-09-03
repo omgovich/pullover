@@ -1,6 +1,12 @@
 import type { UpdateState } from '@shared/types'
 import { app } from 'electron'
-import { autoUpdater } from 'electron-updater'
+// electron-updater is CommonJS while this process is ESM, so the named
+// export cannot be bound: `import { autoUpdater }` type-checks and builds,
+// then throws "Named export 'autoUpdater' not found" the moment the app
+// starts. Reaching through the default export is the interop that works.
+import electronUpdater from 'electron-updater'
+
+const { autoUpdater } = electronUpdater
 
 /**
  * How often to look for a new release. The app runs for weeks at a time, so
