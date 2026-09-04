@@ -45,7 +45,10 @@ export function rateLimitResetAt(error: unknown, now: string): string | null {
   const response = (error as { response?: { headers?: unknown } }).response
   const headers = response?.headers
   if (typeof headers !== 'object' || headers === null) return null
-  const header = headers as Record<string, string | number | undefined>
+  // Values are strings: they come off a fetch `Response`, and the typed
+  // header list declares them as such. Saying `number` here too would
+  // suggest the comparisons below handle one, which they don't.
+  const header = headers as Record<string, string | undefined>
 
   // Primary limit: 403 with the quota exhausted, reset given as a Unix
   // timestamp in seconds.
