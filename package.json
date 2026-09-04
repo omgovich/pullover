@@ -1,7 +1,7 @@
 {
   "name": "pullover",
   "productName": "Pullover",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Menu-bar inbox for GitHub code review",
   "license": "MIT",
   "author": "Vlad Shilov",
