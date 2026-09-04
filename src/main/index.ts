@@ -1,10 +1,11 @@
 import { IPC } from '@shared/ipc'
-import { app, type BrowserWindow, clipboard, shell, type Tray } from 'electron'
+import { app, type BrowserWindow, clipboard, type Rectangle, shell, type Tray } from 'electron'
 import { pollForToken, requestDeviceCode } from './auth/device-flow'
 import { clearToken, loadToken, saveToken } from './auth/token-storage'
 import { createGraphQLClient, type GraphQLClient } from './github/fetch-prs'
 import { Inbox } from './inbox'
 import { registerIpc } from './ipc'
+import { Shortcut } from './shortcut'
 import { createAppStore } from './store'
 import { createTray, setBadge } from './tray'
 import { Updater } from './updater'
@@ -125,6 +126,19 @@ const updater = new Updater({
   },
 })
 
+/** `bounds` come from the click that opened it, or from the tray itself when a keypress did. */
+function toggle(bounds: Rectangle): void {
+  if (window === null) return
+  const opening = !window.isVisible()
+  togglePopup(window, bounds)
+  // Opening onto a stale list is the one moment worth spending a fetch on.
+  if (opening && client !== null && isStale()) void inbox.refresh()
+}
+
+const shortcut = new Shortcut(() => {
+  if (tray !== null) toggle(tray.getBounds())
+})
+
 app.dock?.hide()
 
 void app.whenReady().then(() => {
@@ -132,13 +146,7 @@ void app.whenReady().then(() => {
   window = createPopupWindow()
 
   tray = createTray({
-    onToggle: (bounds) => {
-      if (window === null) return
-      const opening = !window.isVisible()
-      togglePopup(window, bounds)
-      // Opening onto a stale list is the one moment worth spending a fetch on.
-      if (opening && client !== null && isStale()) void inbox.refresh()
-    },
+    onToggle: toggle,
     onRefresh: () => void inbox.refresh(),
     onQuit: () => app.quit(),
     onInstallUpdate: () => updater.install(),
@@ -155,10 +163,13 @@ void app.whenReady().then(() => {
     restartPolling,
     getUpdate: () => updater.getState(),
     installUpdate: () => updater.install(),
+    applyShortcut: (accelerator) => shortcut.apply(accelerator),
+    isShortcutActive: () => shortcut.isActive(),
   })
 
   if (client !== null) inbox.start()
   updater.start()
+  shortcut.apply(store.getSettings().globalShortcut)
 })
 
 // The app lives in the menu bar, so closing the popup must not quit it.

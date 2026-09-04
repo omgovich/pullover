@@ -37,6 +37,7 @@ export const IPC = {
   installUpdate: 'update:install',
   getLaunchAtLogin: 'system:get-launch-at-login',
   setLaunchAtLogin: 'system:set-launch-at-login',
+  isShortcutActive: 'system:is-shortcut-active',
 } as const
 
 export interface RendererApi {
@@ -68,4 +69,6 @@ export interface RendererApi {
    */
   getLaunchAtLogin: () => Promise<boolean>
   setLaunchAtLogin: (enabled: boolean) => Promise<boolean>
+  /** False when the chosen accelerator is already owned by something else. */
+  isShortcutActive: () => Promise<boolean>
 }

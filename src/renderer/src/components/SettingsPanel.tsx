@@ -1,5 +1,6 @@
-import type { ThemePreference } from '@shared/types'
+import { SHORTCUT_OPTIONS, type ThemePreference } from '@shared/types'
 import { Heart, User } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Avatar, Button, Divider, Link, Switch, Tabs, Text, View } from 'reshaped/bundle'
 import { useLaunchAtLogin } from '../useLaunchAtLogin'
 import { useSettings } from '../useSettings'
@@ -26,6 +27,16 @@ export default function SettingsPanel({
 }: Props): React.JSX.Element {
   const settings = useSettings()
   const [launchAtLogin, setLaunchAtLogin] = useLaunchAtLogin()
+  const [shortcutActive, setShortcutActive] = useState(true)
+
+  useEffect(() => {
+    void window.api.isShortcutActive().then(setShortcutActive)
+  }, [])
+
+  const setShortcut = async (accelerator: string | null): Promise<void> => {
+    await window.api.setSettings({ globalShortcut: accelerator })
+    setShortcutActive(await window.api.isShortcutActive())
+  }
 
   const setInterval = async (minutes: number): Promise<void> => {
     await window.api.setSettings({ pollIntervalMinutes: minutes })
@@ -111,6 +122,37 @@ export default function SettingsPanel({
               </Tabs.List>
             </Tabs>
           </View>
+        </View>
+
+        <Divider />
+
+        <View gap={2}>
+          <Text variant="caption-1" weight="bold" color="neutral-faded">
+            OPEN WITH A SHORTCUT
+          </Text>
+          <View className="pv-segmented">
+            <Tabs
+              variant="pills-raised"
+              size="small"
+              itemWidth="equal"
+              value={settings.globalShortcut ?? 'off'}
+              onChange={({ value }) => void setShortcut(value === 'off' ? null : value)}
+            >
+              <Tabs.List>
+                <Tabs.Item value="off">Off</Tabs.Item>
+                {SHORTCUT_OPTIONS.map((option) => (
+                  <Tabs.Item key={option.value} value={option.value}>
+                    {option.label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+            </Tabs>
+          </View>
+          {settings.globalShortcut !== null && !shortcutActive && (
+            <Text variant="caption-1" color="critical">
+              Another app already uses this shortcut — pick a different one.
+            </Text>
+          )}
         </View>
 
         <Divider />

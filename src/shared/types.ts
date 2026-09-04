@@ -141,12 +141,28 @@ export interface Snooze {
 
 export type ThemePreference = 'system' | 'light' | 'dark'
 
+/**
+ * Accelerators offered for the global shortcut.
+ *
+ * A global shortcut takes its combination away from every app at once, so the
+ * list avoids anything that types a character (⌥Space is a non-breaking
+ * space, ⌥P is π) or that apps bind themselves (⇧⌘P is the command palette in
+ * VS Code and friends). The pairs below do neither.
+ */
+export const SHORTCUT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'Control+Alt+P', label: '⌃⌥P' },
+  { value: 'Control+Alt+R', label: '⌃⌥R' },
+  { value: 'Control+Command+P', label: '⌃⌘P' },
+]
+
 export interface Settings {
   pollIntervalMinutes: number
   repositories: string[]
   /** When true, search every repo the user is involved in and ignore `repositories`. */
   watchAllRepositories: boolean
   theme: ThemePreference
+  /** Accelerator that opens the popup from anywhere, or null for no shortcut. */
+  globalShortcut: string | null
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -154,4 +170,5 @@ export const DEFAULT_SETTINGS: Settings = {
   repositories: [],
   watchAllRepositories: true,
   theme: 'system',
+  globalShortcut: 'Control+Alt+P',
 }

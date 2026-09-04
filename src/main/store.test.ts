@@ -76,6 +76,7 @@ describe('settings', () => {
       repositories: ['acme/web'],
       watchAllRepositories: false,
       theme: 'system',
+      globalShortcut: 'Control+Alt+P',
     })
     store = new AppStore(backend)
     expect(store.getSettings().watchAllRepositories).toBe(false)
@@ -93,7 +94,33 @@ describe('settings', () => {
       repositories: ['acme/web', 'acme/api'],
       watchAllRepositories: true,
       theme: 'system',
+      globalShortcut: 'Control+Alt+P',
     })
+  })
+
+  it('replaces a shortcut this build no longer offers', () => {
+    const backend = new MemoryStore()
+    backend.set('settings', {
+      ...DEFAULT_SETTINGS,
+      globalShortcut: 'Alt+Space',
+    })
+    store = new AppStore(backend)
+    expect(store.getSettings().globalShortcut).toBe(DEFAULT_SETTINGS.globalShortcut)
+  })
+
+  it('keeps a shortcut that is still offered', () => {
+    const backend = new MemoryStore()
+    backend.set('settings', { ...DEFAULT_SETTINGS, globalShortcut: 'Control+Alt+R' })
+    store = new AppStore(backend)
+    expect(store.getSettings().globalShortcut).toBe('Control+Alt+R')
+  })
+
+  // Off is a real choice, not an unknown value to be corrected.
+  it('leaves an explicitly disabled shortcut disabled', () => {
+    const backend = new MemoryStore()
+    backend.set('settings', { ...DEFAULT_SETTINGS, globalShortcut: null })
+    store = new AppStore(backend)
+    expect(store.getSettings().globalShortcut).toBeNull()
   })
 
   it('round-trips a partial update through the normalised settings', () => {

@@ -39,12 +39,14 @@ class MemoryStore implements KeyValueStore {
 let store: AppStore
 let send: ReturnType<typeof vi.fn>
 let hide: ReturnType<typeof vi.fn>
+let shortcutCalls: (string | null)[]
 
 beforeEach(() => {
   handlers.clear()
   store = new AppStore(new MemoryStore())
   send = vi.fn()
   hide = vi.fn()
+  shortcutCalls = []
   const inbox = new Inbox({ store, getClient: () => null, onChange: () => {} })
 
   registerIpc({
@@ -56,6 +58,10 @@ beforeEach(() => {
     restartPolling: () => {},
     getUpdate: () => ({ status: 'idle', version: null }),
     installUpdate: () => {},
+    applyShortcut: (accelerator: string | null) => {
+      shortcutCalls.push(accelerator)
+    },
+    isShortcutActive: () => true,
   })
 })
 
@@ -70,6 +76,31 @@ describe('settings push', () => {
     call(IPC.setSettings, { pollIntervalMinutes: 15 } as never)
     expect(store.getSettings().pollIntervalMinutes).toBe(15)
     expect(send).toHaveBeenCalledWith(IPC.settingsChanged, store.getSettings())
+  })
+
+  it('re-registers the global shortcut when it changes', () => {
+    call(IPC.setSettings, { globalShortcut: 'Control+Alt+R' } as never)
+    expect(shortcutCalls).toEqual(['Control+Alt+R'])
+  })
+
+  it('unregisters the global shortcut when it is turned off', () => {
+    call(IPC.setSettings, { globalShortcut: null } as never)
+    expect(shortcutCalls).toEqual([null])
+  })
+
+  // Counted, not merely inspected: a fake that only records its argument
+  // cannot tell "never called" from "called with undefined", so dropping the
+  // guard this test exists for would go unnoticed.
+  it('leaves the shortcut alone when the patch does not mention it', () => {
+    call(IPC.setSettings, { pollIntervalMinutes: 15 } as never)
+    expect(shortcutCalls).toEqual([])
+  })
+
+  // The store may correct an accelerator it no longer offers; registering the
+  // raw patch would leave the OS holding one key and the picker showing another.
+  it('registers what the store settled on, not what the patch asked for', () => {
+    call(IPC.setSettings, { globalShortcut: 'Alt+Space' } as never)
+    expect(shortcutCalls).toEqual([store.getSettings().globalShortcut])
   })
 
   it('pushes the updated settings after addRepository', () => {

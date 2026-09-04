@@ -14,6 +14,8 @@ export interface IpcDeps {
   restartPolling: () => void
   getUpdate: () => UpdateState
   installUpdate: () => void
+  applyShortcut: (accelerator: string | null) => void
+  isShortcutActive: () => boolean
 }
 
 export function registerIpc(deps: IpcDeps): void {
@@ -25,6 +27,8 @@ export function registerIpc(deps: IpcDeps): void {
   const pushSettings = (): void => {
     deps.getWindow()?.webContents.send(IPC.settingsChanged, deps.store.getSettings())
   }
+
+  ipcMain.handle(IPC.isShortcutActive, () => deps.isShortcutActive())
 
   ipcMain.handle(IPC.getLaunchAtLogin, () => app.getLoginItemSettings().openAtLogin)
 
@@ -64,6 +68,11 @@ export function registerIpc(deps: IpcDeps): void {
     deps.store.updateSettings(patch)
     if (patch.pollIntervalMinutes !== undefined) deps.restartPolling()
     if (patch.watchAllRepositories !== undefined) deps.inbox.reclassify()
+    // From the store, not the patch: it may correct an accelerator this build
+    // no longer offers, and the OS must hold whatever the picker shows.
+    if (patch.globalShortcut !== undefined) {
+      deps.applyShortcut(deps.store.getSettings().globalShortcut)
+    }
     pushSettings()
   })
 
