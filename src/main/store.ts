@@ -1,4 +1,10 @@
-import { DEFAULT_SETTINGS, type Settings, type Snooze, type SnoozeType } from '@shared/types'
+import {
+  DEFAULT_SETTINGS,
+  type Settings,
+  SHORTCUT_OPTIONS,
+  type Snooze,
+  type SnoozeType,
+} from '@shared/types'
 import Store from 'electron-store'
 
 export interface PersistedState {
@@ -24,7 +30,15 @@ export class AppStore {
     // consumer sees a fully-populated `Settings` with real booleans — a
     // missing key falls back to `DEFAULT_SETTINGS`, while any key actually
     // present on disk (including an explicit `false`) always wins.
-    return { ...DEFAULT_SETTINGS, ...this.backend.get('settings') }
+    const settings = { ...DEFAULT_SETTINGS, ...this.backend.get('settings') }
+
+    // A shortcut the current build no longer offers would register fine but
+    // match no option in settings, leaving the picker with nothing selected.
+    const known =
+      settings.globalShortcut === null ||
+      SHORTCUT_OPTIONS.some((option) => option.value === settings.globalShortcut)
+
+    return known ? settings : { ...settings, globalShortcut: DEFAULT_SETTINGS.globalShortcut }
   }
 
   updateSettings(patch: Partial<Settings>): void {
