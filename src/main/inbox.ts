@@ -1,10 +1,12 @@
 import { classifyAll, countAttention } from '@core/classify'
+import { formatWait } from '@core/format'
 import { collectRepositories, filterByRepositories } from '@core/repo-filter'
 import { computeStackPositions } from '@core/stack'
 import type { InboxSnapshot } from '@shared/ipc'
 import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
 import { isAuthError } from './github/auth-error'
 import { fetchPullRequests, fetchViewerLogin, type GraphQLClient } from './github/fetch-prs'
+import { rateLimitResetAt } from './github/rate-limit'
 import type { AppStore } from './store'
 
 export interface InboxDeps {
@@ -47,6 +49,13 @@ export class Inbox {
    * N of them.
    */
   private queuedRefresh: Promise<void> | null = null
+  /**
+   * Set when a refresh fails on a GitHub rate limit, to the moment it lifts.
+   * Checked at the top of `doRefresh`: a request made before this time is
+   * guaranteed to be refused the same way, so there is no reason to send it.
+   * Cleared on the next successful refresh (or on sign-out) — see `doRefresh`.
+   */
+  private rateLimitedUntil: string | null = null
   private readonly now: () => string
   private readonly fetchPrs: typeof fetchPullRequests
   private readonly fetchLogin: typeof fetchViewerLogin
@@ -152,6 +161,7 @@ export class Inbox {
       // instead of classifying against the previous user's login.
       this.myLogin = null
       this.prs = []
+      this.rateLimitedUntil = null
       this.emit({
         status: 'signed-out',
         items: [],
@@ -161,6 +171,26 @@ export class Inbox {
         myLogin: null,
         knownRepositories: [],
       })
+      return
+    }
+
+    // A request made before the rate limit lifts is refused for certain, so
+    // don't send it — that would just restart the same countdown. This path
+    // is shared by the poll timer and by the user clicking refresh by hand;
+    // for the latter, doing nothing here is not the same as looking broken,
+    // because the message already on screen (set below, the first time the
+    // limit was hit) already says why nothing is happening and when that
+    // will change. Leave it in place rather than touching the snapshot.
+    //
+    // Compared as parsed instants, not raw strings: `rateLimitedUntil` is
+    // always `Date#toISOString()` (millisecond-precision), but `now()` is
+    // whatever the caller supplies and isn't guaranteed to be — two ISO
+    // strings for the same instant with different precision don't always
+    // compare correctly as plain strings.
+    if (
+      this.rateLimitedUntil !== null &&
+      Date.parse(this.rateLimitedUntil) > Date.parse(this.now())
+    ) {
       return
     }
 
@@ -189,6 +219,7 @@ export class Inbox {
         }),
       )
 
+      this.rateLimitedUntil = null
       this.emit({
         status: 'ready',
         items,
@@ -199,10 +230,23 @@ export class Inbox {
         knownRepositories: collectRepositories(this.prs),
       })
     } catch (error) {
+      // A rate limit fails every refresh the same way until it lifts, so
+      // recognise it specifically: say when it's over instead of showing
+      // whatever raw text GitHub sent, and remember the reset time so the
+      // next pass (the poll timer, or the user clicking refresh) knows to
+      // skip the request instead of hammering an endpoint that is
+      // guaranteed to refuse it (see the guard above `doRefresh`'s try).
+      const resetAt = rateLimitResetAt(error, this.now())
+      this.rateLimitedUntil = resetAt
       // Keep the last good list on screen; the header shows the staleness.
       this.emit({
         status: 'error',
-        errorMessage: error instanceof Error ? error.message : String(error),
+        errorMessage:
+          resetAt === null
+            ? error instanceof Error
+              ? error.message
+              : String(error)
+            : `GitHub's rate limit is reached — try again in ${formatWait(resetAt, this.now())}`,
       })
       // A dead token fails every refresh the same way forever, so recognise
       // it specifically and hand off to whatever "sign out" means to the
