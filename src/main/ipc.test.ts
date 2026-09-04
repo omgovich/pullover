@@ -39,12 +39,14 @@ class MemoryStore implements KeyValueStore {
 let store: AppStore
 let send: ReturnType<typeof vi.fn>
 let hide: ReturnType<typeof vi.fn>
+let appliedShortcut: string | null | undefined
 
 beforeEach(() => {
   handlers.clear()
   store = new AppStore(new MemoryStore())
   send = vi.fn()
   hide = vi.fn()
+  appliedShortcut = undefined
   const inbox = new Inbox({ store, getClient: () => null, onChange: () => {} })
 
   registerIpc({
@@ -56,6 +58,10 @@ beforeEach(() => {
     restartPolling: () => {},
     getUpdate: () => ({ status: 'idle', version: null }),
     installUpdate: () => {},
+    applyShortcut: (accelerator: string | null) => {
+      appliedShortcut = accelerator
+    },
+    isShortcutActive: () => true,
   })
 })
 
@@ -70,6 +76,23 @@ describe('settings push', () => {
     call(IPC.setSettings, { pollIntervalMinutes: 15 } as never)
     expect(store.getSettings().pollIntervalMinutes).toBe(15)
     expect(send).toHaveBeenCalledWith(IPC.settingsChanged, store.getSettings())
+  })
+
+  it('re-registers the global shortcut when it changes', () => {
+    call(IPC.setSettings, { globalShortcut: 'Alt+P' } as never)
+    expect(appliedShortcut).toBe('Alt+P')
+  })
+
+  it('unregisters the global shortcut when it is turned off', () => {
+    call(IPC.setSettings, { globalShortcut: null } as never)
+    expect(appliedShortcut).toBeNull()
+  })
+
+  // `undefined` means "not part of this patch" — touching the shortcut here
+  // would tear down a working one on every unrelated settings change.
+  it('leaves the shortcut alone when the patch does not mention it', () => {
+    call(IPC.setSettings, { pollIntervalMinutes: 15 } as never)
+    expect(appliedShortcut).toBeUndefined()
   })
 
   it('pushes the updated settings after addRepository', () => {

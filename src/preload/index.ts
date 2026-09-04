@@ -34,6 +34,7 @@ const api: RendererApi = {
   installUpdate: () => ipcRenderer.invoke(IPC.installUpdate),
   getLaunchAtLogin: () => ipcRenderer.invoke(IPC.getLaunchAtLogin),
   setLaunchAtLogin: (enabled: boolean) => ipcRenderer.invoke(IPC.setLaunchAtLogin, enabled),
+  isShortcutActive: () => ipcRenderer.invoke(IPC.isShortcutActive),
 }
 
 contextBridge.exposeInMainWorld('api', api)

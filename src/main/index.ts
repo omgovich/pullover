@@ -5,6 +5,7 @@ import { clearToken, loadToken, saveToken } from './auth/token-storage'
 import { createGraphQLClient, type GraphQLClient } from './github/fetch-prs'
 import { Inbox } from './inbox'
 import { registerIpc } from './ipc'
+import { Shortcut } from './shortcut'
 import { createAppStore } from './store'
 import { createTray, setBadge } from './tray'
 import { Updater } from './updater'
@@ -125,6 +126,15 @@ const updater = new Updater({
   },
 })
 
+// The popup is positioned from the tray icon's bounds, which a click supplies
+// and a keypress cannot — so the shortcut asks the tray where it is.
+const shortcut = new Shortcut(() => {
+  if (window === null || tray === null) return
+  const opening = !window.isVisible()
+  togglePopup(window, tray.getBounds())
+  if (opening && client !== null && isStale()) void inbox.refresh()
+})
+
 app.dock?.hide()
 
 void app.whenReady().then(() => {
@@ -155,10 +165,13 @@ void app.whenReady().then(() => {
     restartPolling,
     getUpdate: () => updater.getState(),
     installUpdate: () => updater.install(),
+    applyShortcut: (accelerator) => shortcut.apply(accelerator),
+    isShortcutActive: () => shortcut.isActive(),
   })
 
   if (client !== null) inbox.start()
   updater.start()
+  shortcut.apply(store.getSettings().globalShortcut)
 })
 
 // The app lives in the menu bar, so closing the popup must not quit it.

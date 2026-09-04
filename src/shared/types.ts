@@ -141,12 +141,27 @@ export interface Snooze {
 
 export type ThemePreference = 'system' | 'light' | 'dark'
 
+/**
+ * Accelerators offered for the global shortcut, in Electron's syntax paired
+ * with how macOS writes them. A fixed list rather than a recorder: every one
+ * of these is unlikely to be taken, and a free-form binding can silently
+ * lose to whatever already owns it.
+ */
+export const SHORTCUT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'Alt+Space', label: '⌥Space' },
+  { value: 'Alt+P', label: '⌥P' },
+  { value: 'Command+Shift+P', label: '⇧⌘P' },
+  { value: 'Control+Alt+P', label: '⌃⌥P' },
+]
+
 export interface Settings {
   pollIntervalMinutes: number
   repositories: string[]
   /** When true, search every repo the user is involved in and ignore `repositories`. */
   watchAllRepositories: boolean
   theme: ThemePreference
+  /** Accelerator that opens the popup from anywhere, or null for no shortcut. */
+  globalShortcut: string | null
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -154,4 +169,5 @@ export const DEFAULT_SETTINGS: Settings = {
   repositories: [],
   watchAllRepositories: true,
   theme: 'system',
+  globalShortcut: 'Alt+Space',
 }
