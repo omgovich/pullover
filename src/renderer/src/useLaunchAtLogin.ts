@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 
 /**
- * Whether macOS starts Pullover at login, read from the system rather than
- * from our own settings — the user can change it in System Settings too, so
- * a copy of our own would drift.
- *
- * The setter takes what main reports back after asking macOS, not what was
- * requested, so a refused change shows as the toggle springing back instead
- * of a switch that claims something untrue.
+ * Whether macOS starts Pullover at login. Read from the system, not from our
+ * settings — the user can change it in System Settings, so our own copy
+ * would drift. The setter stores what macOS reports back, so a refused
+ * change springs the switch back rather than leaving it lying.
  */
 export function useLaunchAtLogin(): [boolean, (enabled: boolean) => void] {
   const [enabled, setEnabled] = useState(false)

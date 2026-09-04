@@ -49,12 +49,7 @@ export class Inbox {
    * N of them.
    */
   private queuedRefresh: Promise<void> | null = null
-  /**
-   * Set when a refresh fails on a GitHub rate limit, to the moment it lifts.
-   * Checked at the top of `doRefresh`: a request made before this time is
-   * guaranteed to be refused the same way, so there is no reason to send it.
-   * Cleared on the next successful refresh (or on sign-out) — see `doRefresh`.
-   */
+  /** When a hit rate limit lifts. Refreshes are skipped until then. */
   private rateLimitedUntil: string | null = null
   private readonly now: () => string
   private readonly fetchPrs: typeof fetchPullRequests
@@ -174,19 +169,10 @@ export class Inbox {
       return
     }
 
-    // A request made before the rate limit lifts is refused for certain, so
-    // don't send it — that would just restart the same countdown. This path
-    // is shared by the poll timer and by the user clicking refresh by hand;
-    // for the latter, doing nothing here is not the same as looking broken,
-    // because the message already on screen (set below, the first time the
-    // limit was hit) already says why nothing is happening and when that
-    // will change. Leave it in place rather than touching the snapshot.
-    //
-    // Compared as parsed instants, not raw strings: `rateLimitedUntil` is
-    // always `Date#toISOString()` (millisecond-precision), but `now()` is
-    // whatever the caller supplies and isn't guaranteed to be — two ISO
-    // strings for the same instant with different precision don't always
-    // compare correctly as plain strings.
+    // Returns before the `loading` emit below, or a manual refresh would
+    // strand the interface in a spinner. The snapshot is left alone: its
+    // message already says why nothing is happening. Parsed, not compared as
+    // strings — the two ISO values need not share precision.
     if (
       this.rateLimitedUntil !== null &&
       Date.parse(this.rateLimitedUntil) > Date.parse(this.now())
@@ -230,12 +216,6 @@ export class Inbox {
         knownRepositories: collectRepositories(this.prs),
       })
     } catch (error) {
-      // A rate limit fails every refresh the same way until it lifts, so
-      // recognise it specifically: say when it's over instead of showing
-      // whatever raw text GitHub sent, and remember the reset time so the
-      // next pass (the poll timer, or the user clicking refresh) knows to
-      // skip the request instead of hammering an endpoint that is
-      // guaranteed to refuse it (see the guard above `doRefresh`'s try).
       const resetAt = rateLimitResetAt(error, this.now())
       this.rateLimitedUntil = resetAt
       // Keep the last good list on screen; the header shows the staleness.

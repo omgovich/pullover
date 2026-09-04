@@ -26,18 +26,11 @@ export function registerIpc(deps: IpcDeps): void {
     deps.getWindow()?.webContents.send(IPC.settingsChanged, deps.store.getSettings())
   }
 
-  // Read straight back from macOS rather than from our own store: the user
-  // can also change this in System Settings, and a persisted copy would
-  // quietly disagree with reality.
   ipcMain.handle(IPC.getLaunchAtLogin, () => app.getLoginItemSettings().openAtLogin)
 
   ipcMain.handle(IPC.setLaunchAtLogin, (_event, enabled: boolean) => {
-    // No `openAsHidden`: Electron dropped it, and this app does not need it
-    // — it is LSUIElement and its window stays hidden until the tray is
-    // clicked, so starting at login puts nothing on screen.
     app.setLoginItemSettings({ openAtLogin: enabled })
-    // Return what the system now reports, not what was asked for, so a
-    // refusal shows up in the interface instead of a toggle that lies.
+    // What the system now reports, not what was asked for.
     return app.getLoginItemSettings().openAtLogin
   })
 
