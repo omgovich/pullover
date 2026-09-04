@@ -35,6 +35,8 @@ export const IPC = {
   getUpdate: 'update:get',
   updateChanged: 'update:changed',
   installUpdate: 'update:install',
+  getLaunchAtLogin: 'system:get-launch-at-login',
+  setLaunchAtLogin: 'system:set-launch-at-login',
 } as const
 
 export interface RendererApi {
@@ -57,4 +59,13 @@ export interface RendererApi {
   onUpdate: (listener: (state: UpdateState) => void) => () => void
   /** Quits and relaunches into the downloaded version. */
   installUpdate: () => Promise<void>
+  /**
+   * Whether macOS starts Pullover at login. This is not part of `Settings`:
+   * it lives in the system's own login items, so macOS is the single source
+   * of truth and the value is read back from there rather than persisted
+   * here — otherwise turning it off in System Settings would leave this
+   * app confidently claiming the opposite.
+   */
+  getLaunchAtLogin: () => Promise<boolean>
+  setLaunchAtLogin: (enabled: boolean) => Promise<boolean>
 }

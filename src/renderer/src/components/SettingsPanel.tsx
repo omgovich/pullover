@@ -1,6 +1,7 @@
 import type { ThemePreference } from '@shared/types'
-import { User } from 'lucide-react'
-import { Avatar, Button, Divider, Link, Tabs, Text, View } from 'reshaped/bundle'
+import { Heart, User } from 'lucide-react'
+import { Avatar, Button, Divider, Link, Switch, Tabs, Text, View } from 'reshaped/bundle'
+import { useLaunchAtLogin } from '../useLaunchAtLogin'
 import { useSettings } from '../useSettings'
 import RepositoryPicker from './RepositoryPicker'
 
@@ -24,6 +25,7 @@ export default function SettingsPanel({
   onClose,
 }: Props): React.JSX.Element {
   const settings = useSettings()
+  const [launchAtLogin, setLaunchAtLogin] = useLaunchAtLogin()
 
   const setInterval = async (minutes: number): Promise<void> => {
     await window.api.setSettings({ pollIntervalMinutes: minutes })
@@ -105,6 +107,24 @@ export default function SettingsPanel({
 
         <Divider />
 
+        <Divider />
+
+        <View direction="row" align="center" gap={3}>
+          <View grow minWidth={0}>
+            <Text variant="body-3" weight="medium">
+              Start at login
+            </Text>
+            <Text variant="caption-1" color="neutral-faded">
+              Pullover is a menu-bar app — it opens nothing on screen.
+            </Text>
+          </View>
+          <Switch
+            name="launch-at-login"
+            checked={launchAtLogin}
+            onChange={({ checked }) => setLaunchAtLogin(checked)}
+          />
+        </View>
+
         <View direction="row" align="center" gap={3}>
           {/* `myLogin` lands with the first snapshot, so the icon is the pre-fetch stand-in. */}
           <Avatar
@@ -133,17 +153,40 @@ export default function SettingsPanel({
         </View>
       </View>
 
-      <View padding={3}>
-        <Text variant="caption-1" color="neutral-faded">
-          Pullover {__APP_VERSION__} · MIT © 2026 Vlad Shilov ·{' '}
-          <Link
-            variant="plain"
-            color="inherit"
-            onClick={() => void window.api.openPr('https://github.com/omgovich/pullover')}
-          >
-            GitHub
-          </Link>
-        </Text>
+      <View
+        direction="row"
+        align="center"
+        gap={3}
+        padding={3}
+        borderColor="neutral-faded"
+        borderTop
+        backgroundColor="elevation-raised"
+      >
+        <View grow minWidth={0}>
+          <Text variant="caption-1" color="neutral-faded">
+            Pullover {__APP_VERSION__} · MIT ·{' '}
+            <Link
+              variant="plain"
+              color="inherit"
+              onClick={() => void window.api.openPr('https://github.com/omgovich/pullover')}
+            >
+              Source
+            </Link>
+          </Text>
+          <Text variant="caption-1" color="neutral-faded">
+            Built by Vlad Shilov
+          </Text>
+        </View>
+        <Button
+          size="small"
+          variant="outline"
+          color="critical"
+          icon={Heart}
+          onClick={() => void window.api.openPr('https://github.com/sponsors/omgovich')}
+          attributes={{ title: 'Support Pullover on GitHub Sponsors' }}
+        >
+          Sponsor
+        </Button>
       </View>
     </View>
   )
