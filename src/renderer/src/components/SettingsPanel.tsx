@@ -49,7 +49,15 @@ export default function SettingsPanel({
         </Button>
       </View>
 
-      <View overflow="hidden" grow minHeight="0px" paddingTop={3} paddingInline={3} gap={4}>
+      <View
+        overflow="hidden"
+        grow
+        minHeight="0px"
+        paddingTop={3}
+        paddingBottom={3}
+        paddingInline={3}
+        gap={4}
+      >
         <RepositoryPicker
           knownRepositories={knownRepositories}
           selected={settings.repositories}
@@ -107,9 +115,12 @@ export default function SettingsPanel({
 
         <Divider />
 
-        <Divider />
-
         <View direction="row" align="center" gap={3}>
+          <Switch
+            name="launch-at-login"
+            checked={launchAtLogin}
+            onChange={({ checked }) => setLaunchAtLogin(checked)}
+          />
           <View grow minWidth={0}>
             <Text variant="body-3" weight="medium">
               Start at login
@@ -118,12 +129,9 @@ export default function SettingsPanel({
               Pullover is a menu-bar app — it opens nothing on screen.
             </Text>
           </View>
-          <Switch
-            name="launch-at-login"
-            checked={launchAtLogin}
-            onChange={({ checked }) => setLaunchAtLogin(checked)}
-          />
         </View>
+
+        <Divider />
 
         <View direction="row" align="center" gap={3}>
           {/* `myLogin` lands with the first snapshot, so the icon is the pre-fetch stand-in. */}
@@ -174,13 +182,23 @@ export default function SettingsPanel({
             </Link>
           </Text>
           <Text variant="caption-1" color="neutral-faded">
-            Built by Vlad Shilov
+            Built by{' '}
+            <Link
+              variant="plain"
+              color="inherit"
+              onClick={() => void window.api.openPr('https://omgovich.ru/')}
+            >
+              Vlad Shilov
+            </Link>
           </Text>
         </View>
+        {/* Not `critical`: that is the colour of Sign out just above, and an
+            invitation should not wear the same paint as the destructive
+            action sitting a few pixels away. */}
         <Button
           size="small"
           variant="outline"
-          color="critical"
+          color="positive"
           icon={Heart}
           onClick={() => void window.api.openPr('https://github.com/sponsors/omgovich')}
           attributes={{ title: 'Support Pullover on GitHub Sponsors' }}
