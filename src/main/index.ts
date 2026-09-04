@@ -10,6 +10,12 @@ import { createTray, setBadge } from './tray'
 import { Updater } from './updater'
 import { createPopupWindow, togglePopup } from './window'
 
+// Before anything resolves a path or touches the keychain: both are derived
+// from the app name, so a dev run would otherwise share the installed app's
+// settings, token and Safe Storage key — and, being ad-hoc signed, make macOS
+// prompt for the keychain password every time the two disagreed.
+if (!app.isPackaged) app.setName(`${app.getName()} Dev`)
+
 const CLIENT_ID = import.meta.env.MAIN_VITE_GITHUB_CLIENT_ID as string | undefined
 
 /** Opening the popup refetches when the data on screen is older than this. */
