@@ -36,7 +36,14 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-latest
+    # Pinned, not `macos-latest`. electron-builder creates its signing
+    # keychain with a random password but calls `security
+    # set-key-partition-list` with the *certificate's* password instead; the
+    # macOS 26 image that rolled out on 2026-08-28 started rejecting that, so
+    # signing fails with "SecKeychainUnlock: The user name or passphrase you
+    # entered is not correct". Fixed upstream in 27.0.0-alpha.6 and not
+    # backported — unpin once a stable release carries it.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
