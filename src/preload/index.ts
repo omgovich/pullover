@@ -32,6 +32,8 @@ const api: RendererApi = {
   getUpdate: () => ipcRenderer.invoke(IPC.getUpdate),
   onUpdate: (listener: (state: UpdateState) => void) => subscribe(IPC.updateChanged, listener),
   installUpdate: () => ipcRenderer.invoke(IPC.installUpdate),
+  getLaunchAtLogin: () => ipcRenderer.invoke(IPC.getLaunchAtLogin),
+  setLaunchAtLogin: (enabled: boolean) => ipcRenderer.invoke(IPC.setLaunchAtLogin, enabled),
 }
 
 contextBridge.exposeInMainWorld('api', api)

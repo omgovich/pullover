@@ -1,10 +1,12 @@
 import { classifyAll, countAttention } from '@core/classify'
+import { formatWait } from '@core/format'
 import { collectRepositories, filterByRepositories } from '@core/repo-filter'
 import { computeStackPositions } from '@core/stack'
 import type { InboxSnapshot } from '@shared/ipc'
 import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
 import { isAuthError } from './github/auth-error'
 import { fetchPullRequests, fetchViewerLogin, type GraphQLClient } from './github/fetch-prs'
+import { rateLimitResetAt } from './github/rate-limit'
 import type { AppStore } from './store'
 
 export interface InboxDeps {
@@ -47,6 +49,8 @@ export class Inbox {
    * N of them.
    */
   private queuedRefresh: Promise<void> | null = null
+  /** When a hit rate limit lifts. Refreshes are skipped until then. */
+  private rateLimitedUntil: string | null = null
   private readonly now: () => string
   private readonly fetchPrs: typeof fetchPullRequests
   private readonly fetchLogin: typeof fetchViewerLogin
@@ -152,6 +156,7 @@ export class Inbox {
       // instead of classifying against the previous user's login.
       this.myLogin = null
       this.prs = []
+      this.rateLimitedUntil = null
       this.emit({
         status: 'signed-out',
         items: [],
@@ -161,6 +166,17 @@ export class Inbox {
         myLogin: null,
         knownRepositories: [],
       })
+      return
+    }
+
+    // Returns before the `loading` emit below, or a manual refresh would
+    // strand the interface in a spinner. The snapshot is left alone: its
+    // message already says why nothing is happening. Parsed, not compared as
+    // strings — the two ISO values need not share precision.
+    if (
+      this.rateLimitedUntil !== null &&
+      Date.parse(this.rateLimitedUntil) > Date.parse(this.now())
+    ) {
       return
     }
 
@@ -189,6 +205,7 @@ export class Inbox {
         }),
       )
 
+      this.rateLimitedUntil = null
       this.emit({
         status: 'ready',
         items,
@@ -199,10 +216,17 @@ export class Inbox {
         knownRepositories: collectRepositories(this.prs),
       })
     } catch (error) {
+      const resetAt = rateLimitResetAt(error, this.now())
+      this.rateLimitedUntil = resetAt
       // Keep the last good list on screen; the header shows the staleness.
       this.emit({
         status: 'error',
-        errorMessage: error instanceof Error ? error.message : String(error),
+        errorMessage:
+          resetAt === null
+            ? error instanceof Error
+              ? error.message
+              : String(error)
+            : `GitHub's rate limit is reached — try again in ${formatWait(resetAt, this.now())}`,
       })
       // A dead token fails every refresh the same way forever, so recognise
       // it specifically and hand off to whatever "sign out" means to the

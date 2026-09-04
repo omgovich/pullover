@@ -544,6 +544,122 @@ describe('Inbox.refresh', () => {
   })
 })
 
+describe('Inbox rate limiting', () => {
+  const RESET = '2026-08-10T12:12:00Z' // 12 minutes after NOW
+
+  /** The shape `@octokit/request-error`'s `RequestError` takes for a primary (quota-exhausted) rate limit. */
+  function rateLimitError(resetIso: string) {
+    const resetUnixSeconds = String(Math.floor(Date.parse(resetIso) / 1000))
+    return Object.assign(new Error('API rate limit exceeded'), {
+      status: 403,
+      response: {
+        headers: { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': resetUnixSeconds },
+      },
+    })
+  }
+
+  it("shows a plain-English message naming when GitHub's rate limit lifts", async () => {
+    const fetchPrs = vi.fn().mockRejectedValueOnce(rateLimitError(RESET))
+    const inbox = build([], { fetchPrs })
+
+    await inbox.refresh()
+
+    const snapshot = inbox.getSnapshot()
+    expect(snapshot.status).toBe('error')
+    expect(snapshot.errorMessage).toBe("GitHub's rate limit is reached — try again in 12 minutes")
+  })
+
+  it('skips the request while the reset time is still ahead, leaving the snapshot untouched', async () => {
+    let current = NOW
+    const fetchPrs = vi.fn().mockRejectedValueOnce(rateLimitError(RESET))
+    const inbox = build([], { fetchPrs, now: () => current })
+
+    await inbox.refresh()
+    const afterFirstFailure = inbox.getSnapshot()
+    // Isolate what the second call does, not what the first one already did.
+    changes.length = 0
+
+    current = '2026-08-10T12:05:00Z' // still 7 minutes before RESET
+    await inbox.refresh()
+
+    expect(fetchPrs).toHaveBeenCalledTimes(1)
+    // Same object reference: doRefresh returned before calling emit() at
+    // all, so there was no 'loading' flicker and no fresh (wrong) message.
+    expect(inbox.getSnapshot()).toBe(afterFirstFailure)
+    expect(changes).toEqual([])
+  })
+
+  it('resumes refreshing, and clears the hold, once the reset time has passed', async () => {
+    let current = NOW
+    const fetchPrs = vi
+      .fn()
+      .mockRejectedValueOnce(rateLimitError(RESET))
+      .mockResolvedValueOnce([makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })])
+      .mockResolvedValueOnce([])
+    const inbox = build([], { fetchPrs, now: () => current })
+
+    await inbox.refresh()
+    expect(inbox.getSnapshot().status).toBe('error')
+
+    current = '2026-08-10T12:13:00Z' // one minute past RESET
+    await inbox.refresh()
+
+    expect(fetchPrs).toHaveBeenCalledTimes(2)
+    const snapshot = inbox.getSnapshot()
+    expect(snapshot.status).toBe('ready')
+    expect(snapshot.errorMessage).toBeNull()
+
+    // Under a real, monotonic clock, once "now" has passed a stale reset it
+    // can never fall behind it again, so a stale-but-uncleared hold would be
+    // harmless — the guard above would stay false regardless. The only way
+    // to tell "cleared" apart from "merely timed out" is to move the clock
+    // itself backward (an NTP correction is the realistic version of this)
+    // and check the hold doesn't reassert itself.
+    current = NOW
+    await inbox.refresh()
+    expect(fetchPrs).toHaveBeenCalledTimes(3)
+  })
+
+  it('clears the hold on sign-out, so signing back in before the original reset refreshes normally', async () => {
+    let client: object | null = CLIENT
+    const fetchPrs = vi.fn().mockRejectedValueOnce(rateLimitError(RESET)).mockResolvedValueOnce([])
+    const inbox = build([], { fetchPrs, getClient: () => client })
+
+    await inbox.refresh()
+    expect(inbox.getSnapshot().status).toBe('error')
+
+    client = null
+    await inbox.refresh()
+    expect(inbox.getSnapshot().status).toBe('signed-out')
+
+    client = CLIENT
+    // `now` is still the default NOW here — well before RESET. If the hold
+    // survived sign-out, this would be skipped like the earlier test above.
+    await inbox.refresh()
+
+    expect(fetchPrs).toHaveBeenCalledTimes(2)
+    expect(inbox.getSnapshot().status).toBe('ready')
+  })
+
+  it('does not hold back refreshes for an ordinary error that only looks like a 403', async () => {
+    const permissionError = Object.assign(new Error('Resource not accessible by integration'), {
+      status: 403,
+      response: {
+        headers: { 'x-ratelimit-remaining': '4999', 'x-ratelimit-reset': '9999999999' },
+      },
+    })
+    const fetchPrs = vi.fn().mockRejectedValue(permissionError)
+    const inbox = build([], { fetchPrs })
+
+    await inbox.refresh()
+    expect(inbox.getSnapshot().errorMessage).toBe('Resource not accessible by integration')
+
+    await inbox.refresh()
+    // Not treated as a rate limit, so nothing should have been held back.
+    expect(fetchPrs).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe('Inbox.start / stop', () => {
   afterEach(() => {
     vi.useRealTimers()

@@ -1,6 +1,6 @@
 import { type DeviceCodePayload, IPC } from '@shared/ipc'
 import type { Settings, SnoozeType, UpdateState } from '@shared/types'
-import { type BrowserWindow, ipcMain, shell } from 'electron'
+import { app, type BrowserWindow, ipcMain, shell } from 'electron'
 import type { Inbox } from './inbox'
 import { isSafeExternalUrl } from './safe-url'
 import type { AppStore } from './store'
@@ -25,6 +25,14 @@ export function registerIpc(deps: IpcDeps): void {
   const pushSettings = (): void => {
     deps.getWindow()?.webContents.send(IPC.settingsChanged, deps.store.getSettings())
   }
+
+  ipcMain.handle(IPC.getLaunchAtLogin, () => app.getLoginItemSettings().openAtLogin)
+
+  ipcMain.handle(IPC.setLaunchAtLogin, (_event, enabled: boolean) => {
+    app.setLoginItemSettings({ openAtLogin: enabled })
+    // What the system now reports, not what was asked for.
+    return app.getLoginItemSettings().openAtLogin
+  })
 
   ipcMain.handle(IPC.getUpdate, () => deps.getUpdate())
   ipcMain.handle(IPC.installUpdate, () => deps.installUpdate())
