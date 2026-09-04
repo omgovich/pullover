@@ -7,7 +7,7 @@ Commands:
 - `npm run dev` — run the app locally (needs `.env`, see README)
 - `npm test` — unit tests
 - `npm run typecheck` — type checking
-- `npm run dist` — local unsigned build (`dist/*.dmg`)
+- `npm run dist` — local build (`dist/*.dmg`); signed only if a Developer ID is in the keychain, never notarized — releases are signed and notarized in CI
 
 Run `npm test` and `npm run typecheck` before committing.
 
