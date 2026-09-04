@@ -6,6 +6,14 @@ directories:
 files:
   - out/**/*
   - package.json
+dmg:
+  # No blockmap for the dmg, and no dmg entry in `latest-mac.yml`. Updates are
+  # delivered as the zip (the feed's `path:` points there), so the dmg's
+  # differential-download data is never read by anything — it only adds a
+  # confusing extra file to every release. The zip's own blockmap is written
+  # by ArchiveTarget and is unaffected by this.
+  writeUpdateInfo: false
+
 publish:
   provider: github
   owner: omgovich
