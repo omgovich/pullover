@@ -76,7 +76,7 @@ describe('settings', () => {
       repositories: ['acme/web'],
       watchAllRepositories: false,
       theme: 'system',
-      globalShortcut: 'Alt+Space',
+      globalShortcut: 'Control+Alt+P',
     })
     store = new AppStore(backend)
     expect(store.getSettings().watchAllRepositories).toBe(false)
@@ -94,7 +94,7 @@ describe('settings', () => {
       repositories: ['acme/web', 'acme/api'],
       watchAllRepositories: true,
       theme: 'system',
-      globalShortcut: 'Alt+Space',
+      globalShortcut: 'Control+Alt+P',
     })
   })
 
