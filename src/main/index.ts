@@ -1,5 +1,5 @@
 import { IPC } from '@shared/ipc'
-import { app, type BrowserWindow, clipboard, shell, type Tray } from 'electron'
+import { app, type BrowserWindow, clipboard, type Rectangle, shell, type Tray } from 'electron'
 import { pollForToken, requestDeviceCode } from './auth/device-flow'
 import { clearToken, loadToken, saveToken } from './auth/token-storage'
 import { createGraphQLClient, type GraphQLClient } from './github/fetch-prs'
@@ -126,13 +126,17 @@ const updater = new Updater({
   },
 })
 
-// The popup is positioned from the tray icon's bounds, which a click supplies
-// and a keypress cannot — so the shortcut asks the tray where it is.
-const shortcut = new Shortcut(() => {
-  if (window === null || tray === null) return
+/** `bounds` come from the click that opened it, or from the tray itself when a keypress did. */
+function toggle(bounds: Rectangle): void {
+  if (window === null) return
   const opening = !window.isVisible()
-  togglePopup(window, tray.getBounds())
+  togglePopup(window, bounds)
+  // Opening onto a stale list is the one moment worth spending a fetch on.
   if (opening && client !== null && isStale()) void inbox.refresh()
+}
+
+const shortcut = new Shortcut(() => {
+  if (tray !== null) toggle(tray.getBounds())
 })
 
 app.dock?.hide()
@@ -142,13 +146,7 @@ void app.whenReady().then(() => {
   window = createPopupWindow()
 
   tray = createTray({
-    onToggle: (bounds) => {
-      if (window === null) return
-      const opening = !window.isVisible()
-      togglePopup(window, bounds)
-      // Opening onto a stale list is the one moment worth spending a fetch on.
-      if (opening && client !== null && isStale()) void inbox.refresh()
-    },
+    onToggle: toggle,
     onRefresh: () => void inbox.refresh(),
     onQuit: () => app.quit(),
     onInstallUpdate: () => updater.install(),

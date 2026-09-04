@@ -133,6 +133,8 @@ export default function SettingsPanel({
           <View className="pv-segmented">
             <Tabs
               variant="pills-raised"
+              size="small"
+              itemWidth="equal"
               value={settings.globalShortcut ?? 'off'}
               onChange={({ value }) => void setShortcut(value === 'off' ? null : value)}
             >

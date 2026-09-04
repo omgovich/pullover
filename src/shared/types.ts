@@ -147,7 +147,7 @@ export type ThemePreference = 'system' | 'light' | 'dark'
  * A global shortcut takes its combination away from every app at once, so the
  * list avoids anything that types a character (⌥Space is a non-breaking
  * space, ⌥P is π) or that apps bind themselves (⇧⌘P is the command palette in
- * VS Code and friends). Control+Option pairs do neither.
+ * VS Code and friends). The pairs below do neither.
  */
 export const SHORTCUT_OPTIONS: { value: string; label: string }[] = [
   { value: 'Control+Alt+P', label: '⌃⌥P' },

@@ -68,7 +68,11 @@ export function registerIpc(deps: IpcDeps): void {
     deps.store.updateSettings(patch)
     if (patch.pollIntervalMinutes !== undefined) deps.restartPolling()
     if (patch.watchAllRepositories !== undefined) deps.inbox.reclassify()
-    if (patch.globalShortcut !== undefined) deps.applyShortcut(patch.globalShortcut)
+    // From the store, not the patch: it may correct an accelerator this build
+    // no longer offers, and the OS must hold whatever the picker shows.
+    if (patch.globalShortcut !== undefined) {
+      deps.applyShortcut(deps.store.getSettings().globalShortcut)
+    }
     pushSettings()
   })
 
