@@ -125,12 +125,7 @@ export default function RepositoryPicker({
               </Text>
             )}
 
-            {/*
-             * The list is the panel's one compressible row: as tall as its
-             * rows while they fit, shrinking into its own scroll when they
-             * don't, so the sections below always stay on screen.
-             */}
-            <View overflow="auto" minHeight="72px" gap={2}>
+            <View gap={2}>
               {visible.length === 0 ? (
                 <Text variant="caption-1" color="neutral-faded">
                   No repository matches “{filter.trim()}”.
