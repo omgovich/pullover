@@ -252,6 +252,12 @@ export default function App(): React.JSX.Element {
               Refresh
             </Text>
           </View>
+          <View direction="row" align="center" gap={1}>
+            <KeyCap>esc</KeyCap>
+            <Text as="span" variant="caption-1" color="neutral-faded">
+              Close
+            </Text>
+          </View>
         </View>
 
         {toast !== null && <Toast toast={toast} onUndo={undoToast} />}
