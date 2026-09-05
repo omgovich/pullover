@@ -111,8 +111,11 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
             )}
           </Tooltip>
 
-          <View.Item grow>
-            <Text as="div" variant="body-3" weight="medium" maxLines={1}>
+          {/* `maxLines` would clamp with -webkit-line-clamp, which the
+              marquee cannot slide; `.pv-marquee` ellipsises the same way and
+              scrolls a title too long for the row while the row is active. */}
+          <View.Item grow className={`pv-marquee${isActive ? ' pv-marquee--active' : ''}`}>
+            <Text as="div" variant="body-3" weight="medium">
               {pr.title}
             </Text>
           </View.Item>

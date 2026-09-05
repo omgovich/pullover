@@ -147,6 +147,54 @@ body {
   background-size: 2px 3px;
 }
 
+/* A compact title too long for its row scrolls out to its end while its row
+   is the active one, then back. The distance is exact and needs no measuring
+   in JS: `100cqw` is the clip box's width and a percentage inside a transform
+   resolves against the element's own, so their difference is precisely the
+   overflow — and `min()` with zero leaves a title that fits alone. The text
+   has to stay direct inline content of the ellipsising box: Chrome draws no
+   ellipsis for an overflowing inline-block child, so the usual inner span
+   would trade the resting state for the animated one. */
+.pv-marquee {
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.pv-marquee > * {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pv-marquee--active > * {
+  width: max-content;
+  overflow: visible;
+  text-overflow: clip;
+  animation: pv-marquee 4s ease-in-out infinite alternate;
+}
+
+/* Holds at both ends, so the start and the end of the title are both
+   readable rather than swinging straight back. */
+@keyframes pv-marquee {
+  0%,
+  18% {
+    transform: translateX(0);
+  }
+  82%,
+  100% {
+    transform: translateX(min(0px, calc(100cqw - 100%)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv-marquee--active > * {
+    width: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    animation: none;
+  }
+}
+
 /* Segmented controls */
 
 /*
