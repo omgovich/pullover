@@ -170,11 +170,14 @@ body {
   width: max-content;
   overflow: visible;
   text-overflow: clip;
-  animation: pv-marquee 4s ease-in-out infinite alternate;
+  animation: pv-marquee var(--pv-marquee-duration, 6s) linear infinite alternate;
 }
 
 /* Holds at both ends, so the start and the end of the title are both
-   readable rather than swinging straight back. */
+   readable rather than swinging straight back. They are a share of the
+   duration rather than a fixed time, which percentage keyframes cannot
+   express; the card sizes the duration so the 64% that moves runs at a
+   constant speed whatever the distance. */
 @keyframes pv-marquee {
   0%,
   18% {

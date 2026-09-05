@@ -1,6 +1,6 @@
 import type { StackCardRow } from '@core/stack'
 import { Check, Clock, Layers, X } from 'lucide-react'
-import { forwardRef, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useImperativeHandle, useLayoutEffect, useRef } from 'react'
 import { Avatar, Icon, Text, Tooltip, View } from 'reshaped/bundle'
 import type { PullRequestCardHandle } from './PullRequestCard'
 import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
@@ -29,6 +29,12 @@ const AVATAR_TOP_PX = (ROW_HEIGHT_PX - AVATAR_SIZE_PX) / 2
 
 const CI_ICONS = { success: Check, failure: X, pending: Clock } as const
 
+// A constant speed, not a constant duration: the same number of seconds for
+// every title makes a barely-clipped one crawl and a very long one race.
+const MARQUEE_PX_PER_SECOND = 32
+/** Share of the animation actually in motion; the rest holds at either end. */
+const MARQUEE_MOVING_FRACTION = 0.64
+
 function initialsOf(login: string): string {
   return login.slice(0, 2).toUpperCase()
 }
@@ -45,6 +51,21 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
     const ci = pr.ciStatus === 'none' ? null : CI_PILL_COLORS[pr.ciStatus]
     const status = item.reason !== '' ? statusPillColor(item.reason) : null
     const cardRef = useRef<HTMLDivElement>(null)
+    const titleRef = useRef<HTMLDivElement>(null)
+
+    // The distance is the keyframes' own business (see `.pv-marquee`); only
+    // the time it should take needs measuring. `scrollWidth` reports the full
+    // title in either state, so this reads the same before and during.
+    useLayoutEffect(() => {
+      const clip = titleRef.current
+      const text = clip?.firstElementChild
+      if (clip == null || text == null) return
+      const overflow = Math.max(0, text.scrollWidth - clip.clientWidth)
+      const seconds = overflow / MARQUEE_PX_PER_SECOND / MARQUEE_MOVING_FRACTION
+      clip.style.setProperty('--pv-marquee-duration', `${seconds}s`)
+      // The reason sits on the same row and sizes what is left for the title,
+      // so a change to either moves the distance.
+    }, [pr.title, item.reason])
 
     useImperativeHandle(ref, () => ({
       element: cardRef.current,
@@ -114,7 +135,11 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
           {/* `maxLines` would clamp with -webkit-line-clamp, which the
               marquee cannot slide; `.pv-marquee` ellipsises the same way and
               scrolls a title too long for the row while the row is active. */}
-          <View.Item grow className={`pv-marquee${isActive ? ' pv-marquee--active' : ''}`}>
+          <View.Item
+            grow
+            className={`pv-marquee${isActive ? ' pv-marquee--active' : ''}`}
+            attributes={{ ref: titleRef }}
+          >
             <Text as="div" variant="body-3" weight="medium">
               {pr.title}
             </Text>
