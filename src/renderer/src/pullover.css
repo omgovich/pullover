@@ -166,12 +166,21 @@ body {
   text-overflow: ellipsis;
 }
 
+/* Two states, because the ellipsis and the travel start at different times.
+   The animation runs from the moment the row goes active, but its easing
+   holds at zero first, so nothing moves and the row can keep the ellipsis it
+   already had. Only when the travel actually begins does the box open up to
+   the full title — otherwise the ellipsis vanished the instant the pointer
+   arrived and then nothing happened for the length of the pause. */
 .pv-marquee--active > * {
+  animation: pv-marquee var(--pv-marquee-duration, 6s) var(--pv-marquee-ease, linear) infinite
+    alternate;
+}
+
+.pv-marquee--moving > * {
   width: max-content;
   overflow: visible;
   text-overflow: clip;
-  animation: pv-marquee var(--pv-marquee-duration, 6s) var(--pv-marquee-ease, linear) infinite
-    alternate;
 }
 
 /* Pure travel, end to end. The pauses at either end live in the easing
@@ -189,7 +198,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pv-marquee--active > * {
+  .pv-marquee--active > *,
+  .pv-marquee--moving > * {
     width: auto;
     overflow: hidden;
     text-overflow: ellipsis;

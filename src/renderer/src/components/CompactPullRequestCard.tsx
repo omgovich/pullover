@@ -1,6 +1,13 @@
 import type { StackCardRow } from '@core/stack'
 import { Check, Clock, Layers, X } from 'lucide-react'
-import { forwardRef, useImperativeHandle, useLayoutEffect, useRef } from 'react'
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import { Avatar, Icon, Text, Tooltip, View } from 'reshaped/bundle'
 import type { PullRequestCardHandle } from './PullRequestCard'
 import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
@@ -55,6 +62,18 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
     const status = item.reason !== '' ? statusPillColor(item.reason) : null
     const cardRef = useRef<HTMLDivElement>(null)
     const titleRef = useRef<HTMLDivElement>(null)
+    // Whether the title has finished its opening pause and is now travelling.
+    // The box only opens up then, so the ellipsis survives the wait.
+    const [moving, setMoving] = useState(false)
+
+    useEffect(() => {
+      if (!isActive) {
+        setMoving(false)
+        return
+      }
+      const timer = setTimeout(() => setMoving(true), MARQUEE_HOLD_SECONDS * 1000)
+      return () => clearTimeout(timer)
+    }, [isActive])
 
     // The distance is the keyframes' own business (see `.pv-marquee`); what
     // is measured here is the time — a constant speed, and a pause at either
@@ -147,7 +166,9 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
               scrolls a title too long for the row while the row is active. */}
           <View.Item
             grow
-            className={`pv-marquee${isActive ? ' pv-marquee--active' : ''}`}
+            className={`pv-marquee${isActive ? ' pv-marquee--active' : ''}${
+              moving ? ' pv-marquee--moving' : ''
+            }`}
             attributes={{ ref: titleRef }}
           >
             <Text as="div" variant="body-3" weight="medium">
