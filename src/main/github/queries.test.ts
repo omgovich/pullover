@@ -8,6 +8,10 @@ describe('DETAILS_QUERY', () => {
     expect(DETAILS_QUERY).toContain('state submittedAt bodyText')
   })
 
+  it('fetches mergeability, which decides the merge-conflict reason', () => {
+    expect(DETAILS_QUERY).toContain('mergeable')
+  })
+
   it('fetches the branch names a stack position is derived from', () => {
     expect(DETAILS_QUERY).toContain('headRefName')
     expect(DETAILS_QUERY).toContain('baseRefName')

@@ -1,6 +1,7 @@
 import { compareIso } from '@core/threads'
 import type {
   CiStatus,
+  MergeableState,
   PullRequest,
   Review,
   ReviewDecision,
@@ -33,6 +34,7 @@ export interface PullRequestNode {
   headRefName: string
   baseRefName: string
   reviewDecision: ReviewDecision
+  mergeable: MergeableState
   bodyText: string
   author: ActorNode | null
   repository: { nameWithOwner: string }
@@ -199,6 +201,7 @@ export function mapPullRequest(
     ciStatus: mapCiStatus(lastCommit?.statusCheckRollup?.state),
     lastCommitPushedAt: lastCommit?.committedDate ?? node.createdAt,
     reviewDecision: node.reviewDecision,
+    mergeable: node.mergeable,
     reviews,
     reviewThreads,
     conversationComments,

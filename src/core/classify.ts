@@ -85,6 +85,12 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
     return { category: 'my-pr-action', reason: 'Changes requested' }
   }
 
+  // Only CONFLICTING: GitHub reports UNKNOWN while it is still computing, and
+  // a freshly pushed PR would otherwise flash this reason.
+  if (pr.mergeable === 'CONFLICTING') {
+    return { category: 'my-pr-action', reason: 'Merge conflicts' }
+  }
+
   const unanswered = unansweredThreads(pr, myLogin)
   if (unanswered.length > 0) {
     const word = pluralize(unanswered.length, 'open thread', 'open threads')

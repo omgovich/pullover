@@ -16,6 +16,7 @@ function node(overrides: Partial<PullRequestNode> = {}): PullRequestNode {
     headRefName: 'feature-branch',
     baseRefName: 'main',
     reviewDecision: 'REVIEW_REQUIRED',
+    mergeable: 'MERGEABLE',
     author: { login: 'alice', avatarUrl: 'https://avatars.example/alice.png' },
     repository: { nameWithOwner: 'acme/web' },
     reviews: { nodes: [] },
@@ -43,6 +44,13 @@ describe('mapCiStatus', () => {
 })
 
 describe('mapPullRequest', () => {
+  it('carries mergeability through', () => {
+    expect(mapPullRequest(node({ mergeable: 'CONFLICTING' }), [], 'vlad').mergeable).toBe(
+      'CONFLICTING',
+    )
+    expect(mapPullRequest(node({ mergeable: 'UNKNOWN' }), [], 'vlad').mergeable).toBe('UNKNOWN')
+  })
+
   it('copies the scalar fields and attaches the buckets', () => {
     // isDraft: true (factory default is false) so a mutant that hardcodes the
     // field can't hide behind the default.

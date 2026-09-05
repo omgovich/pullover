@@ -289,6 +289,38 @@ describe('classify — author branch', () => {
     expect(result.category).toBe('waiting')
     expect(result.reason).toBe('Waiting on reviewers')
   })
+
+  it('my-pr-action on a merge conflict', () => {
+    const pr = makePullRequest({ ...mine, mergeable: 'CONFLICTING' })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('my-pr-action')
+    expect(result.reason).toBe('Merge conflicts')
+  })
+
+  it('treats an unknown mergeability as not conflicting', () => {
+    // GitHub computes mergeability lazily, so a freshly pushed PR reports
+    // UNKNOWN — reading that as a conflict would flash a wrong reason.
+    const pr = makePullRequest({ ...mine, mergeable: 'UNKNOWN' })
+    expect(classify(pr, ctx()).category).toBe('waiting')
+  })
+
+  it('changes requested outranks a merge conflict', () => {
+    const pr = makePullRequest({
+      ...mine,
+      reviewDecision: 'CHANGES_REQUESTED',
+      mergeable: 'CONFLICTING',
+    })
+    expect(classify(pr, ctx()).reason).toBe('Changes requested')
+  })
+
+  it('a merge conflict outranks an unanswered thread', () => {
+    const pr = makePullRequest({
+      ...mine,
+      mergeable: 'CONFLICTING',
+      reviewThreads: [makeThread({ comments: [makeComment('alice', '2026-08-02T10:00:00Z')] })],
+    })
+    expect(classify(pr, ctx()).reason).toBe('Merge conflicts')
+  })
 })
 
 describe('classify — snooze override', () => {

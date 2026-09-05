@@ -30,6 +30,7 @@ export const DETAILS_QUERY = `
         headRefName
         baseRefName
         reviewDecision
+        mergeable
         bodyText
         author { login avatarUrl }
         repository { nameWithOwner }
