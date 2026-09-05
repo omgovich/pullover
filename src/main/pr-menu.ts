@@ -2,6 +2,7 @@ import type { PrMenuAction } from '@shared/ipc'
 
 export type PrMenuEntry =
   | { type: 'separator' }
+  | { type: 'header'; label: string }
   | { type: 'item'; label: string; action: PrMenuAction }
 
 const SEPARATOR: PrMenuEntry = { type: 'separator' }
@@ -28,11 +29,14 @@ export function prMenuEntries(isSnoozed: boolean): PrMenuEntry[] {
       ]
 
   return [
+    { type: 'header', label: 'Snooze' },
     ...snooze,
     SEPARATOR,
+    { type: 'header', label: 'Open' },
     { type: 'item', label: 'Open on GitHub', action: 'open' },
     { type: 'item', label: 'Open files changed', action: 'open-files' },
     SEPARATOR,
+    { type: 'header', label: 'Copy' },
     { type: 'item', label: 'Copy link', action: 'copy-link' },
     { type: 'item', label: 'Copy branch name', action: 'copy-branch' },
   ]

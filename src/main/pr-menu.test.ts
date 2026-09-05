@@ -26,19 +26,31 @@ describe('prMenuEntries', () => {
     ])
   })
 
-  it('separates snooze, open and copy into three sections', () => {
+  it('names and separates the snooze, open and copy sections', () => {
     const shape = prMenuEntries(false).map((entry) => entry.type)
     expect(shape).toEqual([
+      'header',
       'item',
       'item',
       'item',
       'separator',
+      'header',
       'item',
       'item',
       'separator',
+      'header',
       'item',
       'item',
     ])
+
+    const headers = prMenuEntries(false)
+      .filter((entry) => entry.type === 'header')
+      .map((entry) => entry.label)
+    expect(headers).toEqual(['Snooze', 'Open', 'Copy'])
+  })
+
+  it('keeps the Snooze heading over the collapsed Unsnooze item', () => {
+    expect(prMenuEntries(true)[0]).toEqual({ type: 'header', label: 'Snooze' })
   })
 
   it('never repeats an action', () => {

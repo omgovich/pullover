@@ -49,6 +49,15 @@ body {
 
 /* Card list */
 
+/* A card is a button, not prose. Left as selectable text, a right-click on
+   a title lands the browser's own word selection under the context menu,
+   and a drag across the list highlights it. Scoped to the cards rather than
+   set on the whole document: the device code on the sign-in screen has no
+   copy button, so it has to stay selectable. */
+.pv-card-focus {
+  user-select: none;
+}
+
 /* Cards are focusable only so the keyboard cursor can carry real focus with
    it — never reached by Tab. The selection already reads through its
    background tint, so the browser's focus ring on top of that is redundant. */
