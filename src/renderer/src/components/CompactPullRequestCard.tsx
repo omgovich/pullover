@@ -1,46 +1,33 @@
-import type { ClassifiedPullRequest } from '@shared/types'
+import type { StackCardRow } from '@core/stack'
 import { Check, Clock, Layers, X } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
 import { Avatar, Icon, Text, View } from 'reshaped/bundle'
 import type { PullRequestCardHandle } from './PullRequestCard'
 import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
+import StackConnector from './StackConnector'
 
 interface Props {
-  item: ClassifiedPullRequest
+  row: StackCardRow
   isActive: boolean
-  lineAbove: boolean
-  lineBelow: boolean
-  /** Draws that segment dotted: members exist there but aren't shown. */
-  gapAbove: boolean
-  gapBelow: boolean
-  /** That segment has nothing to meet, so it fades out rather than dotting. */
-  gapAboveOpen: boolean
-  gapBelowOpen: boolean
   onHover: (prId: string | null) => void
   onSelect: (prId: string) => void
 }
 
-// Pixels, not Reshaped units: the row is 30px around a 20px avatar and none
-// of that lands on the 4px grid. The connector runs behind the avatar, as in
-// the comfortable card, so its offset is the avatar's centre.
+// Reshaped units, spent directly on the props below, so the connector and the
+// layout it hides behind cannot drift apart. Only the row height is a pixel
+// literal: 30px is off the 4px grid, and nothing shorter fits a 20px avatar.
+const UNIT_PX = 4
+const AVATAR_SIZE = 5
+const ROW_PADDING_INLINE = 2
 const ROW_HEIGHT_PX = 30
-const AVATAR_SIZE_PX = 20
-const ROW_PADDING_INLINE_PX = 8
+const AVATAR_SIZE_PX = AVATAR_SIZE * UNIT_PX
+const ROW_PADDING_INLINE_PX = ROW_PADDING_INLINE * UNIT_PX
+
 const CONNECTOR_WIDTH_PX = 2
+const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
 const AVATAR_TOP_PX = (ROW_HEIGHT_PX - AVATAR_SIZE_PX) / 2
 
-const COMPACT_CONNECTOR_LEFT_PX =
-  ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
-
 const CI_ICONS = { success: Check, failure: X, pending: Clock } as const
-
-function connectorClass(isGap: boolean, isOpen: boolean, above: boolean): string {
-  const base = 'pv-stack-connector pv-stack-connector--compact'
-  if (!isGap) return base
-  const variant = isOpen ? 'fade' : 'gap'
-  const suffix = above ? ` pv-stack-connector--${variant}-up` : ''
-  return `${base} pv-stack-connector--${variant}${suffix}`
-}
 
 function initialsOf(login: string): string {
   return login.slice(0, 2).toUpperCase()
@@ -52,21 +39,8 @@ function initialsOf(login: string): string {
  * those are the three that least often decide whether to open a PR.
  */
 const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
-  function CompactPullRequestCard(
-    {
-      item,
-      isActive,
-      lineAbove,
-      lineBelow,
-      gapAbove,
-      gapBelow,
-      gapAboveOpen,
-      gapBelowOpen,
-      onHover,
-      onSelect,
-    }: Props,
-    ref,
-  ) {
+  function CompactPullRequestCard({ row, isActive, onHover, onSelect }: Props, ref) {
+    const { item } = row
     const { pr } = item
     const ci = pr.ciStatus === 'none' ? null : CI_PILL_COLORS[pr.ciStatus]
     const status = item.reason !== '' ? statusPillColor(item.reason) : null
@@ -89,7 +63,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
           align="center"
           gap={2}
           height={`${ROW_HEIGHT_PX}px`}
-          paddingInline={2}
+          paddingInline={ROW_PADDING_INLINE}
           borderRadius="medium"
           backgroundColor={isActive ? 'neutral-faded' : undefined}
           position="relative"
@@ -102,31 +76,17 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
             style: { cursor: 'pointer', transition: 'background 140ms' },
           }}
         >
-          {/* The break never becomes a row of its own here: an extra 11px
-              between two cards would break the even rhythm this layout is
-              for, and reads as a rendering fault rather than an omission. */}
-          {lineAbove && (
-            <div
-              className={connectorClass(gapAbove, gapAboveOpen, true)}
-              style={{ left: COMPACT_CONNECTOR_LEFT_PX, top: 0, height: AVATAR_TOP_PX }}
-              aria-hidden="true"
-            />
-          )}
-          {lineBelow && (
-            <div
-              className={connectorClass(gapBelow, gapBelowOpen, false)}
-              style={{
-                left: COMPACT_CONNECTOR_LEFT_PX,
-                top: AVATAR_TOP_PX + AVATAR_SIZE_PX,
-                bottom: 0,
-              }}
-              aria-hidden="true"
-            />
-          )}
+          <StackConnector
+            row={row}
+            compact
+            left={CONNECTOR_LEFT_PX}
+            aboveHeight={AVATAR_TOP_PX}
+            belowTop={AVATAR_TOP_PX + AVATAR_SIZE_PX}
+          />
           <Avatar
             src={pr.authorAvatarUrl !== '' ? pr.authorAvatarUrl : undefined}
             initials={initialsOf(pr.authorLogin)}
-            size={5}
+            size={AVATAR_SIZE}
             variant="faded"
             color="primary"
             attributes={{ style: { fontSize: '9px' } }}
@@ -152,7 +112,9 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
               </View>
             )}
 
-            {ci !== null && (
+            {/* The icon carries the CI state alone here, so the label the
+                comfortable card prints becomes the accessible name. */}
+            {pr.ciStatus !== 'none' && ci !== null && (
               <View
                 width="16px"
                 height="16px"
@@ -162,19 +124,16 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
                 backgroundColor={ci.background}
                 border
                 borderColor={ci.border}
+                attributes={{ role: 'img', 'aria-label': ci.label }}
               >
-                <Icon
-                  svg={CI_ICONS[pr.ciStatus as keyof typeof CI_ICONS]}
-                  size="10px"
-                  color={ci.text}
-                />
+                <Icon svg={CI_ICONS[pr.ciStatus]} size="10px" color={ci.text} />
               </View>
             )}
 
             {/* Uncapped, so the title yields instead: the reason is why the
                 row is in the inbox at all, and a clipped one ("Re-review
-                reque…") says less than the title it was protecting. The
-                strings are a closed set from `classify`, none longer than
+                reque…") says less than the title it was protecting. Every
+                reason `classify` produces is short — the longest is
                 "Waiting on reviewers". */}
             {status !== null && (
               <Text as="span" variant="caption-1" weight="semibold" color={status.text}>

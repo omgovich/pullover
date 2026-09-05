@@ -187,10 +187,9 @@ export interface StackCardRow {
   gapAbove: boolean
   gapBelow: boolean
   /**
-   * Whether that dotted segment has nothing to meet: no neighbouring row
-   * draws a line back towards it. Rendered as a short stub at the avatar
-   * rather than a run to the row's edge, which otherwise trails off into
-   * blank space and reads as a rendering fault.
+   * Whether that segment has nothing to meet: no neighbouring row draws a
+   * line back towards it. Rendered as a fade to transparent rather than
+   * dots, which need a neighbour to land against to read as a break.
    */
   gapAboveOpen: boolean
   gapBelowOpen: boolean
@@ -202,8 +201,12 @@ export interface StackCardRow {
  * `index`).
  *
  * A member draws its line upward unless it is the chain's first and downward
- * unless it is its last, dotted on whichever side the chain continues out of
- * sight. Adjacent rows always agree about the segment between them.
+ * unless it is its last; that line is dotted where the chain skips members
+ * between two shown rows, and faded where it carries on past the list.
+ *
+ * Two rows can disagree about the segment between them — a chain's top row
+ * followed by another chain's middle draws nothing below and a fade above —
+ * but never in a way that shows: a solid segment always faces a solid one.
  */
 export function sectionRows(ordered: ClassifiedPullRequest[]): StackCardRow[] {
   /** Whether the row at `i` is the chain member `stack` expects at `index`. */

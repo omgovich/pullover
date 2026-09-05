@@ -69,8 +69,6 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
 
   if (items.length === 0) return null
 
-  // Lays the section out as cards interleaved with the dotted breaks that
-  // stand in for stack members not shown.
   const compact = layout === 'compact'
   const rows = sectionRows(items)
 
@@ -92,15 +90,14 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
           <Text as="span" variant="caption-1" weight="semibold" color="neutral">
             {CATEGORY_TITLES[category]}
           </Text>
-          {compact && (
+          {/* Compact leaves the count bare; comfortable sets it in a plain
+              View rather than a `Badge`, whose only borderless variant swaps
+              in a solid neutral background instead of this faint wash. */}
+          {compact ? (
             <Text as="span" variant="caption-1" color="neutral-faded" numeric>
               {items.length}
             </Text>
-          )}
-          {/* A plain View instead of `Badge`: `Badge`'s only borderless
-              variant swaps in a solid neutral background instead of this
-              faint wash. */}
-          {!compact && (
+          ) : (
             <View
               minWidth="18px"
               paddingInline={1.5}
@@ -120,8 +117,7 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
       </Actionable>
 
       {/* No gap between cards: the stack line runs from row to row, and any
-          gap would break it. Omitted members are dotted inside the segment a
-          row already has, so every row is the same height either way. */}
+          gap would break it. */}
       {open && (
         <View direction="column">
           {rows.map((row) =>
@@ -129,14 +125,8 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
               <CompactPullRequestCard
                 key={row.item.pr.id}
                 ref={getCardRefCallback(row.item.pr.id)}
-                item={row.item}
+                row={row}
                 isActive={row.item.pr.id === activePrId}
-                lineAbove={row.lineAbove}
-                lineBelow={row.lineBelow}
-                gapAbove={row.gapAbove}
-                gapBelow={row.gapBelow}
-                gapAboveOpen={row.gapAboveOpen}
-                gapBelowOpen={row.gapBelowOpen}
                 onHover={onHoverCard}
                 onSelect={onSelectCard}
               />
@@ -144,15 +134,9 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
               <PullRequestCard
                 key={row.item.pr.id}
                 ref={getCardRefCallback(row.item.pr.id)}
-                item={row.item}
+                row={row}
                 now={now}
                 isActive={row.item.pr.id === activePrId}
-                lineAbove={row.lineAbove}
-                lineBelow={row.lineBelow}
-                gapAbove={row.gapAbove}
-                gapBelow={row.gapBelow}
-                gapAboveOpen={row.gapAboveOpen}
-                gapBelowOpen={row.gapBelowOpen}
                 onHover={onHoverCard}
                 onSelect={onSelectCard}
                 onSnoozed={onSnoozed}

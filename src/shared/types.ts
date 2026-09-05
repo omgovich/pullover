@@ -155,12 +155,14 @@ export const SHORTCUT_OPTIONS: { value: string; label: string }[] = [
   { value: 'Control+Command+P', label: '⌃⌘P' },
 ]
 
+export type Layout = 'comfortable' | 'compact'
+
+/** The picker's options, and the allowlist `store` validates the persisted
+    setting against — a value outside this list falls back to the default. */
 export const LAYOUT_OPTIONS: { value: Layout; label: string }[] = [
   { value: 'comfortable', label: 'Comfortable' },
   { value: 'compact', label: 'Compact' },
 ]
-
-export type Layout = 'comfortable' | 'compact'
 
 export interface Settings {
   pollIntervalMinutes: number

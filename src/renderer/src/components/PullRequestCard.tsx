@@ -1,24 +1,17 @@
 import { formatAge } from '@core/format'
+import type { StackCardRow } from '@core/stack'
 import type { ClassifiedPullRequest } from '@shared/types'
 import { Layers } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
 import { Avatar, Badge, Text, View } from 'reshaped/bundle'
 import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
 import SnoozeMenu from './SnoozeMenu'
+import StackConnector from './StackConnector'
 
 interface Props {
-  item: ClassifiedPullRequest
+  row: StackCardRow
   now: string
   isActive: boolean
-  /** Stack line this row draws above/below the avatar; see `sectionRows` (@core/stack). */
-  lineAbove: boolean
-  lineBelow: boolean
-  /** Draws that segment dotted: members exist there but aren't shown. */
-  gapAbove: boolean
-  gapBelow: boolean
-  /** That segment has nothing to meet, so it fades out rather than dotting. */
-  gapAboveOpen: boolean
-  gapBelowOpen: boolean
   onHover: (prId: string | null) => void
   onSelect: (prId: string) => void
   onSnoozed: (item: ClassifiedPullRequest) => void
@@ -42,8 +35,9 @@ const CONNECTOR_WIDTH_PX = 2
 const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
 const CONNECTOR_BELOW_TOP_PX = ROW_PADDING_TOP_PX + AVATAR_SIZE_PX
 
-/** How far the fade at an open end reaches before it has gone entirely. */
-const OPEN_GAP_BELOW_PX = 12
+/** The segment below the avatar runs the height of the card, so a fade over
+    all of it would smear; it has gone by here instead. */
+const OPEN_FADE_BELOW_PX = 12
 
 /** Imperative surface App needs for keyboard navigation. */
 export interface PullRequestCardHandle {
@@ -52,39 +46,15 @@ export interface PullRequestCardHandle {
   focus: () => void
 }
 
-/**
- * `above` flips whichever variant is chosen so it runs away from the avatar:
- * the dots anchor their cycle at the seam, the fade starts opaque at the
- * avatar.
- */
-function connectorClass(isGap: boolean, isOpen: boolean, above: boolean): string {
-  if (!isGap) return 'pv-stack-connector'
-  const variant = isOpen ? 'fade' : 'gap'
-  const suffix = above ? ` pv-stack-connector--${variant}-up` : ''
-  return `pv-stack-connector pv-stack-connector--${variant}${suffix}`
-}
-
 function initialsOf(login: string): string {
   return login.slice(0, 1).toUpperCase()
 }
 
 const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRequestCard(
-  {
-    item,
-    now,
-    isActive,
-    lineAbove,
-    lineBelow,
-    gapAbove,
-    gapBelow,
-    gapAboveOpen,
-    gapBelowOpen,
-    onHover,
-    onSelect,
-    onSnoozed,
-  }: Props,
+  { row, now, isActive, onHover, onSelect, onSnoozed }: Props,
   ref,
 ) {
+  const { item } = row
   const { pr } = item
   const ci = pr.ciStatus === 'none' ? null : CI_PILL_COLORS[pr.ciStatus]
   const status = item.reason !== '' ? statusPillColor(item.reason) : null
@@ -130,33 +100,14 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           },
         }}
       >
-        {/* The line behind the avatar joining this row to the chain: dotted
-            where members are missing between two shown rows, fading out where
-            the chain leaves the list. Rendered before `Avatar` so it paints
-            underneath it, and drawn inside the row's own segment so an
-            omission costs no height and every row stays the same. */}
-        {lineAbove && (
-          <div
-            className={connectorClass(gapAbove, gapAboveOpen, true)}
-            style={{ left: CONNECTOR_LEFT_PX, top: 0, height: ROW_PADDING_TOP_PX }}
-            aria-hidden="true"
-          />
-        )}
-        {lineBelow && (
-          <div
-            className={connectorClass(gapBelow, gapBelowOpen, false)}
-            style={
-              gapBelowOpen
-                ? {
-                    left: CONNECTOR_LEFT_PX,
-                    top: CONNECTOR_BELOW_TOP_PX,
-                    height: OPEN_GAP_BELOW_PX,
-                  }
-                : { left: CONNECTOR_LEFT_PX, top: CONNECTOR_BELOW_TOP_PX, bottom: 0 }
-            }
-            aria-hidden="true"
-          />
-        )}
+        {/* Before `Avatar`, so the line paints underneath it. */}
+        <StackConnector
+          row={row}
+          left={CONNECTOR_LEFT_PX}
+          aboveHeight={ROW_PADDING_TOP_PX}
+          belowTop={CONNECTOR_BELOW_TOP_PX}
+          fadeBelowHeight={OPEN_FADE_BELOW_PX}
+        />
 
         <Avatar
           src={pr.authorAvatarUrl !== '' ? pr.authorAvatarUrl : undefined}

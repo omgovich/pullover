@@ -351,14 +351,22 @@ describe('sectionRows', () => {
 
   // Neighbouring rows draw the two halves of one segment, so a solid half
   // meeting a dotted one would render as a line that changes stroke midway.
-  it('never lets adjacent rows disagree about the segment between them', () => {
-    const rows = sectionRows(
-      [1, 3, 4, 7].map((index) => classified(`PR_${index}`, { id: 'stack-1', index, total: 8 })),
-    )
+  // Two rows may well disagree about the segment between them — one chain's
+  // top followed by another's middle draws nothing below and a fade above.
+  // What must never happen is a solid segment facing anything but a solid
+  // one, which would read as a line running between unrelated pull requests.
+  it('never faces a solid segment with a dotted, faded or absent one', () => {
+    const rows = sectionRows([
+      ...[1, 3, 4].map((index) => classified(`A_${index}`, { id: 'stack-a', index, total: 4 })),
+      ...[2, 3].map((index) => classified(`B_${index}`, { id: 'stack-b', index, total: 3 })),
+      classified('LONE', null),
+      classified('C_1', { id: 'stack-c', index: 1, total: 2 }),
+    ])
 
     for (let i = 0; i < rows.length - 1; i++) {
-      expect(rows[i].lineBelow).toBe(rows[i + 1].lineAbove)
-      expect(rows[i].gapBelow).toBe(rows[i + 1].gapAbove)
+      const solidBelow = rows[i].lineBelow && !rows[i].gapBelow
+      const solidAbove = rows[i + 1].lineAbove && !rows[i + 1].gapAbove
+      expect(solidBelow).toBe(solidAbove)
     }
   })
 
@@ -373,7 +381,7 @@ describe('sectionRows', () => {
   })
 
   // A dotted segment that meets the neighbouring row's own segment is drawn
-  // full length; one with nothing to meet tapers to a stub instead.
+  // full length; one with nothing to meet fades out instead.
   it('marks the ends of a stack as having nothing to meet', () => {
     const rows = sectionRows(
       [2, 3, 5].map((index) => classified(`PR_${index}`, { id: 'stack-1', index, total: 7 })),
@@ -402,6 +410,16 @@ describe('sectionRows', () => {
 
     expect(rows[0].gapBelowOpen).toBe(true)
     expect(rows[1].gapAboveOpen).toBe(true)
+  })
+
+  it('has nothing to meet when the neighbouring row is in no stack at all', () => {
+    const rows = sectionRows([
+      classified('PR_lone', null),
+      classified('PR_m', { id: 'a', index: 2, total: 4 }),
+      classified('PR_other', null),
+    ])
+
+    expect([rows[1].gapAboveOpen, rows[1].gapBelowOpen]).toEqual([true, true])
   })
 
   it('keeps rows in the order given, so the keyboard cursor matches the screen', () => {

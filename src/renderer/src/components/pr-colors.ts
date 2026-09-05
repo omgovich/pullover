@@ -1,6 +1,6 @@
 import type { TextProps, ViewProps } from 'reshaped/bundle'
 
-export interface PillColor {
+interface PillColor {
   text: NonNullable<TextProps['color']>
   background: NonNullable<ViewProps['backgroundColor']>
   /**

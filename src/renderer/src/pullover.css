@@ -85,18 +85,13 @@ body {
 }
 
 /* Compact marks a chain in the accent rather than the neutral rule, softened
-   with opacity so it reads as a hint and not as a border. The design's 28% is
-   doubled here: at this row height it had all but vanished. */
+   with opacity so it reads as a hint and not as a border. */
 .pv-stack-connector--compact {
   --pv-rule: var(--rs-color-border-primary);
   opacity: 0.55;
 }
 
-/* Members that exist but aren't shown. Drawn inside the segment the row
-   already has rather than as a row of its own: the extra height read as a
-   rendering fault, not an omission. Compact's segment is only 5px, so the
-   period is tight — a sparser one fits a single dot and stops reading as a
-   broken line at all. */
+/* Members that exist but aren't shown. */
 .pv-stack-connector--gap {
   border-left-style: none;
   width: 2px;
@@ -143,7 +138,7 @@ body {
   background-image: linear-gradient(to top, var(--pv-rule), transparent);
 }
 
-/* Compact's segment is 5px against the comfortable card's 9 or 10, so the
+/* Compact's segment is 5px against the comfortable card's 9 or 12, so the
    period is tightened to fit more than a single dot in it — one dot alone
    reads as a speck rather than a line that carries on. Not tighter than this:
    at a 2px period the dots and gaps blur into a solid hairline. */
