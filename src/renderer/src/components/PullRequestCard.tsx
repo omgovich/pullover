@@ -1,18 +1,18 @@
 import { formatAge } from '@core/format'
+import type { StackCardRow } from '@core/stack'
 import type { ClassifiedPullRequest } from '@shared/types'
 import { Layers } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { Avatar, Badge, Text, type TextProps, View, type ViewProps } from 'reshaped/bundle'
+import { Avatar, Badge, Text, View } from 'reshaped/bundle'
+import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
 import SnoozeMenu from './SnoozeMenu'
+import StackConnector from './StackConnector'
 
 interface Props {
-  item: ClassifiedPullRequest
+  row: StackCardRow
   now: string
   isActive: boolean
-  /** Solid stack line this row draws above/below the avatar; see `sectionRows` (@core/stack). */
-  lineAbove: boolean
-  lineBelow: boolean
-  onHover: (prId: string | null) => void
+  onHover: (prId: string) => void
   onSelect: (prId: string) => void
   onSnoozed: (item: ClassifiedPullRequest) => void
 }
@@ -25,16 +25,20 @@ const UNIT_PX = 4
 // Reshaped units, spent directly on the props below, so the connector and
 // the layout it hides behind cannot drift apart.
 const AVATAR_SIZE = 8
-const ROW_PADDING_INLINE = 2.5
+/** Also spent on the section heading, so it lines up with the avatars. */
+export const ROW_PADDING_INLINE = 2.5
 const ROW_PADDING_TOP = 2.25
 const AVATAR_SIZE_PX = AVATAR_SIZE * UNIT_PX
 const ROW_PADDING_INLINE_PX = ROW_PADDING_INLINE * UNIT_PX
 const ROW_PADDING_TOP_PX = ROW_PADDING_TOP * UNIT_PX
 
 const CONNECTOR_WIDTH_PX = 2
-/** Exported so a section's dashed breaks line up with the cards' own line. */
-export const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
+const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
 const CONNECTOR_BELOW_TOP_PX = ROW_PADDING_TOP_PX + AVATAR_SIZE_PX
+
+/** The segment below the avatar runs the height of the card, so a fade over
+    all of it would smear; it has gone by here instead. */
+const OPEN_FADE_BELOW_PX = 12
 
 /** Imperative surface App needs for keyboard navigation. */
 export interface PullRequestCardHandle {
@@ -43,79 +47,15 @@ export interface PullRequestCardHandle {
   focus: () => void
 }
 
-interface PillColor {
-  text: NonNullable<TextProps['color']>
-  background: NonNullable<ViewProps['backgroundColor']>
-  /**
-   * Without an edge the pills disappear on a hovered card: the hover wash and
-   * every `*-faded` fill sit at the same lightness (L 0.98 in light mode, 0.24
-   * in dark), separated only by a couple of hundredths of chroma. The matching
-   * `*-faded` border is a step away from its fill in both modes, so it draws
-   * the boundary the fill alone cannot.
-   */
-  border: NonNullable<ViewProps['borderColor']>
-}
-
-// Keyed off the exact reason strings `src/core/classify.ts` produces. The
-// counted reasons ("3 new replies", "2 open threads") aren't listed here on
-// purpose — they fall through to the default accent pair below.
-const STATUS_PILL_COLORS: Record<string, PillColor> = {
-  'CI is red': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
-  'Changes requested': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
-  'Ready to merge': { text: 'positive', background: 'positive-faded', border: 'positive-faded' },
-  'Waiting on author': {
-    text: 'neutral-faded',
-    background: 'neutral-faded',
-    border: 'neutral-faded',
-  },
-  'Waiting on reviewers': {
-    text: 'neutral-faded',
-    background: 'neutral-faded',
-    border: 'neutral-faded',
-  },
-  Snoozed: { text: 'neutral-faded', background: 'neutral-faded', border: 'neutral-faded' },
-  Mentioned: { text: 'warning', background: 'warning-faded', border: 'warning-faded' },
-}
-
-const DEFAULT_STATUS_PILL_COLOR: PillColor = {
-  text: 'primary',
-  background: 'primary-faded',
-  border: 'primary-faded',
-}
-
-function statusPillColor(reason: string): PillColor {
-  return STATUS_PILL_COLORS[reason] ?? DEFAULT_STATUS_PILL_COLOR
-}
-
-const CI_PILL_COLORS: Record<'success' | 'failure' | 'pending', PillColor & { label: string }> = {
-  success: {
-    text: 'positive',
-    background: 'positive-faded',
-    border: 'positive-faded',
-    label: 'CI green',
-  },
-  failure: {
-    text: 'critical',
-    background: 'critical-faded',
-    border: 'critical-faded',
-    label: 'CI failing',
-  },
-  pending: {
-    text: 'warning',
-    background: 'warning-faded',
-    border: 'warning-faded',
-    label: 'CI running',
-  },
-}
-
 function initialsOf(login: string): string {
   return login.slice(0, 1).toUpperCase()
 }
 
 const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRequestCard(
-  { item, now, isActive, lineAbove, lineBelow, onHover, onSelect, onSnoozed }: Props,
+  { row, now, isActive, onHover, onSelect, onSnoozed }: Props,
   ref,
 ) {
+  const { item } = row
   const { pr } = item
   const ci = pr.ciStatus === 'none' ? null : CI_PILL_COLORS[pr.ciStatus]
   const status = item.reason !== '' ? statusPillColor(item.reason) : null
@@ -127,8 +67,8 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
   }))
 
   // The card body opens the PR, on click and (via App's `enter` hotkey) on
-  // Enter for whichever card is keyboard-selected. Clicking also selects the
-  // card, so the keyboard cursor picks up from wherever the mouse last was.
+  // Enter for whichever card the cursor is on. Clicking selects deliberately,
+  // which — unlike the hover that put the cursor here — takes focus with it.
   const handleOpen = (): void => {
     onSelect(pr.id)
     void window.api.openPr(pr.url)
@@ -154,33 +94,20 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           role: 'button',
           onClick: handleOpen,
           onMouseEnter: () => onHover(pr.id),
-          onMouseLeave: () => onHover(null),
           style: {
             cursor: 'pointer',
             transition: 'background 140ms',
           },
         }}
       >
-        {/* Stack connector: the solid line behind the avatar joining this row
-            to the chain. Rendered before `Avatar` so it paints underneath it.
-            Anything omitted from the chain is a dotted break between cards
-            (see `sectionRows`), never a broken stretch inside one. The
-            section list sets no gap between cards, so consecutive segments
-            meet exactly and the stack reads as one rule. */}
-        {lineAbove && (
-          <div
-            className="pv-stack-connector"
-            style={{ left: CONNECTOR_LEFT_PX, top: 0, height: ROW_PADDING_TOP_PX }}
-            aria-hidden="true"
-          />
-        )}
-        {lineBelow && (
-          <div
-            className="pv-stack-connector"
-            style={{ left: CONNECTOR_LEFT_PX, top: CONNECTOR_BELOW_TOP_PX, bottom: 0 }}
-            aria-hidden="true"
-          />
-        )}
+        {/* Before `Avatar`, so the line paints underneath it. */}
+        <StackConnector
+          row={row}
+          left={CONNECTOR_LEFT_PX}
+          aboveHeight={ROW_PADDING_TOP_PX}
+          belowTop={CONNECTOR_BELOW_TOP_PX}
+          fadeBelowHeight={OPEN_FADE_BELOW_PX}
+        />
 
         <Avatar
           src={pr.authorAvatarUrl !== '' ? pr.authorAvatarUrl : undefined}
@@ -188,9 +115,10 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           size={AVATAR_SIZE}
           variant="faded"
           color="primary"
-          // No `Avatar` prop reaches `letter-spacing` or lets font-size be
-          // set directly (no Reshaped prop does either).
-          attributes={{ style: { letterSpacing: '0.02em', fontSize: '11.5px' } }}
+          // Through `className`, not `attributes.style`: `Avatar` writes its
+          // own `style` after spreading the caller's, so a style set here is
+          // dropped. No Reshaped prop reaches font-size or letter-spacing.
+          className="pv-avatar-initials pv-avatar-initials--comfortable"
         />
 
         <View.Item grow>

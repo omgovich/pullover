@@ -155,6 +155,15 @@ export const SHORTCUT_OPTIONS: { value: string; label: string }[] = [
   { value: 'Control+Command+P', label: '⌃⌘P' },
 ]
 
+export type Layout = 'comfortable' | 'compact'
+
+/** The picker's options, and the allowlist `store` validates the persisted
+    setting against — a value outside this list falls back to the default. */
+export const LAYOUT_OPTIONS: { value: Layout; label: string }[] = [
+  { value: 'comfortable', label: 'Comfortable' },
+  { value: 'compact', label: 'Compact' },
+]
+
 export interface Settings {
   pollIntervalMinutes: number
   repositories: string[]
@@ -163,6 +172,7 @@ export interface Settings {
   theme: ThemePreference
   /** Accelerator that opens the popup from anywhere, or null for no shortcut. */
   globalShortcut: string | null
+  layout: Layout
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -171,4 +181,5 @@ export const DEFAULT_SETTINGS: Settings = {
   watchAllRepositories: true,
   theme: 'system',
   globalShortcut: 'Control+Alt+P',
+  layout: 'comfortable',
 }

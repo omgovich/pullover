@@ -171,78 +171,79 @@ export function orderSection(items: ClassifiedPullRequest[]): ClassifiedPullRequ
   return result
 }
 
-/** A pull request card, with the solid line it draws inside its own bounds. */
+/** A pull request row, with the stack line it draws inside its own bounds. */
 export interface StackCardRow {
-  kind: 'card'
   item: ClassifiedPullRequest
-  /** Solid line from the card's top edge down to the avatar. */
+  /** Line from the row's top edge down to the avatar. */
   lineAbove: boolean
-  /** Solid line from the avatar down to the card's bottom edge. */
+  /** Line from the avatar down to the row's bottom edge. */
   lineBelow: boolean
+  /**
+   * Whether that line spans members that aren't shown, rather than joining
+   * the neighbouring row. Drawn dotted; see `StackConnector` for why it stays
+   * inside the segment the row already has.
+   */
+  gapAbove: boolean
+  gapBelow: boolean
+  /**
+   * Whether that segment has nothing to meet: no neighbouring row draws a
+   * line back towards it. Rendered as a fade to transparent rather than
+   * dots, which need a neighbour to land against to read as a break.
+   */
+  gapAboveOpen: boolean
+  gapBelowOpen: boolean
 }
-
-/**
- * A dashed break standing between cards, in place of stack members that
- * exist but aren't shown because they don't need attention.
- */
-export interface StackBreakRow {
-  kind: 'break'
-  id: string
-}
-
-export type SectionRow = StackCardRow | StackBreakRow
 
 /**
  * Lays a section out for rendering, from a list already arranged by
  * `orderSection` (so a stack's shown members sit contiguously, ascending by
  * `index`).
  *
- * Cards carry only solid line: a stack member draws it upward unless it is
- * the chain's first, and downward unless it is its last. Everything omitted
- * from the chain becomes a `break` row *between* cards instead — so a dashed
- * stretch never runs through a card, only before, after, or between them.
+ * A member draws its line upward unless it is the chain's first and downward
+ * unless it is its last; that line is dotted where the chain skips members
+ * between two shown rows, and faded where it carries on past the list.
  *
- * Two adjacent partial stacks share the single break that falls between
- * them; drawing one per stack would stack two dashes in the same 1px-apart
- * space and read no differently.
+ * Two rows can disagree about the segment between them — a chain's top row
+ * followed by another chain's middle draws nothing below and a fade above —
+ * but never in a way that shows: a solid segment always faces a solid one.
  */
-export function sectionRows(ordered: ClassifiedPullRequest[]): SectionRow[] {
+export function sectionRows(ordered: ClassifiedPullRequest[]): StackCardRow[] {
   /** Whether the row at `i` is the chain member `stack` expects at `index`. */
   function adjoins(i: number, stack: StackPosition, index: number): boolean {
     const other = ordered[i]?.stack
     return other != null && other.id === stack.id && other.index === index
   }
 
-  const rows: SectionRow[] = []
-  // Set when a stack's shown members end before its top: the break it needs
-  // is emitted once the following row (or the end of the list) is known, so
-  // it is never duplicated by that row's own break above.
-  let pendingBreak = false
+  /** Whether the row at `i` belongs to `stack` at all, shown or omitted. */
+  function sameChain(i: number, stack: StackPosition): boolean {
+    return ordered[i]?.stack?.id === stack.id
+  }
 
-  ordered.forEach((item, i) => {
+  return ordered.map((item, i) => {
     const stack = item.stack
-
     if (stack === null) {
-      if (pendingBreak) rows.push({ kind: 'break', id: `break-${item.pr.id}` })
-      pendingBreak = false
-      rows.push({ kind: 'card', item, lineAbove: false, lineBelow: false })
-      return
+      return {
+        item,
+        lineAbove: false,
+        lineBelow: false,
+        gapAbove: false,
+        gapBelow: false,
+        gapAboveOpen: false,
+        gapBelowOpen: false,
+      }
     }
 
-    const breakAbove = stack.index > 1 && !adjoins(i - 1, stack, stack.index - 1)
-    if (breakAbove || pendingBreak) rows.push({ kind: 'break', id: `break-${item.pr.id}` })
-    pendingBreak = false
+    const gapAbove = stack.index > 1 && !adjoins(i - 1, stack, stack.index - 1)
+    const gapBelow = stack.index < stack.total && !adjoins(i + 1, stack, stack.index + 1)
 
-    rows.push({
-      kind: 'card',
+    return {
       item,
       lineAbove: stack.index > 1,
       lineBelow: stack.index < stack.total,
-    })
-
-    if (stack.index < stack.total && !adjoins(i + 1, stack, stack.index + 1)) pendingBreak = true
+      gapAbove,
+      gapBelow,
+      gapAboveOpen: gapAbove && !sameChain(i - 1, stack),
+      gapBelowOpen: gapBelow && !sameChain(i + 1, stack),
+    }
   })
-
-  if (pendingBreak) rows.push({ kind: 'break', id: 'break-end' })
-  return rows
 }

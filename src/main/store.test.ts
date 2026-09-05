@@ -77,6 +77,7 @@ describe('settings', () => {
       watchAllRepositories: false,
       theme: 'system',
       globalShortcut: 'Control+Alt+P',
+      layout: 'comfortable',
     })
     store = new AppStore(backend)
     expect(store.getSettings().watchAllRepositories).toBe(false)
@@ -95,6 +96,7 @@ describe('settings', () => {
       watchAllRepositories: true,
       theme: 'system',
       globalShortcut: 'Control+Alt+P',
+      layout: 'comfortable',
     })
   })
 
@@ -121,6 +123,20 @@ describe('settings', () => {
     backend.set('settings', { ...DEFAULT_SETTINGS, globalShortcut: null })
     store = new AppStore(backend)
     expect(store.getSettings().globalShortcut).toBeNull()
+  })
+
+  it('replaces a layout this build no longer offers', () => {
+    const backend = new MemoryStore()
+    backend.set('settings', { ...DEFAULT_SETTINGS, layout: 'cosy' as never })
+    store = new AppStore(backend)
+    expect(store.getSettings().layout).toBe(DEFAULT_SETTINGS.layout)
+  })
+
+  it('keeps a layout that is still offered', () => {
+    const backend = new MemoryStore()
+    backend.set('settings', { ...DEFAULT_SETTINGS, layout: 'compact' })
+    store = new AppStore(backend)
+    expect(store.getSettings().layout).toBe('compact')
   })
 
   it('round-trips a partial update through the normalised settings', () => {

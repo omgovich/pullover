@@ -1,5 +1,6 @@
 import {
   DEFAULT_SETTINGS,
+  LAYOUT_OPTIONS,
   type Settings,
   SHORTCUT_OPTIONS,
   type Snooze,
@@ -38,7 +39,13 @@ export class AppStore {
       settings.globalShortcut === null ||
       SHORTCUT_OPTIONS.some((option) => option.value === settings.globalShortcut)
 
-    return known ? settings : { ...settings, globalShortcut: DEFAULT_SETTINGS.globalShortcut }
+    const layoutKnown = LAYOUT_OPTIONS.some((option) => option.value === settings.layout)
+
+    return {
+      ...settings,
+      globalShortcut: known ? settings.globalShortcut : DEFAULT_SETTINGS.globalShortcut,
+      layout: layoutKnown ? settings.layout : DEFAULT_SETTINGS.layout,
+    }
   }
 
   updateSettings(patch: Partial<Settings>): void {

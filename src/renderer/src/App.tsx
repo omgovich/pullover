@@ -11,6 +11,7 @@ import Toast from './components/Toast'
 import { useScrollMemory } from './useScrollMemory'
 import { useSectionCollapse } from './useSectionCollapse'
 import { useSelection } from './useSelection'
+import { useSettings } from './useSettings'
 import { useSnapshot } from './useSnapshot'
 import { useToast } from './useToast'
 import { useUpdate } from './useUpdate'
@@ -39,6 +40,7 @@ function KeyCap({ children }: { children: string }): React.JSX.Element {
 
 export default function App(): React.JSX.Element {
   const snapshot = useSnapshot()
+  const settings = useSettings()
   const update = useUpdate()
   const scroll = useScrollMemory()
   const [showSettings, setShowSettings] = useState(false)
@@ -81,7 +83,7 @@ export default function App(): React.JSX.Element {
     return result
   }, [orderedByCategory, collapsed])
 
-  const { activeId, selectedId, setHoveredId, setSelectedId, moveSelection, registerCard } =
+  const { selectedId, pointAt, selectCard, moveSelection, registerCard } =
     useSelection(visibleItems)
 
   // `useHotkeys` (from `reshaped/bundle`) has no built-in "ignore while
@@ -172,7 +174,10 @@ export default function App(): React.JSX.Element {
         />
       </View>
     )
-  } else if (snapshot.status === 'loading' && snapshot.items.length === 0) {
+  } else if (settings === null || (snapshot.status === 'loading' && snapshot.items.length === 0)) {
+    // Held for the settings too, not just the first fetch: they carry the
+    // layout, so drawing the list before they arrive shows a compact user a
+    // frame of comfortable cards and then relays the lot.
     body = (
       <View grow minHeight={0} direction="column">
         <View height="100%" minHeight={0} align="center" justify="center">
@@ -207,11 +212,12 @@ export default function App(): React.JSX.Element {
               category={category}
               items={orderedByCategory.get(category) ?? []}
               now={now}
+              layout={settings.layout}
               open={!collapsed.has(category)}
               onToggle={() => toggleCategory(category)}
-              activePrId={activeId}
-              onHoverCard={setHoveredId}
-              onSelectCard={setSelectedId}
+              activePrId={selectedId}
+              onHoverCard={pointAt}
+              onSelectCard={selectCard}
               onSnoozed={showToast}
               registerCard={registerCard}
             />

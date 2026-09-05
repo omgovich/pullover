@@ -1,4 +1,4 @@
-import { SHORTCUT_OPTIONS, type ThemePreference } from '@shared/types'
+import { LAYOUT_OPTIONS, type Layout, SHORTCUT_OPTIONS, type ThemePreference } from '@shared/types'
 import { Heart, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
@@ -54,6 +54,10 @@ export default function SettingsPanel({
 
   const setTheme = async (theme: ThemePreference): Promise<void> => {
     await window.api.setSettings({ theme })
+  }
+
+  const setLayout = async (layout: Layout): Promise<void> => {
+    await window.api.setSettings({ layout })
   }
 
   if (settings === null) return <View padding={4} height="100%" minHeight={0} />
@@ -123,6 +127,31 @@ export default function SettingsPanel({
                     {THEME_OPTIONS.map(({ value, label }) => (
                       <Tabs.Item key={value} value={value}>
                         {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
+                </Tabs>
+              </View>
+            </View>
+
+            <Divider />
+
+            <View gap={2}>
+              <Text variant="caption-1" weight="bold" color="neutral-faded">
+                LAYOUT
+              </Text>
+              <View className="pv-segmented">
+                <Tabs
+                  variant="pills-raised"
+                  size="small"
+                  itemWidth="equal"
+                  value={settings.layout}
+                  onChange={({ value }) => void setLayout(value as Layout)}
+                >
+                  <Tabs.List>
+                    {LAYOUT_OPTIONS.map((option) => (
+                      <Tabs.Item key={option.value} value={option.value}>
+                        {option.label}
                       </Tabs.Item>
                     ))}
                   </Tabs.List>
