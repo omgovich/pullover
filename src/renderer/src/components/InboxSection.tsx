@@ -135,6 +135,7 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
                 lineBelow={row.lineBelow}
                 gapAbove={row.gapAbove}
                 gapBelow={row.gapBelow}
+                gapAboveOpen={row.gapAboveOpen}
                 gapBelowOpen={row.gapBelowOpen}
                 onHover={onHoverCard}
                 onSelect={onSelectCard}

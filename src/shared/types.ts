@@ -155,6 +155,11 @@ export const SHORTCUT_OPTIONS: { value: string; label: string }[] = [
   { value: 'Control+Command+P', label: '⌃⌘P' },
 ]
 
+export const LAYOUT_OPTIONS: { value: Layout; label: string }[] = [
+  { value: 'comfortable', label: 'Comfortable' },
+  { value: 'compact', label: 'Compact' },
+]
+
 export type Layout = 'comfortable' | 'compact'
 
 export interface Settings {

@@ -39,12 +39,16 @@ const ROW_PADDING_INLINE_PX = ROW_PADDING_INLINE * UNIT_PX
 const ROW_PADDING_TOP_PX = ROW_PADDING_TOP * UNIT_PX
 
 const CONNECTOR_WIDTH_PX = 2
-/** Exported so a section's dashed breaks line up with the cards' own line. */
-export const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
+const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
 const CONNECTOR_BELOW_TOP_PX = ROW_PADDING_TOP_PX + AVATAR_SIZE_PX
 
-/** How far a dotted segment reaches when there is nothing below to meet it. */
-const OPEN_GAP_PX = 10
+/**
+ * A dotted segment with nothing to meet must stop clear of the row's edge.
+ * Running to the edge makes it indistinguishable from one that continues into
+ * the next row, so two unrelated chains meeting there read as one.
+ */
+const SEAM_CLEARANCE_PX = 2
+const OPEN_GAP_BELOW_PX = 10
 
 /** Imperative surface App needs for keyboard navigation. */
 export interface PullRequestCardHandle {
@@ -134,8 +138,8 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
             className={connectorClass(gapAbove, true)}
             style={{
               left: CONNECTOR_LEFT_PX,
-              top: gapAboveOpen ? ROW_PADDING_TOP_PX - OPEN_GAP_PX : 0,
-              height: gapAboveOpen ? OPEN_GAP_PX : ROW_PADDING_TOP_PX,
+              top: gapAboveOpen ? SEAM_CLEARANCE_PX : 0,
+              height: gapAboveOpen ? ROW_PADDING_TOP_PX - SEAM_CLEARANCE_PX : ROW_PADDING_TOP_PX,
             }}
             aria-hidden="true"
           />
@@ -145,7 +149,11 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
             className={connectorClass(gapBelow, false)}
             style={
               gapBelowOpen
-                ? { left: CONNECTOR_LEFT_PX, top: CONNECTOR_BELOW_TOP_PX, height: OPEN_GAP_PX }
+                ? {
+                    left: CONNECTOR_LEFT_PX,
+                    top: CONNECTOR_BELOW_TOP_PX,
+                    height: OPEN_GAP_BELOW_PX,
+                  }
                 : { left: CONNECTOR_LEFT_PX, top: CONNECTOR_BELOW_TOP_PX, bottom: 0 }
             }
             aria-hidden="true"

@@ -13,11 +13,8 @@ interface Props {
   /** Draws that segment dotted: members exist there but aren't shown. */
   gapAbove: boolean
   gapBelow: boolean
-  /**
-   * The segment below has nothing to meet, so it stops short of the row's
-   * edge. There is no matching flag for the segment above: it is already only
-   * 5px, so shortening it would change nothing.
-   */
+  /** That dotted segment has nothing to meet, so it stops clear of the edge. */
+  gapAboveOpen: boolean
   gapBelowOpen: boolean
   onHover: (prId: string | null) => void
   onSelect: (prId: string) => void
@@ -29,17 +26,20 @@ interface Props {
 const ROW_HEIGHT_PX = 30
 const AVATAR_SIZE_PX = 20
 const ROW_PADDING_INLINE_PX = 8
-const CONNECTOR_WIDTH_PX = 1.5
+const CONNECTOR_WIDTH_PX = 2
 const AVATAR_TOP_PX = (ROW_HEIGHT_PX - AVATAR_SIZE_PX) / 2
 
 /**
  * A chain that runs past the last shown member still shows its dots: that is
- * the only thing saying the stack continues out of view. The segment is 5px
- * here, so the dots are set finer in CSS to stay legible in it.
+ * the only thing saying the stack continues out of view. It has to stop clear
+ * of the row's edge, though — at full height it is indistinguishable from a
+ * segment that continues into the next row, and two unrelated chains meeting
+ * there read as one. The segment is 5px, so the dots are set finer in CSS to
+ * stay legible in what is left.
  */
-const OPEN_GAP_PX = 5
+const SEAM_CLEARANCE_PX = 2
 
-export const COMPACT_CONNECTOR_LEFT_PX =
+const COMPACT_CONNECTOR_LEFT_PX =
   ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
 
 const CI_ICONS = { success: Check, failure: X, pending: Clock } as const
@@ -68,6 +68,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
       lineBelow,
       gapAbove,
       gapBelow,
+      gapAboveOpen,
       gapBelowOpen,
       onHover,
       onSelect,
@@ -115,7 +116,11 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
           {lineAbove && (
             <div
               className={connectorClass(gapAbove, true)}
-              style={{ left: COMPACT_CONNECTOR_LEFT_PX, top: 0, height: AVATAR_TOP_PX }}
+              style={{
+                left: COMPACT_CONNECTOR_LEFT_PX,
+                top: gapAboveOpen ? SEAM_CLEARANCE_PX : 0,
+                height: gapAboveOpen ? AVATAR_TOP_PX - SEAM_CLEARANCE_PX : AVATAR_TOP_PX,
+              }}
               aria-hidden="true"
             />
           )}
@@ -127,7 +132,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
                   ? {
                       left: COMPACT_CONNECTOR_LEFT_PX,
                       top: AVATAR_TOP_PX + AVATAR_SIZE_PX,
-                      height: OPEN_GAP_PX,
+                      height: AVATAR_TOP_PX - SEAM_CLEARANCE_PX,
                     }
                   : {
                       left: COMPACT_CONNECTOR_LEFT_PX,
@@ -175,6 +180,8 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
                 justify="center"
                 borderRadius="small"
                 backgroundColor={ci.background}
+                border
+                borderColor={ci.border}
               >
                 <Icon
                   svg={CI_ICONS[pr.ciStatus as keyof typeof CI_ICONS]}

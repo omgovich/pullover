@@ -1,4 +1,4 @@
-import { type Layout, SHORTCUT_OPTIONS, type ThemePreference } from '@shared/types'
+import { LAYOUT_OPTIONS, type Layout, SHORTCUT_OPTIONS, type ThemePreference } from '@shared/types'
 import { Heart, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
@@ -149,8 +149,11 @@ export default function SettingsPanel({
                   onChange={({ value }) => void setLayout(value as Layout)}
                 >
                   <Tabs.List>
-                    <Tabs.Item value="comfortable">Comfortable</Tabs.Item>
-                    <Tabs.Item value="compact">Compact</Tabs.Item>
+                    {LAYOUT_OPTIONS.map((option) => (
+                      <Tabs.Item key={option.value} value={option.value}>
+                        {option.label}
+                      </Tabs.Item>
+                    ))}
                   </Tabs.List>
                 </Tabs>
               </View>
