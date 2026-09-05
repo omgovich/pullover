@@ -322,11 +322,18 @@ describe('classify — author branch', () => {
     expect(classify(pr, ctx()).reason).toBe('Merge conflicts')
   })
 
-  it('waiting when approved with auto-merge armed', () => {
+  it('hides an approved pull request with auto-merge armed', () => {
+    // It is already on its way in — there is nothing to do and nothing to
+    // watch, so it does not take a row even in the collapsed section.
     const pr = makePullRequest({ ...mine, reviewDecision: 'APPROVED', hasAutoMerge: true })
     const result = classify(pr, ctx())
-    expect(result.category).toBe('waiting')
-    expect(result.reason).toBe('Merging automatically')
+    expect(result.category).toBe('hidden')
+    expect(result.reason).toBe('')
+  })
+
+  it('drops the auto-merging pull request from the inbox entirely', () => {
+    const pr = makePullRequest({ ...mine, reviewDecision: 'APPROVED', hasAutoMerge: true })
+    expect(classifyAll([pr], ctx())).toEqual([])
   })
 
   it('auto-merge does not suppress the other action reasons', () => {

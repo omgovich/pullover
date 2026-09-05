@@ -103,9 +103,11 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
 
   if (pr.reviewDecision === 'APPROVED') {
     // Everything above blocks auto-merge from ever firing, so it only gets to
-    // speak for the case where merging is genuinely all that is left.
+    // speak for the case where merging is genuinely all that is left — and
+    // then the pull request is already on its way out, worth nobody's slot in
+    // the inbox. If a check goes red later it lands back in `my-pr-action`.
     if (pr.hasAutoMerge) {
-      return { category: 'waiting', reason: 'Merging automatically' }
+      return { category: 'hidden', reason: '' }
     }
     return { category: 'my-pr-action', reason: 'Ready to merge' }
   }
