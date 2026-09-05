@@ -21,11 +21,13 @@ interface Props {
 }
 
 // Reshaped units, spent directly on the props below, so the connector and the
-// layout it hides behind cannot drift apart. Only the row height is a pixel
-// literal: 30px is off the 4px grid, and nothing shorter fits a 20px avatar.
+// layout it hides behind cannot drift apart. The row height is the exception:
+// 30px is off the 4px grid, chosen for the breathing room around the avatar
+// that the next step down, 28px, does not leave.
 const UNIT_PX = 4
 const AVATAR_SIZE = 5
-const ROW_PADDING_INLINE = 2
+/** Also spent on the section heading, so it lines up with the avatars. */
+export const ROW_PADDING_INLINE = 2
 const ROW_HEIGHT_PX = 30
 const AVATAR_SIZE_PX = AVATAR_SIZE * UNIT_PX
 const ROW_PADDING_INLINE_PX = ROW_PADDING_INLINE * UNIT_PX
@@ -62,29 +64,27 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
     const status = item.reason !== '' ? statusPillColor(item.reason) : null
     const cardRef = useRef<HTMLDivElement>(null)
     const titleRef = useRef<HTMLDivElement>(null)
-    // Whether the title has finished its opening pause and is now travelling.
-    // The box only opens up then, so the ellipsis survives the wait.
-    const [moving, setMoving] = useState(false)
+    // `off` for a title that fits — there is nothing to scroll, and running an
+    // animation that cannot move would also swap the ellipsis for a clip on
+    // every row the cursor rests on. `holding` starts the animation, whose
+    // easing sits at zero, so the ellipsis survives the opening pause; only
+    // `moving` opens the box to the full title.
+    const [marquee, setMarquee] = useState<'off' | 'holding' | 'moving'>('off')
 
-    useEffect(() => {
+    // Measured per activation rather than once: the reason, the CI chip and
+    // the stack count all share the row and size what is left for the title.
+    // Laid out before paint, so a row never paints mid-swap.
+    useLayoutEffect(() => {
       if (!isActive) {
-        setMoving(false)
+        setMarquee('off')
         return
       }
-      const timer = setTimeout(() => setMoving(true), MARQUEE_HOLD_SECONDS * 1000)
-      return () => clearTimeout(timer)
-    }, [isActive])
-
-    // The distance is the keyframes' own business (see `.pv-marquee`); what
-    // is measured here is the time — a constant speed, and a pause at either
-    // end that stays the same length however far the title has to travel.
-    // `scrollWidth` reports the full title in either state, so this reads the
-    // same before the animation and during it.
-    useLayoutEffect(() => {
       const clip = titleRef.current
       const text = clip?.firstElementChild
       if (clip == null || text == null) return
       const overflow = Math.max(0, text.scrollWidth - clip.clientWidth)
+      if (overflow === 0) return
+
       const seconds = MARQUEE_HOLD_SECONDS * 2 + overflow / MARQUEE_PX_PER_SECOND
       const holdPercent = (MARQUEE_HOLD_SECONDS / seconds) * 100
       clip.style.setProperty('--pv-marquee-duration', `${seconds}s`)
@@ -92,9 +92,11 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
         '--pv-marquee-ease',
         `linear(0 0%, 0 ${holdPercent}%, 1 ${100 - holdPercent}%, 1 100%)`,
       )
-      // The reason sits on the same row and sizes what is left for the title,
-      // so a change to either moves the distance.
-    }, [pr.title, item.reason])
+      setMarquee('holding')
+
+      const timer = setTimeout(() => setMarquee('moving'), MARQUEE_HOLD_SECONDS * 1000)
+      return () => clearTimeout(timer)
+    }, [isActive])
 
     useImperativeHandle(ref, () => ({
       element: cardRef.current,
@@ -138,7 +140,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
             size={AVATAR_SIZE}
             variant="faded"
             color="primary"
-            attributes={{ style: { fontSize: '9px' } }}
+            className="pv-avatar-initials pv-avatar-initials--compact"
           />
 
           {/* The repository name has no room on the row, so the number it
@@ -165,8 +167,8 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
               scrolls a title too long for the row while the row is active. */}
           <View.Item
             grow
-            className={`pv-marquee${isActive ? ' pv-marquee--active' : ''}${
-              moving ? ' pv-marquee--moving' : ''
+            className={`pv-marquee${marquee !== 'off' ? ' pv-marquee--active' : ''}${
+              marquee === 'moving' ? ' pv-marquee--moving' : ''
             }`}
             attributes={{ ref: titleRef }}
           >

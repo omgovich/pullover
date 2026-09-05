@@ -72,6 +72,19 @@ body {
   opacity: 1;
 }
 
+/* `Avatar` builds its own `style` after spreading the caller's, so the only
+   way in is `className`, which it does forward. Doubled to outrank Avatar's
+   own `.root`, which sets `font-size: calc(var(--rs-h) / 3)` — a third of a
+   20px avatar is under 7px, where two initials stop being legible. */
+.pv-avatar-initials.pv-avatar-initials--comfortable {
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+}
+
+.pv-avatar-initials.pv-avatar-initials--compact {
+  font-size: 9px;
+}
+
 /* Stack line: joins a pull request to its neighbours in the chain, drawn
    behind the avatar. No Reshaped prop draws a line behind a sibling, so this
    stays plain CSS; the geometry comes from the card, which derives it from

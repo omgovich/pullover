@@ -180,9 +180,8 @@ export interface StackCardRow {
   lineBelow: boolean
   /**
    * Whether that line spans members that aren't shown, rather than joining
-   * the neighbouring row. Drawn dotted, inside the segment the row already
-   * has: a break of its own would add height between two rows and read as a
-   * rendering fault rather than an omission.
+   * the neighbouring row. Drawn dotted; see `StackConnector` for why it stays
+   * inside the segment the row already has.
    */
   gapAbove: boolean
   gapBelow: boolean

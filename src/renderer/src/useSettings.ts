@@ -1,17 +1,22 @@
-import type { Settings } from '@shared/types'
+import { DEFAULT_SETTINGS, type Settings } from '@shared/types'
 import { useEffect, useState } from 'react'
 
 /**
- * The single shared copy of `Settings`. Fetches once on mount, then stays in
- * sync via the `settingsChanged` push from main — anything that writes
- * through `window.api` (here or elsewhere) comes back through this same
- * subscription, so there is only ever one copy to drift.
+ * `Settings` as the renderer sees them: fetched once on mount, then kept in
+ * step by the `settingsChanged` push from main. Anything written through
+ * `window.api` comes back through that same subscription, so every caller of
+ * this hook holds the same values even though each holds its own copy.
  */
 export function useSettings(): Settings | null {
   const [settings, setSettings] = useState<Settings | null>(null)
 
   useEffect(() => {
-    void window.api.getSettings().then(setSettings)
+    // Falling back rather than staying null: App holds the whole inbox behind
+    // these arriving, so a rejected fetch would leave a spinner and nothing else.
+    void window.api
+      .getSettings()
+      .catch(() => DEFAULT_SETTINGS)
+      .then(setSettings)
     return window.api.onSettings(setSettings)
   }, [])
 

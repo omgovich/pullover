@@ -282,15 +282,21 @@ describe('orderSection', () => {
 
 describe('sectionRows', () => {
   /**
-   * Each row as `id/above/below`, where `L` is a solid line to the
-   * neighbouring member, `:` a dotted one over members that aren't shown, and
-   * `.` no line at all.
+   * Each row as `id/above/below`: `L` a solid line to the neighbouring
+   * member, `:` dots over members that aren't shown but whose line the row
+   * beyond draws back towards, `~` a fade where the chain carries on past
+   * the list with nothing to meet, and `.` no line at all.
    */
   function layoutOf(items: ClassifiedPullRequest[]): string[] {
-    const mark = (line: boolean, gap: boolean): string => (line ? (gap ? ':' : 'L') : '.')
+    const mark = (line: boolean, gap: boolean, open: boolean): string =>
+      line ? (gap ? (open ? '~' : ':') : 'L') : '.'
     return sectionRows(items).map(
       (row) =>
-        `${row.item.pr.id}/${mark(row.lineAbove, row.gapAbove)}${mark(row.lineBelow, row.gapBelow)}`,
+        `${row.item.pr.id}/${mark(row.lineAbove, row.gapAbove, row.gapAboveOpen)}${mark(
+          row.lineBelow,
+          row.gapBelow,
+          row.gapBelowOpen,
+        )}`,
     )
   }
 
@@ -311,27 +317,27 @@ describe('sectionRows', () => {
     expect(layoutOf(items)).toEqual(['PR_1/.L', 'PR_2/L:', 'PR_4/:L', 'PR_5/L.'])
   })
 
-  it('dots upward from a stack that starts at 2', () => {
+  it('fades upward from a stack that starts at 2', () => {
     const items = [2, 3].map((index) =>
       classified(`PR_${index}`, { id: 'stack-1', index, total: 4 }),
     )
 
-    // total is 4, so #4 is missing too — hence the dotted tail. The case
-    // under test is the leading one.
-    expect(layoutOf(items)).toEqual(['PR_2/:L', 'PR_3/L:'])
+    // total is 4, so #4 is missing too — hence the fade at the tail. The
+    // case under test is the leading one.
+    expect(layoutOf(items)).toEqual(['PR_2/~L', 'PR_3/L~'])
   })
 
-  it('dots downward from a stack that ends before its top', () => {
+  it('fades downward from a stack that ends before its top', () => {
     const items = [1, 2].map((index) =>
       classified(`PR_${index}`, { id: 'stack-1', index, total: 4 }),
     )
 
-    expect(layoutOf(items)).toEqual(['PR_1/.L', 'PR_2/L:'])
+    expect(layoutOf(items)).toEqual(['PR_1/.L', 'PR_2/L~'])
   })
 
-  it('dots both sides of a lone member cut off at each end', () => {
+  it('fades both sides of a lone member cut off at each end', () => {
     const items = [classified('PR_3', { id: 'stack-1', index: 3, total: 5 })]
-    expect(layoutOf(items)).toEqual(['PR_3/::'])
+    expect(layoutOf(items)).toEqual(['PR_3/~~'])
   })
 
   it('draws nothing around a pull request with no stack', () => {
@@ -375,9 +381,9 @@ describe('sectionRows', () => {
       classified(`PR_${index}`, { id: 'stack-1', index, total: 7 }),
     )
 
-    // Dotted above the group, solid through 2-3, dotted across the missing 4,
-    // solid through 5-6-7, nothing below the top of the chain.
-    expect(layoutOf(items)).toEqual(['PR_2/:L', 'PR_3/L:', 'PR_5/:L', 'PR_6/LL', 'PR_7/L.'])
+    // Fading above the group, solid through 2-3, dotted across the missing
+    // 4, solid through 5-6-7, nothing below the top of the chain.
+    expect(layoutOf(items)).toEqual(['PR_2/~L', 'PR_3/L:', 'PR_5/:L', 'PR_6/LL', 'PR_7/L.'])
   })
 
   // A dotted segment that meets the neighbouring row's own segment is drawn

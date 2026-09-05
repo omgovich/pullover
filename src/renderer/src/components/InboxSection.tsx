@@ -8,8 +8,10 @@ import {
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { forwardRef, useEffect, useRef } from 'react'
 import { Actionable, Icon, Text, View } from 'reshaped/bundle'
-import CompactPullRequestCard from './CompactPullRequestCard'
-import PullRequestCard, { type PullRequestCardHandle } from './PullRequestCard'
+import CompactPullRequestCard, {
+  ROW_PADDING_INLINE as COMPACT_ROW_PADDING_INLINE,
+} from './CompactPullRequestCard'
+import PullRequestCard, { type PullRequestCardHandle, ROW_PADDING_INLINE } from './PullRequestCard'
 
 interface Props {
   category: Category
@@ -81,7 +83,7 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
           gap={2}
           paddingTop={3.5}
           paddingBottom={1.5}
-          paddingInline={2.5}
+          paddingInline={compact ? COMPACT_ROW_PADDING_INLINE : ROW_PADDING_INLINE}
           position="sticky"
           insetTop={0}
           zIndex={2}

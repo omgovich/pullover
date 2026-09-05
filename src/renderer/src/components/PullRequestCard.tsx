@@ -25,7 +25,8 @@ const UNIT_PX = 4
 // Reshaped units, spent directly on the props below, so the connector and
 // the layout it hides behind cannot drift apart.
 const AVATAR_SIZE = 8
-const ROW_PADDING_INLINE = 2.5
+/** Also spent on the section heading, so it lines up with the avatars. */
+export const ROW_PADDING_INLINE = 2.5
 const ROW_PADDING_TOP = 2.25
 const AVATAR_SIZE_PX = AVATAR_SIZE * UNIT_PX
 const ROW_PADDING_INLINE_PX = ROW_PADDING_INLINE * UNIT_PX
@@ -114,9 +115,10 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           size={AVATAR_SIZE}
           variant="faded"
           color="primary"
-          // No `Avatar` prop reaches `letter-spacing` or lets font-size be
-          // set directly (no Reshaped prop does either).
-          attributes={{ style: { letterSpacing: '0.02em', fontSize: '11.5px' } }}
+          // Through `className`, not `attributes.style`: `Avatar` writes its
+          // own `style` after spreading the caller's, so a style set here is
+          // dropped. No Reshaped prop reaches font-size or letter-spacing.
+          className="pv-avatar-initials pv-avatar-initials--comfortable"
         />
 
         <View.Item grow>
