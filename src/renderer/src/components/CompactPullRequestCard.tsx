@@ -16,7 +16,7 @@ import StackConnector from './StackConnector'
 interface Props {
   row: StackCardRow
   isActive: boolean
-  onHover: (prId: string | null) => void
+  onHover: (prId: string) => void
   onSelect: (prId: string) => void
 }
 
@@ -122,7 +122,6 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
             role: 'button',
             onClick: handleOpen,
             onMouseEnter: () => onHover(pr.id),
-            onMouseLeave: () => onHover(null),
             style: { cursor: 'pointer', transition: 'background 140ms' },
           }}
         >

@@ -12,7 +12,7 @@ interface Props {
   row: StackCardRow
   now: string
   isActive: boolean
-  onHover: (prId: string | null) => void
+  onHover: (prId: string) => void
   onSelect: (prId: string) => void
   onSnoozed: (item: ClassifiedPullRequest) => void
 }
@@ -66,8 +66,8 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
   }))
 
   // The card body opens the PR, on click and (via App's `enter` hotkey) on
-  // Enter for whichever card is keyboard-selected. Clicking also selects the
-  // card, so the keyboard cursor picks up from wherever the mouse last was.
+  // Enter for whichever card the cursor is on. Clicking selects deliberately,
+  // which — unlike the hover that put the cursor here — takes focus with it.
   const handleOpen = (): void => {
     onSelect(pr.id)
     void window.api.openPr(pr.url)
@@ -93,7 +93,6 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           role: 'button',
           onClick: handleOpen,
           onMouseEnter: () => onHover(pr.id),
-          onMouseLeave: () => onHover(null),
           style: {
             cursor: 'pointer',
             transition: 'background 140ms',

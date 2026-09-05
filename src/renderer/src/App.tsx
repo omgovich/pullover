@@ -83,7 +83,7 @@ export default function App(): React.JSX.Element {
     return result
   }, [orderedByCategory, collapsed])
 
-  const { activeId, selectedId, setHoveredId, setSelectedId, moveSelection, registerCard } =
+  const { selectedId, pointAt, selectCard, moveSelection, registerCard } =
     useSelection(visibleItems)
 
   // `useHotkeys` (from `reshaped/bundle`) has no built-in "ignore while
@@ -215,9 +215,9 @@ export default function App(): React.JSX.Element {
               layout={settings.layout}
               open={!collapsed.has(category)}
               onToggle={() => toggleCategory(category)}
-              activePrId={activeId}
-              onHoverCard={setHoveredId}
-              onSelectCard={setSelectedId}
+              activePrId={selectedId}
+              onHoverCard={pointAt}
+              onSelectCard={selectCard}
               onSnoozed={showToast}
               registerCard={registerCard}
             />

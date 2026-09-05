@@ -21,7 +21,7 @@ interface Props {
   open: boolean
   onToggle: () => void
   activePrId: string | null
-  onHoverCard: (prId: string | null) => void
+  onHoverCard: (prId: string) => void
   onSelectCard: (prId: string) => void
   onSnoozed: (item: ClassifiedPullRequest) => void
   registerCard: (prId: string, handle: PullRequestCardHandle | null) => void
