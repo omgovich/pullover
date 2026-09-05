@@ -85,6 +85,12 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
     return { category: 'my-pr-action', reason: 'Changes requested' }
   }
 
+  // Only CONFLICTING: GitHub reports UNKNOWN while it is still computing, and
+  // a freshly pushed PR would otherwise flash this reason.
+  if (pr.mergeable === 'CONFLICTING') {
+    return { category: 'my-pr-action', reason: 'Merge conflicts' }
+  }
+
   const unanswered = unansweredThreads(pr, myLogin)
   if (unanswered.length > 0) {
     const word = pluralize(unanswered.length, 'open thread', 'open threads')
@@ -96,6 +102,13 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
   }
 
   if (pr.reviewDecision === 'APPROVED') {
+    // Everything above blocks auto-merge from ever firing, so it only gets to
+    // speak for the case where merging is genuinely all that is left — and
+    // then the pull request is already on its way out, worth nobody's slot in
+    // the inbox. If a check goes red later it lands back in `my-pr-action`.
+    if (pr.hasAutoMerge) {
+      return { category: 'hidden', reason: '' }
+    }
     return { category: 'my-pr-action', reason: 'Ready to merge' }
   }
 

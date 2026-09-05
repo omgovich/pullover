@@ -61,6 +61,9 @@ export interface Review {
 
 export type ReviewDecision = 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null
 
+/** GitHub computes mergeability in the background, so `UNKNOWN` means "not yet", not "maybe". */
+export type MergeableState = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
+
 export interface PullRequest {
   id: string
   number: number
@@ -79,6 +82,9 @@ export interface PullRequest {
   ciStatus: CiStatus
   lastCommitPushedAt: string
   reviewDecision: ReviewDecision
+  mergeable: MergeableState
+  /** Whether auto-merge is armed, so GitHub will merge this itself once checks pass. */
+  hasAutoMerge: boolean
   reviews: Review[]
   reviewThreads: ReviewThread[]
   /** Latest conversation-tab comments, oldest first. Inline review comments live in `reviewThreads`. */

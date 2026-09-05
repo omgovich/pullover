@@ -492,6 +492,44 @@ describe('Inbox.refresh', () => {
     expect(byId.get('PR_3')?.stack).toBeNull()
   })
 
+  it('keeps a stack whole when its middle PR is merging automatically', async () => {
+    // The common shape in a stacked workflow: the lower PR is approved with
+    // auto-merge armed, so it leaves the inbox while its neighbours stay.
+    // They must still read as members 1 and 3 of a 3-long chain, which is
+    // what makes the connector draw the gap instead of a straight join.
+    store.updateSettings({ watchAllRepositories: true })
+    const mine = { authorLogin: 'vlad', buckets: ['author' as const], repository: 'acme/web' }
+    const inbox = build([], {
+      fetchPrs: async () => [
+        makePullRequest({ ...mine, id: 'PR_1', headRefName: 'part-1', baseRefName: 'main' }),
+        makePullRequest({
+          ...mine,
+          id: 'PR_2',
+          headRefName: 'part-2',
+          baseRefName: 'part-1',
+          reviewDecision: 'APPROVED',
+          hasAutoMerge: true,
+        }),
+        makePullRequest({ ...mine, id: 'PR_3', headRefName: 'part-3', baseRefName: 'part-2' }),
+      ],
+    })
+
+    await inbox.refresh()
+    const items = inbox.getSnapshot().items
+
+    expect(items.map((item) => item.pr.id)).toEqual(['PR_1', 'PR_3'])
+    expect(items.find((item) => item.pr.id === 'PR_1')?.stack).toEqual({
+      id: 'PR_1',
+      index: 1,
+      total: 3,
+    })
+    expect(items.find((item) => item.pr.id === 'PR_3')?.stack).toEqual({
+      id: 'PR_1',
+      index: 3,
+      total: 3,
+    })
+  })
+
   it('keeps a stack whole even when one of its PRs is filtered out of the classified items', async () => {
     // The classifier drops draft PRs from its output entirely (category
     // "hidden"), so if stacks were computed from the classified items

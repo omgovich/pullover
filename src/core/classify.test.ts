@@ -289,6 +289,79 @@ describe('classify — author branch', () => {
     expect(result.category).toBe('waiting')
     expect(result.reason).toBe('Waiting on reviewers')
   })
+
+  it('my-pr-action on a merge conflict', () => {
+    const pr = makePullRequest({ ...mine, mergeable: 'CONFLICTING' })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('my-pr-action')
+    expect(result.reason).toBe('Merge conflicts')
+  })
+
+  it('treats an unknown mergeability as not conflicting', () => {
+    // GitHub computes mergeability lazily, so a freshly pushed PR reports
+    // UNKNOWN — reading that as a conflict would flash a wrong reason.
+    const pr = makePullRequest({ ...mine, mergeable: 'UNKNOWN' })
+    expect(classify(pr, ctx()).category).toBe('waiting')
+  })
+
+  it('changes requested outranks a merge conflict', () => {
+    const pr = makePullRequest({
+      ...mine,
+      reviewDecision: 'CHANGES_REQUESTED',
+      mergeable: 'CONFLICTING',
+    })
+    expect(classify(pr, ctx()).reason).toBe('Changes requested')
+  })
+
+  it('a merge conflict outranks an unanswered thread', () => {
+    const pr = makePullRequest({
+      ...mine,
+      mergeable: 'CONFLICTING',
+      reviewThreads: [makeThread({ comments: [makeComment('alice', '2026-08-02T10:00:00Z')] })],
+    })
+    expect(classify(pr, ctx()).reason).toBe('Merge conflicts')
+  })
+
+  it('hides an approved pull request with auto-merge armed', () => {
+    // It is already on its way in — there is nothing to do and nothing to
+    // watch, so it does not take a row even in the collapsed section.
+    const pr = makePullRequest({ ...mine, reviewDecision: 'APPROVED', hasAutoMerge: true })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('hidden')
+    expect(result.reason).toBe('')
+  })
+
+  it('drops the auto-merging pull request from the inbox entirely', () => {
+    const pr = makePullRequest({ ...mine, reviewDecision: 'APPROVED', hasAutoMerge: true })
+    expect(classifyAll([pr], ctx())).toEqual([])
+  })
+
+  it('auto-merge does not suppress the other action reasons', () => {
+    // Auto-merge never fires while any of these hold, so the PR is still mine
+    // to unblock.
+    const blocked = [
+      { overrides: { reviewDecision: 'CHANGES_REQUESTED' as const }, reason: 'Changes requested' },
+      { overrides: { mergeable: 'CONFLICTING' as const }, reason: 'Merge conflicts' },
+      { overrides: { ciStatus: 'failure' as const }, reason: 'CI is red' },
+      {
+        overrides: {
+          reviewThreads: [makeThread({ comments: [makeComment('alice', '2026-08-02T10:00:00Z')] })],
+        },
+        reason: '1 open thread',
+      },
+    ]
+    for (const { overrides, reason } of blocked) {
+      const pr = makePullRequest({
+        ...mine,
+        reviewDecision: 'APPROVED',
+        hasAutoMerge: true,
+        ...overrides,
+      })
+      const result = classify(pr, ctx())
+      expect(result.category).toBe('my-pr-action')
+      expect(result.reason).toBe(reason)
+    }
+  })
 })
 
 describe('classify — snooze override', () => {

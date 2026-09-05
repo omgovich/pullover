@@ -19,6 +19,7 @@ interface PillColor {
 const STATUS_PILL_COLORS: Record<string, PillColor> = {
   'CI is red': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
   'Changes requested': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
+  'Merge conflicts': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
   'Ready to merge': { text: 'positive', background: 'positive-faded', border: 'positive-faded' },
   'Waiting on author': {
     text: 'neutral-faded',

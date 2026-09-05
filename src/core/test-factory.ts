@@ -40,6 +40,8 @@ export function makePullRequest(overrides: Partial<PullRequest> = {}): PullReque
     ciStatus: 'success',
     lastCommitPushedAt: '2026-08-01T10:00:00Z',
     reviewDecision: 'REVIEW_REQUIRED',
+    mergeable: 'MERGEABLE',
+    hasAutoMerge: false,
     reviews: [],
     reviewThreads: [],
     conversationComments: [],
