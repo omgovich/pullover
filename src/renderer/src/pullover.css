@@ -125,6 +125,24 @@ body {
   background-position: left top;
 }
 
+/*
+ * A chain that leaves the list has nothing to meet, so it fades out instead
+ * of dotting. Dots there needed length to read as dots at all — compact only
+ * has 5px, where the run came out as a single dash — and needed to stop clear
+ * of the row's edge so two unrelated chains would not join into one line. A
+ * fade ends transparent by construction, so it says "carries on past here" at
+ * any length and can never look continuous with the row beyond.
+ */
+.pv-stack-connector--fade {
+  border-left-style: none;
+  width: 2px;
+  background-image: linear-gradient(to bottom, var(--pv-rule), transparent);
+}
+
+.pv-stack-connector--fade-up {
+  background-image: linear-gradient(to top, var(--pv-rule), transparent);
+}
+
 /* Compact's segment is 5px against the comfortable card's 9 or 10, so the
    period is tightened to fit more than a single dot in it — one dot alone
    reads as a speck rather than a line that carries on. Not tighter than this:

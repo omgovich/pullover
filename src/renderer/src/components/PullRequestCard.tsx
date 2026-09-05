@@ -16,7 +16,7 @@ interface Props {
   /** Draws that segment dotted: members exist there but aren't shown. */
   gapAbove: boolean
   gapBelow: boolean
-  /** That dotted segment has nothing to meet, so it stops short of the edge. */
+  /** That segment has nothing to meet, so it fades out rather than dotting. */
   gapAboveOpen: boolean
   gapBelowOpen: boolean
   onHover: (prId: string | null) => void
@@ -42,13 +42,8 @@ const CONNECTOR_WIDTH_PX = 2
 const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
 const CONNECTOR_BELOW_TOP_PX = ROW_PADDING_TOP_PX + AVATAR_SIZE_PX
 
-/**
- * A dotted segment with nothing to meet must stop clear of the row's edge.
- * Running to the edge makes it indistinguishable from one that continues into
- * the next row, so two unrelated chains meeting there read as one.
- */
-const SEAM_CLEARANCE_PX = 2
-const OPEN_GAP_BELOW_PX = 10
+/** How far the fade at an open end reaches before it has gone entirely. */
+const OPEN_GAP_BELOW_PX = 12
 
 /** Imperative surface App needs for keyboard navigation. */
 export interface PullRequestCardHandle {
@@ -57,10 +52,16 @@ export interface PullRequestCardHandle {
   focus: () => void
 }
 
-/** `above` anchors the dots at the avatar so both stubs grow away from it. */
-function connectorClass(isGap: boolean, above: boolean): string {
+/**
+ * `above` flips whichever variant is chosen so it runs away from the avatar:
+ * the dots anchor their cycle at the seam, the fade starts opaque at the
+ * avatar.
+ */
+function connectorClass(isGap: boolean, isOpen: boolean, above: boolean): string {
   if (!isGap) return 'pv-stack-connector'
-  return `pv-stack-connector pv-stack-connector--gap${above ? ' pv-stack-connector--gap-up' : ''}`
+  const variant = isOpen ? 'fade' : 'gap'
+  const suffix = above ? ` pv-stack-connector--${variant}-up` : ''
+  return `pv-stack-connector pv-stack-connector--${variant}${suffix}`
 }
 
 function initialsOf(login: string): string {
@@ -129,24 +130,21 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           },
         }}
       >
-        {/* The line behind the avatar joining this row to the chain, dotted
-            where the chain continues out of sight. Rendered before `Avatar` so
-            it paints underneath it, and drawn inside the row's own segment so
-            an omission costs no height and every row stays the same. */}
+        {/* The line behind the avatar joining this row to the chain: dotted
+            where members are missing between two shown rows, fading out where
+            the chain leaves the list. Rendered before `Avatar` so it paints
+            underneath it, and drawn inside the row's own segment so an
+            omission costs no height and every row stays the same. */}
         {lineAbove && (
           <div
-            className={connectorClass(gapAbove, true)}
-            style={{
-              left: CONNECTOR_LEFT_PX,
-              top: gapAboveOpen ? SEAM_CLEARANCE_PX : 0,
-              height: gapAboveOpen ? ROW_PADDING_TOP_PX - SEAM_CLEARANCE_PX : ROW_PADDING_TOP_PX,
-            }}
+            className={connectorClass(gapAbove, gapAboveOpen, true)}
+            style={{ left: CONNECTOR_LEFT_PX, top: 0, height: ROW_PADDING_TOP_PX }}
             aria-hidden="true"
           />
         )}
         {lineBelow && (
           <div
-            className={connectorClass(gapBelow, false)}
+            className={connectorClass(gapBelow, gapBelowOpen, false)}
             style={
               gapBelowOpen
                 ? {

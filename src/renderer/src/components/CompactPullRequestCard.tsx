@@ -13,7 +13,7 @@ interface Props {
   /** Draws that segment dotted: members exist there but aren't shown. */
   gapAbove: boolean
   gapBelow: boolean
-  /** That dotted segment has nothing to meet, so it stops clear of the edge. */
+  /** That segment has nothing to meet, so it fades out rather than dotting. */
   gapAboveOpen: boolean
   gapBelowOpen: boolean
   onHover: (prId: string | null) => void
@@ -29,25 +29,17 @@ const ROW_PADDING_INLINE_PX = 8
 const CONNECTOR_WIDTH_PX = 2
 const AVATAR_TOP_PX = (ROW_HEIGHT_PX - AVATAR_SIZE_PX) / 2
 
-/**
- * A chain that runs past the last shown member still shows its dots: that is
- * the only thing saying the stack continues out of view. It has to stop clear
- * of the row's edge, though — at full height it is indistinguishable from a
- * segment that continues into the next row, and two unrelated chains meeting
- * there read as one. The segment is 5px, so the dots are set finer in CSS to
- * stay legible in what is left.
- */
-const SEAM_CLEARANCE_PX = 2
-
 const COMPACT_CONNECTOR_LEFT_PX =
   ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
 
 const CI_ICONS = { success: Check, failure: X, pending: Clock } as const
 
-function connectorClass(isGap: boolean, above: boolean): string {
+function connectorClass(isGap: boolean, isOpen: boolean, above: boolean): string {
   const base = 'pv-stack-connector pv-stack-connector--compact'
   if (!isGap) return base
-  return `${base} pv-stack-connector--gap${above ? ' pv-stack-connector--gap-up' : ''}`
+  const variant = isOpen ? 'fade' : 'gap'
+  const suffix = above ? ` pv-stack-connector--${variant}-up` : ''
+  return `${base} pv-stack-connector--${variant}${suffix}`
 }
 
 function initialsOf(login: string): string {
@@ -115,31 +107,19 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
               for, and reads as a rendering fault rather than an omission. */}
           {lineAbove && (
             <div
-              className={connectorClass(gapAbove, true)}
-              style={{
-                left: COMPACT_CONNECTOR_LEFT_PX,
-                top: gapAboveOpen ? SEAM_CLEARANCE_PX : 0,
-                height: gapAboveOpen ? AVATAR_TOP_PX - SEAM_CLEARANCE_PX : AVATAR_TOP_PX,
-              }}
+              className={connectorClass(gapAbove, gapAboveOpen, true)}
+              style={{ left: COMPACT_CONNECTOR_LEFT_PX, top: 0, height: AVATAR_TOP_PX }}
               aria-hidden="true"
             />
           )}
           {lineBelow && (
             <div
-              className={connectorClass(gapBelow, false)}
-              style={
-                gapBelowOpen
-                  ? {
-                      left: COMPACT_CONNECTOR_LEFT_PX,
-                      top: AVATAR_TOP_PX + AVATAR_SIZE_PX,
-                      height: AVATAR_TOP_PX - SEAM_CLEARANCE_PX,
-                    }
-                  : {
-                      left: COMPACT_CONNECTOR_LEFT_PX,
-                      top: AVATAR_TOP_PX + AVATAR_SIZE_PX,
-                      bottom: 0,
-                    }
-              }
+              className={connectorClass(gapBelow, gapBelowOpen, false)}
+              style={{
+                left: COMPACT_CONNECTOR_LEFT_PX,
+                top: AVATAR_TOP_PX + AVATAR_SIZE_PX,
+                bottom: 0,
+              }}
               aria-hidden="true"
             />
           )}
