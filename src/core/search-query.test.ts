@@ -1,4 +1,5 @@
 import { buildSearchQuery, chunk } from '@core/search-query'
+import { SEARCH_BUCKETS } from '@shared/types'
 import { describe, expect, it } from 'vitest'
 
 describe('chunk', () => {
@@ -22,8 +23,14 @@ describe('chunk', () => {
 describe('buildSearchQuery', () => {
   it('builds an unscoped query with is:pr, is:open and the bucket qualifier', () => {
     expect(buildSearchQuery('review-requested')).toBe(
-      'is:pr is:open review-requested:@me sort:updated-desc',
+      'is:pr is:open archived:false review-requested:@me sort:updated-desc',
     )
+  })
+
+  it('excludes archived repositories, which nothing can be done to', () => {
+    for (const bucket of SEARCH_BUCKETS) {
+      expect(buildSearchQuery(bucket)).toContain('archived:false')
+    }
   })
 
   it('maps every bucket to its own qualifier', () => {

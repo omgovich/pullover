@@ -22,11 +22,21 @@ export function chunk<T>(items: T[], size: number): T[][] {
  * from what an unfiltered search turns up, so narrowing the search would make
  * the picker only ever offer repositories already selected.
  *
+ * Archived repositories are excluded: they are read-only, so nothing there is
+ * ever anyone's move, and filtering them out server-side also keeps them from
+ * eating slots in the 50-result cap and from reaching the settings picker.
+ *
  * Sorted by most-recently-updated: `SEARCH_QUERY` fetches only the first 50
  * results with no pagination, so this ordering makes the truncation
  * predictable (freshest activity survives) when an unfiltered search exceeds
  * that limit.
  */
 export function buildSearchQuery(bucket: SearchBucket): string {
-  return ['is:pr', 'is:open', BUCKET_QUALIFIERS[bucket], 'sort:updated-desc'].join(' ')
+  return [
+    'is:pr',
+    'is:open',
+    'archived:false',
+    BUCKET_QUALIFIERS[bucket],
+    'sort:updated-desc',
+  ].join(' ')
 }
