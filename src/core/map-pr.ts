@@ -35,6 +35,7 @@ export interface PullRequestNode {
   baseRefName: string
   reviewDecision: ReviewDecision
   mergeable: MergeableState
+  autoMergeRequest: { enabledAt: string } | null
   bodyText: string
   author: ActorNode | null
   repository: { nameWithOwner: string }
@@ -202,6 +203,7 @@ export function mapPullRequest(
     lastCommitPushedAt: lastCommit?.committedDate ?? node.createdAt,
     reviewDecision: node.reviewDecision,
     mergeable: node.mergeable,
+    hasAutoMerge: node.autoMergeRequest !== null,
     reviews,
     reviewThreads,
     conversationComments,

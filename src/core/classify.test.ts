@@ -321,6 +321,40 @@ describe('classify — author branch', () => {
     })
     expect(classify(pr, ctx()).reason).toBe('Merge conflicts')
   })
+
+  it('waiting when approved with auto-merge armed', () => {
+    const pr = makePullRequest({ ...mine, reviewDecision: 'APPROVED', hasAutoMerge: true })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('waiting')
+    expect(result.reason).toBe('Merging automatically')
+  })
+
+  it('auto-merge does not suppress the other action reasons', () => {
+    // Auto-merge never fires while any of these hold, so the PR is still mine
+    // to unblock.
+    const blocked = [
+      { overrides: { reviewDecision: 'CHANGES_REQUESTED' as const }, reason: 'Changes requested' },
+      { overrides: { mergeable: 'CONFLICTING' as const }, reason: 'Merge conflicts' },
+      { overrides: { ciStatus: 'failure' as const }, reason: 'CI is red' },
+      {
+        overrides: {
+          reviewThreads: [makeThread({ comments: [makeComment('alice', '2026-08-02T10:00:00Z')] })],
+        },
+        reason: '1 open thread',
+      },
+    ]
+    for (const { overrides, reason } of blocked) {
+      const pr = makePullRequest({
+        ...mine,
+        reviewDecision: 'APPROVED',
+        hasAutoMerge: true,
+        ...overrides,
+      })
+      const result = classify(pr, ctx())
+      expect(result.category).toBe('my-pr-action')
+      expect(result.reason).toBe(reason)
+    }
+  })
 })
 
 describe('classify — snooze override', () => {

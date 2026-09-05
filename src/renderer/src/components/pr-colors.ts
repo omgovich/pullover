@@ -21,6 +21,11 @@ const STATUS_PILL_COLORS: Record<string, PillColor> = {
   'Changes requested': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
   'Merge conflicts': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
   'Ready to merge': { text: 'positive', background: 'positive-faded', border: 'positive-faded' },
+  'Merging automatically': {
+    text: 'neutral-faded',
+    background: 'neutral-faded',
+    border: 'neutral-faded',
+  },
   'Waiting on author': {
     text: 'neutral-faded',
     background: 'neutral-faded',

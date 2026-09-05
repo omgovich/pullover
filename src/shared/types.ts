@@ -83,6 +83,8 @@ export interface PullRequest {
   lastCommitPushedAt: string
   reviewDecision: ReviewDecision
   mergeable: MergeableState
+  /** Whether auto-merge is armed, so GitHub will merge this itself once checks pass. */
+  hasAutoMerge: boolean
   reviews: Review[]
   reviewThreads: ReviewThread[]
   /** Latest conversation-tab comments, oldest first. Inline review comments live in `reviewThreads`. */

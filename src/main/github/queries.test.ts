@@ -12,6 +12,10 @@ describe('DETAILS_QUERY', () => {
     expect(DETAILS_QUERY).toContain('mergeable')
   })
 
+  it('fetches auto-merge, which decides whether an approval is mine to act on', () => {
+    expect(DETAILS_QUERY).toContain('autoMergeRequest { enabledAt }')
+  })
+
   it('fetches the branch names a stack position is derived from', () => {
     expect(DETAILS_QUERY).toContain('headRefName')
     expect(DETAILS_QUERY).toContain('baseRefName')

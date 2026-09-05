@@ -102,6 +102,11 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
   }
 
   if (pr.reviewDecision === 'APPROVED') {
+    // Everything above blocks auto-merge from ever firing, so it only gets to
+    // speak for the case where merging is genuinely all that is left.
+    if (pr.hasAutoMerge) {
+      return { category: 'waiting', reason: 'Merging automatically' }
+    }
     return { category: 'my-pr-action', reason: 'Ready to merge' }
   }
 

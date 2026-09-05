@@ -31,6 +31,7 @@ export const DETAILS_QUERY = `
         baseRefName
         reviewDecision
         mergeable
+        autoMergeRequest { enabledAt }
         bodyText
         author { login avatarUrl }
         repository { nameWithOwner }
