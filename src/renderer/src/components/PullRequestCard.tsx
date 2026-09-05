@@ -2,16 +2,23 @@ import { formatAge } from '@core/format'
 import type { ClassifiedPullRequest } from '@shared/types'
 import { Layers } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { Avatar, Badge, Text, type TextProps, View, type ViewProps } from 'reshaped/bundle'
+import { Avatar, Badge, Text, View } from 'reshaped/bundle'
+import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
 import SnoozeMenu from './SnoozeMenu'
 
 interface Props {
   item: ClassifiedPullRequest
   now: string
   isActive: boolean
-  /** Solid stack line this row draws above/below the avatar; see `sectionRows` (@core/stack). */
+  /** Stack line this row draws above/below the avatar; see `sectionRows` (@core/stack). */
   lineAbove: boolean
   lineBelow: boolean
+  /** Draws that segment dotted: members exist there but aren't shown. */
+  gapAbove: boolean
+  gapBelow: boolean
+  /** That dotted segment has nothing to meet, so it stops short of the edge. */
+  gapAboveOpen: boolean
+  gapBelowOpen: boolean
   onHover: (prId: string | null) => void
   onSelect: (prId: string) => void
   onSnoozed: (item: ClassifiedPullRequest) => void
@@ -36,6 +43,9 @@ const CONNECTOR_WIDTH_PX = 2
 export const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
 const CONNECTOR_BELOW_TOP_PX = ROW_PADDING_TOP_PX + AVATAR_SIZE_PX
 
+/** How far a dotted segment reaches when there is nothing below to meet it. */
+const OPEN_GAP_PX = 10
+
 /** Imperative surface App needs for keyboard navigation. */
 export interface PullRequestCardHandle {
   element: HTMLElement | null
@@ -43,69 +53,10 @@ export interface PullRequestCardHandle {
   focus: () => void
 }
 
-interface PillColor {
-  text: NonNullable<TextProps['color']>
-  background: NonNullable<ViewProps['backgroundColor']>
-  /**
-   * Without an edge the pills disappear on a hovered card: the hover wash and
-   * every `*-faded` fill sit at the same lightness (L 0.98 in light mode, 0.24
-   * in dark), separated only by a couple of hundredths of chroma. The matching
-   * `*-faded` border is a step away from its fill in both modes, so it draws
-   * the boundary the fill alone cannot.
-   */
-  border: NonNullable<ViewProps['borderColor']>
-}
-
-// Keyed off the exact reason strings `src/core/classify.ts` produces. The
-// counted reasons ("3 new replies", "2 open threads") aren't listed here on
-// purpose — they fall through to the default accent pair below.
-const STATUS_PILL_COLORS: Record<string, PillColor> = {
-  'CI is red': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
-  'Changes requested': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
-  'Ready to merge': { text: 'positive', background: 'positive-faded', border: 'positive-faded' },
-  'Waiting on author': {
-    text: 'neutral-faded',
-    background: 'neutral-faded',
-    border: 'neutral-faded',
-  },
-  'Waiting on reviewers': {
-    text: 'neutral-faded',
-    background: 'neutral-faded',
-    border: 'neutral-faded',
-  },
-  Snoozed: { text: 'neutral-faded', background: 'neutral-faded', border: 'neutral-faded' },
-  Mentioned: { text: 'warning', background: 'warning-faded', border: 'warning-faded' },
-}
-
-const DEFAULT_STATUS_PILL_COLOR: PillColor = {
-  text: 'primary',
-  background: 'primary-faded',
-  border: 'primary-faded',
-}
-
-function statusPillColor(reason: string): PillColor {
-  return STATUS_PILL_COLORS[reason] ?? DEFAULT_STATUS_PILL_COLOR
-}
-
-const CI_PILL_COLORS: Record<'success' | 'failure' | 'pending', PillColor & { label: string }> = {
-  success: {
-    text: 'positive',
-    background: 'positive-faded',
-    border: 'positive-faded',
-    label: 'CI green',
-  },
-  failure: {
-    text: 'critical',
-    background: 'critical-faded',
-    border: 'critical-faded',
-    label: 'CI failing',
-  },
-  pending: {
-    text: 'warning',
-    background: 'warning-faded',
-    border: 'warning-faded',
-    label: 'CI running',
-  },
+/** `above` anchors the dots at the avatar so both stubs grow away from it. */
+function connectorClass(isGap: boolean, above: boolean): string {
+  if (!isGap) return 'pv-stack-connector'
+  return `pv-stack-connector pv-stack-connector--gap${above ? ' pv-stack-connector--gap-up' : ''}`
 }
 
 function initialsOf(login: string): string {
@@ -113,7 +64,20 @@ function initialsOf(login: string): string {
 }
 
 const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRequestCard(
-  { item, now, isActive, lineAbove, lineBelow, onHover, onSelect, onSnoozed }: Props,
+  {
+    item,
+    now,
+    isActive,
+    lineAbove,
+    lineBelow,
+    gapAbove,
+    gapBelow,
+    gapAboveOpen,
+    gapBelowOpen,
+    onHover,
+    onSelect,
+    onSnoozed,
+  }: Props,
   ref,
 ) {
   const { pr } = item
@@ -161,23 +125,29 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           },
         }}
       >
-        {/* Stack connector: the solid line behind the avatar joining this row
-            to the chain. Rendered before `Avatar` so it paints underneath it.
-            Anything omitted from the chain is a dotted break between cards
-            (see `sectionRows`), never a broken stretch inside one. The
-            section list sets no gap between cards, so consecutive segments
-            meet exactly and the stack reads as one rule. */}
+        {/* The line behind the avatar joining this row to the chain, dotted
+            where the chain continues out of sight. Rendered before `Avatar` so
+            it paints underneath it, and drawn inside the row's own segment so
+            an omission costs no height and every row stays the same. */}
         {lineAbove && (
           <div
-            className="pv-stack-connector"
-            style={{ left: CONNECTOR_LEFT_PX, top: 0, height: ROW_PADDING_TOP_PX }}
+            className={connectorClass(gapAbove, true)}
+            style={{
+              left: CONNECTOR_LEFT_PX,
+              top: gapAboveOpen ? ROW_PADDING_TOP_PX - OPEN_GAP_PX : 0,
+              height: gapAboveOpen ? OPEN_GAP_PX : ROW_PADDING_TOP_PX,
+            }}
             aria-hidden="true"
           />
         )}
         {lineBelow && (
           <div
-            className="pv-stack-connector"
-            style={{ left: CONNECTOR_LEFT_PX, top: CONNECTOR_BELOW_TOP_PX, bottom: 0 }}
+            className={connectorClass(gapBelow, false)}
+            style={
+              gapBelowOpen
+                ? { left: CONNECTOR_LEFT_PX, top: CONNECTOR_BELOW_TOP_PX, height: OPEN_GAP_PX }
+                : { left: CONNECTOR_LEFT_PX, top: CONNECTOR_BELOW_TOP_PX, bottom: 0 }
+            }
             aria-hidden="true"
           />
         )}

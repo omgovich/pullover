@@ -72,40 +72,66 @@ body {
   opacity: 1;
 }
 
-/* Stack connector: the solid line joining a pull request to its neighbours
-   in the stack, drawn behind the avatar. No Reshaped prop draws a line
-   behind a sibling, so this stays plain CSS. Geometry (width, left offset)
-   comes from PullRequestCard, which derives it from the card's own layout. */
+/* Stack line: joins a pull request to its neighbours in the chain, drawn
+   behind the avatar. No Reshaped prop draws a line behind a sibling, so this
+   stays plain CSS; the geometry comes from the card, which derives it from
+   its own layout. `--pv-rule` lets the dotted variant below reuse whichever
+   colour the layout picked, so a stroke never changes mid-line. */
 .pv-stack-connector {
+  --pv-rule: var(--rs-color-border-neutral);
   position: absolute;
   width: 0;
-  border-left: 2px solid var(--rs-color-border-neutral);
+  border-left: 2px solid var(--pv-rule);
 }
 
-/* The dotted stand-in for stack members that aren't shown. It sits between
-   cards rather than inside one, so a broken stretch never crosses a card.
-   Same 2px width and same colour token as the solid run above — only the
-   stroke differs, so the two read as one rule.
+/* Compact marks a chain in the accent rather than the neutral rule, softened
+   with opacity so it reads as a hint and not as a border. The design's 28% is
+   doubled here: at this row height it had all but vanished. */
+.pv-stack-connector--compact {
+  --pv-rule: var(--rs-color-border-primary);
+  opacity: 0.55;
+}
 
-   Painted as a gradient rather than `border-style: dotted`: the browser
-   distributes its own dots to fit the length and clips whichever fall on
-   the ends. Here the arithmetic is exact — a 6px period of 2px dot plus 4px
-   gap, over 14px (3 * 6 - 4), so it begins and ends on a whole dot and is
-   never cut off. Keep height at `n * 6 - 4` to stay whole.
-
-   Between two cards the end dots merge into the solid segments they abut,
-   which is the intended reading: the rule breaks into two gaps around a
-   single free dot. In isolation (first or last row of a section) all three
-   dots show. */
-.pv-stack-break {
-  align-self: flex-start;
+/* Members that exist but aren't shown. Drawn inside the segment the row
+   already has rather than as a row of its own: the extra height read as a
+   rendering fault, not an omission. Compact's segment is only 5px, so the
+   period is tight — a sparser one fits a single dot and stops reading as a
+   broken line at all. */
+.pv-stack-connector--gap {
+  border-left-style: none;
   width: 2px;
-  height: 14px;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    var(--rs-color-border-neutral) 0 2px,
-    transparent 2px 6px
-  );
+  /*
+   * One period as an explicit tile, repeated. This is the part that makes the
+   * anchoring below work at all: a `repeating-linear-gradient` left at
+   * `background-size: auto` paints an image the size of the box, so there is
+   * nothing for `background-position` to shift and the phase stays wherever
+   * the box happens to start.
+   */
+  background-image: linear-gradient(var(--pv-rule) 0 2px, transparent 2px 4px);
+  background-size: 2px 4px;
+  background-repeat: repeat-y;
+  /*
+   * The segment below an avatar is anchored to the row's bottom edge and so
+   * grows upward from it; the one above the next avatar is anchored to its
+   * top edge and grows down. Both therefore start their cycle at the seam
+   * between the two rows, which is the only place the two elements meet: the
+   * tile ends on its gap above the seam and opens on its dot below, so the
+   * run continues through instead of colliding into a double-length dot.
+   */
+  background-position: left bottom;
+}
+
+.pv-stack-connector--gap-up {
+  background-position: left top;
+}
+
+/* Compact's segment is 5px against the comfortable card's 9 or 10, so the
+   period is tightened to fit more than a single dot in it — one dot alone
+   reads as a speck rather than a line that carries on. Not tighter than this:
+   at a 2px period the dots and gaps blur into a solid hairline. */
+.pv-stack-connector--compact.pv-stack-connector--gap {
+  background-image: linear-gradient(var(--pv-rule) 0 1.5px, transparent 1.5px 3px);
+  background-size: 2px 3px;
 }
 
 /* Segmented controls */

@@ -11,6 +11,7 @@ import Toast from './components/Toast'
 import { useScrollMemory } from './useScrollMemory'
 import { useSectionCollapse } from './useSectionCollapse'
 import { useSelection } from './useSelection'
+import { useSettings } from './useSettings'
 import { useSnapshot } from './useSnapshot'
 import { useToast } from './useToast'
 import { useUpdate } from './useUpdate'
@@ -39,6 +40,7 @@ function KeyCap({ children }: { children: string }): React.JSX.Element {
 
 export default function App(): React.JSX.Element {
   const snapshot = useSnapshot()
+  const settings = useSettings()
   const update = useUpdate()
   const scroll = useScrollMemory()
   const [showSettings, setShowSettings] = useState(false)
@@ -207,6 +209,7 @@ export default function App(): React.JSX.Element {
               category={category}
               items={orderedByCategory.get(category) ?? []}
               now={now}
+              layout={settings?.layout ?? 'comfortable'}
               open={!collapsed.has(category)}
               onToggle={() => toggleCategory(category)}
               activePrId={activeId}

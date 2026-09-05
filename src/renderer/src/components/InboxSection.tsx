@@ -1,9 +1,15 @@
 import { sectionRows } from '@core/stack'
-import { CATEGORY_TITLES, type Category, type ClassifiedPullRequest } from '@shared/types'
+import {
+  CATEGORY_TITLES,
+  type Category,
+  type ClassifiedPullRequest,
+  type Layout,
+} from '@shared/types'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { forwardRef, useEffect, useRef } from 'react'
 import { Actionable, Icon, Text, View } from 'reshaped/bundle'
-import PullRequestCard, { CONNECTOR_LEFT_PX, type PullRequestCardHandle } from './PullRequestCard'
+import CompactPullRequestCard from './CompactPullRequestCard'
+import PullRequestCard, { type PullRequestCardHandle } from './PullRequestCard'
 
 interface Props {
   category: Category
@@ -11,6 +17,7 @@ interface Props {
       cursor and the screen agree on where each card sits). */
   items: ClassifiedPullRequest[]
   now: string
+  layout: Layout
   open: boolean
   onToggle: () => void
   activePrId: string | null
@@ -25,6 +32,7 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
     category,
     items,
     now,
+    layout,
     open,
     onToggle,
     activePrId,
@@ -63,6 +71,7 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
 
   // Lays the section out as cards interleaved with the dotted breaks that
   // stand in for stack members not shown.
+  const compact = layout === 'compact'
   const rows = sectionRows(items)
 
   return (
@@ -83,39 +92,52 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
           <Text as="span" variant="caption-1" weight="semibold" color="neutral">
             {CATEGORY_TITLES[category]}
           </Text>
+          {compact && (
+            <Text as="span" variant="caption-1" color="neutral-faded" numeric>
+              {items.length}
+            </Text>
+          )}
           {/* A plain View instead of `Badge`: `Badge`'s only borderless
               variant swaps in a solid neutral background instead of this
               faint wash. */}
-          <View
-            minWidth="18px"
-            paddingInline={1.5}
-            align="center"
-            justify="center"
-            borderRadius="circular"
-            backgroundColor="neutral-faded"
-          >
-            <Text as="span" variant="caption-1" weight="semibold" color="neutral-faded" numeric>
-              {items.length}
-            </Text>
-          </View>
+          {!compact && (
+            <View
+              minWidth="18px"
+              paddingInline={1.5}
+              align="center"
+              justify="center"
+              borderRadius="circular"
+              backgroundColor="neutral-faded"
+            >
+              <Text as="span" variant="caption-1" weight="semibold" color="neutral-faded" numeric>
+                {items.length}
+              </Text>
+            </View>
+          )}
           <View.Item grow />
           <Icon svg={open ? ChevronDown : ChevronRight} size="15px" color="neutral-faded" />
         </View>
       </Actionable>
 
-      {/* No gap between cards: the stack connector runs from card to card, and
-          any gap would break the line (bridging it with overshoot and negative
-          margins only traded the seam for overlap artefacts). The cards' own
-          padding already separates them. */}
+      {/* No gap between cards: the stack line runs from row to row, and any
+          gap would break it. Omitted members are dotted inside the segment a
+          row already has, so every row is the same height either way. */}
       {open && (
         <View direction="column">
           {rows.map((row) =>
-            row.kind === 'break' ? (
-              <div
-                key={row.id}
-                className="pv-stack-break"
-                style={{ marginLeft: CONNECTOR_LEFT_PX }}
-                aria-hidden="true"
+            compact ? (
+              <CompactPullRequestCard
+                key={row.item.pr.id}
+                ref={getCardRefCallback(row.item.pr.id)}
+                item={row.item}
+                isActive={row.item.pr.id === activePrId}
+                lineAbove={row.lineAbove}
+                lineBelow={row.lineBelow}
+                gapAbove={row.gapAbove}
+                gapBelow={row.gapBelow}
+                gapBelowOpen={row.gapBelowOpen}
+                onHover={onHoverCard}
+                onSelect={onSelectCard}
               />
             ) : (
               <PullRequestCard
@@ -126,6 +148,10 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
                 isActive={row.item.pr.id === activePrId}
                 lineAbove={row.lineAbove}
                 lineBelow={row.lineBelow}
+                gapAbove={row.gapAbove}
+                gapBelow={row.gapBelow}
+                gapAboveOpen={row.gapAboveOpen}
+                gapBelowOpen={row.gapBelowOpen}
                 onHover={onHoverCard}
                 onSelect={onSelectCard}
                 onSnoozed={onSnoozed}

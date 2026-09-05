@@ -77,6 +77,7 @@ describe('settings', () => {
       watchAllRepositories: false,
       theme: 'system',
       globalShortcut: 'Control+Alt+P',
+      layout: 'comfortable',
     })
     store = new AppStore(backend)
     expect(store.getSettings().watchAllRepositories).toBe(false)
@@ -95,6 +96,7 @@ describe('settings', () => {
       watchAllRepositories: true,
       theme: 'system',
       globalShortcut: 'Control+Alt+P',
+      layout: 'comfortable',
     })
   })
 
