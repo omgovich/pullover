@@ -171,18 +171,15 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
               </View>
             )}
 
+            {/* Uncapped, so the title yields instead: the reason is why the
+                row is in the inbox at all, and a clipped one ("Re-review
+                reque…") says less than the title it was protecting. The
+                strings are a closed set from `classify`, none longer than
+                "Waiting on reviewers". */}
             {status !== null && (
-              <View maxWidth="112px">
-                <Text
-                  as="span"
-                  variant="caption-1"
-                  weight="semibold"
-                  color={status.text}
-                  maxLines={1}
-                >
-                  {item.reason}
-                </Text>
-              </View>
+              <Text as="span" variant="caption-1" weight="semibold" color={status.text}>
+                {item.reason}
+              </Text>
             )}
           </View>
         </View>
