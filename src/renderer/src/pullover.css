@@ -170,21 +170,20 @@ body {
   width: max-content;
   overflow: visible;
   text-overflow: clip;
-  animation: pv-marquee var(--pv-marquee-duration, 6s) linear infinite alternate;
+  animation: pv-marquee var(--pv-marquee-duration, 6s) var(--pv-marquee-ease, linear) infinite
+    alternate;
 }
 
-/* Holds at both ends, so the start and the end of the title are both
-   readable rather than swinging straight back. They are a share of the
-   duration rather than a fixed time, which percentage keyframes cannot
-   express; the card sizes the duration so the 64% that moves runs at a
-   constant speed whatever the distance. */
+/* Pure travel, end to end. The pauses at either end live in the easing
+   instead (`--pv-marquee-ease`, built by the card): a keyframe offset is a
+   literal percentage and so would scale with the duration, which is how the
+   wait before a long title started moving came to be longer than the wait
+   before a short one. */
 @keyframes pv-marquee {
-  0%,
-  18% {
+  from {
     transform: translateX(0);
   }
-  82%,
-  100% {
+  to {
     transform: translateX(min(0px, calc(100cqw - 100%)));
   }
 }

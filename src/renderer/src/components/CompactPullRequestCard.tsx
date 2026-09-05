@@ -32,8 +32,11 @@ const CI_ICONS = { success: Check, failure: X, pending: Clock } as const
 // A constant speed, not a constant duration: the same number of seconds for
 // every title makes a barely-clipped one crawl and a very long one race.
 const MARQUEE_PX_PER_SECOND = 32
-/** Share of the animation actually in motion; the rest holds at either end. */
-const MARQUEE_MOVING_FRACTION = 0.64
+/**
+ * Pause at either end of a pass. `alternate` runs the easing backwards on the
+ * return, so each turnaround holds twice this before setting off again.
+ */
+const MARQUEE_HOLD_SECONDS = 0.7
 
 function initialsOf(login: string): string {
   return login.slice(0, 2).toUpperCase()
@@ -53,16 +56,23 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
     const cardRef = useRef<HTMLDivElement>(null)
     const titleRef = useRef<HTMLDivElement>(null)
 
-    // The distance is the keyframes' own business (see `.pv-marquee`); only
-    // the time it should take needs measuring. `scrollWidth` reports the full
-    // title in either state, so this reads the same before and during.
+    // The distance is the keyframes' own business (see `.pv-marquee`); what
+    // is measured here is the time — a constant speed, and a pause at either
+    // end that stays the same length however far the title has to travel.
+    // `scrollWidth` reports the full title in either state, so this reads the
+    // same before the animation and during it.
     useLayoutEffect(() => {
       const clip = titleRef.current
       const text = clip?.firstElementChild
       if (clip == null || text == null) return
       const overflow = Math.max(0, text.scrollWidth - clip.clientWidth)
-      const seconds = overflow / MARQUEE_PX_PER_SECOND / MARQUEE_MOVING_FRACTION
+      const seconds = MARQUEE_HOLD_SECONDS * 2 + overflow / MARQUEE_PX_PER_SECOND
+      const holdPercent = (MARQUEE_HOLD_SECONDS / seconds) * 100
       clip.style.setProperty('--pv-marquee-duration', `${seconds}s`)
+      clip.style.setProperty(
+        '--pv-marquee-ease',
+        `linear(0 0%, 0 ${holdPercent}%, 1 ${100 - holdPercent}%, 1 100%)`,
+      )
       // The reason sits on the same row and sizes what is left for the title,
       // so a change to either moves the distance.
     }, [pr.title, item.reason])
