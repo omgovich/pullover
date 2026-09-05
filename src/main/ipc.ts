@@ -1,7 +1,16 @@
-import { type DeviceCodePayload, IPC } from '@shared/ipc'
+import { type DeviceCodePayload, IPC, type PrMenuAction, type PrMenuRequest } from '@shared/ipc'
 import type { Settings, SnoozeType, UpdateState } from '@shared/types'
-import { app, type BrowserWindow, ipcMain, shell } from 'electron'
+import {
+  app,
+  type BrowserWindow,
+  clipboard,
+  ipcMain,
+  Menu,
+  type MenuItemConstructorOptions,
+  shell,
+} from 'electron'
 import type { Inbox } from './inbox'
+import { prMenuEntries } from './pr-menu'
 import { isSafeExternalUrl } from './safe-url'
 import type { AppStore } from './store'
 
@@ -50,6 +59,41 @@ export function registerIpc(deps: IpcDeps): void {
       return
     }
     return shell.openExternal(url)
+  })
+
+  // A native menu rather than a web one: the popup window is 440x620, and a
+  // menu rendered inside it on the bottom card runs straight into the window
+  // edge. The cost is that macOS paints it in the *system* appearance, so it
+  // disagrees with the app when the theme setting is forced the other way.
+  ipcMain.handle(IPC.showPrMenu, (_event, request: PrMenuRequest) => {
+    return new Promise<PrMenuAction | null>((resolve) => {
+      let chosen: PrMenuAction | null = null
+      const template: MenuItemConstructorOptions[] = prMenuEntries(request.isSnoozed).map(
+        (entry) =>
+          entry.type === 'separator'
+            ? { type: 'separator' }
+            : {
+                label: entry.label,
+                click: () => {
+                  chosen = entry.action
+                },
+              },
+      )
+
+      Menu.buildFromTemplate(template).popup({
+        window: deps.getWindow() ?? undefined,
+        x: Math.round(request.x),
+        y: Math.round(request.y),
+        // Read a turn after Electron reports the menu closed: the click
+        // handler above can land after this callback, and reading `chosen`
+        // straight away would report a chosen item as a dismissal.
+        callback: () => setTimeout(() => resolve(chosen), 0),
+      })
+    })
+  })
+
+  ipcMain.handle(IPC.copyText, (_event, text: string) => {
+    clipboard.writeText(text)
   })
 
   ipcMain.handle(IPC.snooze, (_event, prId: string, type: SnoozeType, hours?: number) => {

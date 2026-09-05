@@ -131,6 +131,7 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
                 isActive={row.item.pr.id === activePrId}
                 onHover={onHoverCard}
                 onSelect={onSelectCard}
+                onSnoozed={onSnoozed}
               />
             ) : (
               <PullRequestCard

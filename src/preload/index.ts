@@ -1,4 +1,10 @@
-import { type DeviceCodePayload, type InboxSnapshot, IPC, type RendererApi } from '@shared/ipc'
+import {
+  type DeviceCodePayload,
+  type InboxSnapshot,
+  IPC,
+  type PrMenuRequest,
+  type RendererApi,
+} from '@shared/ipc'
 import type { Settings, SnoozeType, UpdateState } from '@shared/types'
 import { contextBridge, type IpcRendererEvent, ipcRenderer } from 'electron'
 
@@ -18,6 +24,8 @@ const api: RendererApi = {
     subscribe(IPC.deviceCode, listener),
   refresh: () => ipcRenderer.invoke(IPC.refresh),
   openPr: (url: string) => ipcRenderer.invoke(IPC.openPr, url),
+  showPrMenu: (request: PrMenuRequest) => ipcRenderer.invoke(IPC.showPrMenu, request),
+  copyText: (text: string) => ipcRenderer.invoke(IPC.copyText, text),
   snooze: (prId: string, type: SnoozeType, hours?: number) =>
     ipcRenderer.invoke(IPC.snooze, prId, type, hours),
   unsnooze: (prId: string) => ipcRenderer.invoke(IPC.unsnooze, prId),
