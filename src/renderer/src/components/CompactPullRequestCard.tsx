@@ -1,7 +1,7 @@
 import type { StackCardRow } from '@core/stack'
 import { Check, Clock, Layers, X } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { Avatar, Icon, Text, View } from 'reshaped/bundle'
+import { Avatar, Icon, Text, Tooltip, View } from 'reshaped/bundle'
 import type { PullRequestCardHandle } from './PullRequestCard'
 import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
 import StackConnector from './StackConnector'
@@ -92,9 +92,24 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
             attributes={{ style: { fontSize: '9px' } }}
           />
 
-          <Text as="span" variant="caption-1" numeric color="neutral-faded">
-            #{pr.number}
-          </Text>
+          {/* The repository name has no room on the row, so the number it
+              belongs to hands it back on hover. `disableContentHover` takes
+              the tooltip out of the hit test entirely: it overlaps the row
+              below, and catching the pointer there would stop that row from
+              highlighting as the cursor travels down the list. */}
+          <Tooltip text={pr.repository} position="bottom-start" disableContentHover>
+            {(attributes) => (
+              <Text
+                as="span"
+                variant="caption-1"
+                numeric
+                color="neutral-faded"
+                attributes={attributes}
+              >
+                #{pr.number}
+              </Text>
+            )}
+          </Tooltip>
 
           <View.Item grow>
             <Text as="div" variant="body-3" weight="medium" maxLines={1}>
