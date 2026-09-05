@@ -97,7 +97,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
               the tooltip out of the hit test entirely: it overlaps the row
               below, and catching the pointer there would stop that row from
               highlighting as the cursor travels down the list. */}
-          <Tooltip text={pr.repository} position="bottom-start" disableContentHover>
+          <Tooltip text={pr.repository} position="bottom-start" color="dark" disableContentHover>
             {(attributes) => (
               <Text
                 as="span"
