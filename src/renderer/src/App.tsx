@@ -140,7 +140,7 @@ export default function App(): React.JSX.Element {
           void window.api.unsnooze(selectedId)
         } else {
           // Skips the dropdown the mouse path uses and snoozes straight
-          // away with "until something changes" — the keyboard shortcut is
+          // away with "until updated" — the keyboard shortcut is
           // for speed, not for picking a duration. Still raises the same
           // toast as the mouse path so Undo keeps working.
           void window.api.snooze(selectedId, 'until-activity').then(() => showToast(item))

@@ -15,7 +15,7 @@ const OPTIONS: Array<{
   hours?: number
   icon: React.ComponentType
 }> = [
-  { label: 'Until something changes', type: 'until-activity', icon: Activity },
+  { label: 'Until updated', type: 'until-activity', icon: Activity },
   { label: 'For 4 hours', type: 'until-time', hours: 4, icon: Clock },
   { label: 'Until tomorrow', type: 'until-time', hours: 24, icon: Clock },
 ]

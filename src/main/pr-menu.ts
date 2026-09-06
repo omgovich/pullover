@@ -24,7 +24,7 @@ export function prMenuEntries(isSnoozed: boolean): PrMenuEntry[] {
   const snooze: PrMenuEntry[] = isSnoozed
     ? [{ type: 'item', label: 'Unsnooze', action: 'unsnooze' }]
     : [
-        { type: 'item', label: 'Snooze until something changes', action: 'snooze-until-activity' },
+        { type: 'item', label: 'Snooze until updated', action: 'snooze-until-activity' },
         { type: 'item', label: 'Snooze for 4 hours', action: 'snooze-4-hours' },
         { type: 'item', label: 'Snooze until tomorrow', action: 'snooze-until-tomorrow' },
       ]
