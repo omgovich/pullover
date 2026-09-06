@@ -68,19 +68,16 @@ export function registerIpc(deps: IpcDeps): void {
   ipcMain.handle(IPC.showPrMenu, (_event, request: PrMenuRequest) => {
     return new Promise<PrMenuAction | null>((resolve) => {
       let chosen: PrMenuAction | null = null
-      // `header` names each section. It only draws as a real section header
-      // on macOS 14 and up, and the app still runs on 13.
       const template: MenuItemConstructorOptions[] = prMenuEntries(request.isSnoozed).map(
-        (entry) => {
-          if (entry.type === 'separator') return { type: 'separator' }
-          if (entry.type === 'header') return { type: 'header', label: entry.label }
-          return {
-            label: entry.label,
-            click: () => {
-              chosen = entry.action
-            },
-          }
-        },
+        (entry) =>
+          entry.type === 'separator'
+            ? { type: 'separator' }
+            : {
+                label: entry.label,
+                click: () => {
+                  chosen = entry.action
+                },
+              },
       )
 
       Menu.buildFromTemplate(template).popup({

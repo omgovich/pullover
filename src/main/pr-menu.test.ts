@@ -8,49 +8,47 @@ function labels(isSnoozed: boolean): string[] {
 }
 
 describe('prMenuEntries', () => {
-  it('offers the three snooze options, worded as the snooze pill words them', () => {
-    expect(labels(false).slice(0, 3)).toEqual([
-      'Until something changes',
-      'For 4 hours',
-      'Until tomorrow',
-    ])
-  })
-
-  it('collapses the snooze options to Unsnooze when the pull request is snoozed', () => {
-    expect(labels(true)).toEqual([
-      'Unsnooze',
+  it('leads with the opens, then the copies, then snooze', () => {
+    expect(labels(false)).toEqual([
       'Open on GitHub',
       'Open files changed',
       'Copy link',
       'Copy branch name',
+      'Snooze until something changes',
+      'Snooze for 4 hours',
+      'Snooze until tomorrow',
     ])
   })
 
-  it('names and separates the snooze, open and copy sections', () => {
+  it('gives every item its own verb, so none leans on the section above it', () => {
+    for (const label of labels(false)) {
+      expect(label).toMatch(/^(Open|Copy|Snooze) /)
+    }
+  })
+
+  it('collapses the snooze options to Unsnooze when the pull request is snoozed', () => {
+    expect(labels(true)).toEqual([
+      'Open on GitHub',
+      'Open files changed',
+      'Copy link',
+      'Copy branch name',
+      'Unsnooze',
+    ])
+  })
+
+  it('separates the opens, the copies and snooze into three sections', () => {
     const shape = prMenuEntries(false).map((entry) => entry.type)
     expect(shape).toEqual([
-      'header',
-      'item',
-      'item',
-      'item',
-      'separator',
-      'header',
       'item',
       'item',
       'separator',
-      'header',
+      'item',
+      'item',
+      'separator',
+      'item',
       'item',
       'item',
     ])
-
-    const headers = prMenuEntries(false)
-      .filter((entry) => entry.type === 'header')
-      .map((entry) => entry.label)
-    expect(headers).toEqual(['Snooze', 'Open', 'Copy'])
-  })
-
-  it('keeps the Snooze heading over the collapsed Unsnooze item', () => {
-    expect(prMenuEntries(true)[0]).toEqual({ type: 'header', label: 'Snooze' })
   })
 
   it('never repeats an action', () => {

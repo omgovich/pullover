@@ -2,42 +2,40 @@ import type { PrMenuAction } from '@shared/ipc'
 
 export type PrMenuEntry =
   | { type: 'separator' }
-  | { type: 'header'; label: string }
   | { type: 'item'; label: string; action: PrMenuAction }
 
 const SEPARATOR: PrMenuEntry = { type: 'separator' }
 
 /**
- * The card's context menu, top to bottom: snooze, then opens, then copies.
+ * The card's context menu, top to bottom: opens, then copies, then snooze.
  *
- * Snooze leads rather than Open, against the macOS habit of leading with the
- * default action: opening is already one plain click away, and the card
- * itself leads with a Snooze pill — the menu agrees with the card.
+ * Every label carries its own verb, so no item depends on the section above
+ * it to be read — which is also why the sections are only separated, not
+ * headed. `type: 'header'` would say each verb once, but it draws as a real
+ * heading only on macOS 14 and up, and this app still runs on 13.
  *
  * Kept apart from the `Menu.popup` call in `ipc.ts` so the wording and the
  * ordering can be tested without an Electron runtime.
  */
 export function prMenuEntries(isSnoozed: boolean): PrMenuEntry[] {
-  // The labels match `SnoozeMenu.tsx` exactly: two names for one action is
-  // worse than one imperfect name.
+  // The wording follows the options on the card's own snooze pill
+  // (`SnoozeMenu.tsx`) — two names for one action is worse than one
+  // imperfect name.
   const snooze: PrMenuEntry[] = isSnoozed
     ? [{ type: 'item', label: 'Unsnooze', action: 'unsnooze' }]
     : [
-        { type: 'item', label: 'Until something changes', action: 'snooze-until-activity' },
-        { type: 'item', label: 'For 4 hours', action: 'snooze-4-hours' },
-        { type: 'item', label: 'Until tomorrow', action: 'snooze-until-tomorrow' },
+        { type: 'item', label: 'Snooze until something changes', action: 'snooze-until-activity' },
+        { type: 'item', label: 'Snooze for 4 hours', action: 'snooze-4-hours' },
+        { type: 'item', label: 'Snooze until tomorrow', action: 'snooze-until-tomorrow' },
       ]
 
   return [
-    { type: 'header', label: 'Snooze' },
-    ...snooze,
-    SEPARATOR,
-    { type: 'header', label: 'Open' },
     { type: 'item', label: 'Open on GitHub', action: 'open' },
     { type: 'item', label: 'Open files changed', action: 'open-files' },
     SEPARATOR,
-    { type: 'header', label: 'Copy' },
     { type: 'item', label: 'Copy link', action: 'copy-link' },
     { type: 'item', label: 'Copy branch name', action: 'copy-branch' },
+    SEPARATOR,
+    ...snooze,
   ]
 }
