@@ -3,7 +3,7 @@ import type { StackCardRow } from '@core/stack'
 import type { ClassifiedPullRequest } from '@shared/types'
 import { Ellipsis, Layers } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { Avatar, Badge, Button, Text, View } from 'reshaped/bundle'
+import { Actionable, Avatar, Badge, Icon, Text, View } from 'reshaped/bundle'
 import { pointerAnchor, showPrMenu } from '../pr-menu'
 import { CiChip, initialsOf, StatusText } from './pr-row-parts'
 import StackConnector from './StackConnector'
@@ -55,6 +55,11 @@ const OPEN_FADE_BELOW_PX = 12
 
 /** Breathing room between the actions button and the menu it drops. */
 const MENU_GAP_PX = 4
+
+// Wider than it is tall, so the three dots get room without the button
+// growing past the meta line it sits in.
+const MENU_BUTTON_WIDTH_PX = 22
+const MENU_BUTTON_HEIGHT_PX = 20
 
 /** Imperative surface App needs for keyboard navigation. */
 export interface PullRequestCardHandle {
@@ -220,11 +225,11 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   className={`pv-card-actions${isActive ? ' pv-card-actions--active' : ''}`}
                   attributes={{ 'aria-hidden': !isActive }}
                 >
-                  <Button
-                    variant="ghost"
-                    color="neutral"
-                    size="small"
-                    icon={Ellipsis}
+                  {/* `Actionable`, not `Button`: Reshaped's smallest button
+                      is 28px tall — body-2's leading plus its padding — and
+                      this sits in a 15px line. */}
+                  <Actionable
+                    className="pv-card-menu"
                     stopPropagation
                     onClick={(event) => {
                       const box = event.currentTarget.getBoundingClientRect()
@@ -232,7 +237,16 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                       void showPrMenu(item, { x: box.left, y: box.bottom + MENU_GAP_PX }, onSnoozed)
                     }}
                     attributes={{ title: 'Actions — M', 'aria-label': 'Actions' }}
-                  />
+                  >
+                    <View
+                      width={`${MENU_BUTTON_WIDTH_PX}px`}
+                      height={`${MENU_BUTTON_HEIGHT_PX}px`}
+                      align="center"
+                      justify="center"
+                    >
+                      <Icon svg={Ellipsis} size="15px" color="neutral-faded" />
+                    </View>
+                  </Actionable>
                 </View>
               </View.Item>
             </View>

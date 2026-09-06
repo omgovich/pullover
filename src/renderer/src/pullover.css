@@ -81,6 +81,18 @@ body {
   opacity: 1;
 }
 
+/* The card's actions button. `Actionable` brings no resting or hover skin of
+   its own, and the sizes here are smaller than any Reshaped button offers. */
+.pv-card-menu {
+  border-radius: var(--rs-radius-small);
+  color: var(--rs-color-foreground-neutral-faded);
+  transition: background 160ms var(--rs-easing-standard);
+}
+
+.pv-card-menu:hover {
+  background: var(--rs-color-background-neutral);
+}
+
 /* `Avatar` builds its own `style` after spreading the caller's, so the only
    way in is `className`, which it does forward. Doubled to outrank Avatar's
    own `.root`, which sets `font-size: calc(var(--rs-h) / 3)` — a third of a
