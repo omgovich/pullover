@@ -20,11 +20,13 @@ const SEPARATOR: PrMenuEntry = { type: 'separator' }
 export function prMenuEntries(isSnoozed: boolean): PrMenuEntry[] {
   // The wording follows the options on the card's own snooze pill
   // (`SnoozeMenu.tsx`) — two names for one action is worse than one
-  // imperfect name.
+  // imperfect name. "New activity" is deliberately vaguer than the wake
+  // condition in `snooze.ts`, which is a push or a reply in a thread you
+  // are already in — not every comment on the pull request.
   const snooze: PrMenuEntry[] = isSnoozed
     ? [{ type: 'item', label: 'Unsnooze', action: 'unsnooze' }]
     : [
-        { type: 'item', label: 'Snooze until updated', action: 'snooze-until-activity' },
+        { type: 'item', label: 'Snooze until new activity', action: 'snooze-until-activity' },
         { type: 'item', label: 'Snooze for 4 hours', action: 'snooze-4-hours' },
         { type: 'item', label: 'Snooze until tomorrow', action: 'snooze-until-tomorrow' },
       ]

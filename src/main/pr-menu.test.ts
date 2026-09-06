@@ -14,7 +14,7 @@ describe('prMenuEntries', () => {
       'Open files changed',
       'Copy link',
       'Copy branch name',
-      'Snooze until updated',
+      'Snooze until new activity',
       'Snooze for 4 hours',
       'Snooze until tomorrow',
     ])
