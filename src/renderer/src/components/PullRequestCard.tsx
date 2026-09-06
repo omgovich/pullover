@@ -5,7 +5,7 @@ import { Ellipsis, Layers } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
 import { Actionable, Avatar, Icon, Text, View } from 'reshaped/bundle'
 import { pointerAnchor, showPrMenu } from '../pr-menu'
-import { useMarquee } from '../useMarquee'
+import Marquee from './Marquee'
 import { accentTint } from './pr-colors'
 import { CiChip, initialsOf, StatusText } from './pr-row-parts'
 import StackConnector from './StackConnector'
@@ -82,7 +82,6 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
   const { item } = row
   const { pr } = item
   const cardRef = useRef<HTMLDivElement>(null)
-  const marquee = useMarquee(isActive)
 
   useImperativeHandle(ref, () => ({
     element: cardRef.current,
@@ -275,9 +274,9 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
               minWidth={0}
               height={`${TITLE_HEIGHT_PX}px`}
             >
-              <View.Item grow className={marquee.className} attributes={{ ref: marquee.ref }}>
+              <View.Item grow>
                 <Text as="div" variant="body-2" weight="medium">
-                  {pr.title}
+                  <Marquee active={isActive}>{pr.title}</Marquee>
                 </Text>
               </View.Item>
 

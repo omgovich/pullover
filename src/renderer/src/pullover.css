@@ -189,14 +189,34 @@ body {
    ellipsis for an overflowing inline-block child, so the usual inner span
    would trade the resting state for the animated one. */
 .pv-marquee {
+  --pv-marquee-fade: 8px;
+
+  display: block;
   overflow: hidden;
   container-type: inline-size;
+  /* Overhangs the slot and pads itself back in by the same amount, so the
+     gradient below sits outside the text's own box: the first glyph starts
+     where the mask is already opaque, and a line that fits shows no fade.
+     The content box stays the slot's width, which is what `100cqw` in the
+     keyframe measures against. */
+  margin-inline: calc(-1 * var(--pv-marquee-fade));
+  padding-inline: var(--pv-marquee-fade);
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--pv-marquee-fade),
+    #000 calc(100% - var(--pv-marquee-fade)),
+    transparent 100%
+  );
 }
 
-.pv-marquee > * {
+/* No `text-overflow`: the mask ends the line instead of an ellipsis, and a
+   clamp would stop the text from sliding. Deliberately not `overflow:
+   hidden` either — the text is meant to run on into the padding, which is
+   where it fades. */
+.pv-marquee-text {
+  display: block;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Two states, because the ellipsis and the travel start at different times.
@@ -205,15 +225,13 @@ body {
    already had. Only when the travel actually begins does the box open up to
    the full title — otherwise the ellipsis vanished the instant the pointer
    arrived and then nothing happened for the length of the pause. */
-.pv-marquee--active > * {
+.pv-marquee--active > .pv-marquee-text {
   animation: pv-marquee var(--pv-marquee-duration, 6s) var(--pv-marquee-ease, linear) infinite
     alternate;
 }
 
-.pv-marquee--moving > * {
+.pv-marquee--moving > .pv-marquee-text {
   width: max-content;
-  overflow: visible;
-  text-overflow: clip;
 }
 
 /* Pure travel, end to end. The pauses at either end live in the easing

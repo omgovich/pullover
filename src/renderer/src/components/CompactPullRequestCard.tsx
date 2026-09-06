@@ -4,7 +4,7 @@ import { Layers } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
 import { Avatar, Icon, Text, Tooltip, View } from 'reshaped/bundle'
 import { pointerAnchor, showPrMenu } from '../pr-menu'
-import { useMarquee } from '../useMarquee'
+import Marquee from './Marquee'
 import type { PullRequestCardHandle } from './PullRequestCard'
 import { CiChip, initialsOf, StatusText } from './pr-row-parts'
 import StackConnector from './StackConnector'
@@ -44,8 +44,6 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
     const { item } = row
     const { pr } = item
     const cardRef = useRef<HTMLDivElement>(null)
-    const marquee = useMarquee(isActive)
-
     useImperativeHandle(ref, () => ({
       element: cardRef.current,
       focus: () => cardRef.current?.focus({ preventScroll: true }),
@@ -118,9 +116,9 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
             )}
           </Tooltip>
 
-          <View.Item grow className={marquee.className} attributes={{ ref: marquee.ref }}>
+          <View.Item grow>
             <Text as="div" variant="body-2" weight="medium">
-              {pr.title}
+              <Marquee active={isActive}>{pr.title}</Marquee>
             </Text>
           </View.Item>
 
