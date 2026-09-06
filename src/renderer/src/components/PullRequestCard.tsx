@@ -133,7 +133,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           // Through `className`, not `attributes.style`: `Avatar` writes its
           // own `style` after spreading the caller's, so a style set here is
           // dropped. No Reshaped prop reaches font-size or letter-spacing.
-          className="pv-avatar-initials pv-avatar-initials--compact"
+          className="pv-avatar-initials"
         />
 
         <View.Item grow>

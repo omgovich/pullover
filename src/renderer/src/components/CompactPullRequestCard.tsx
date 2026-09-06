@@ -137,7 +137,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
             size={AVATAR_SIZE}
             variant="faded"
             color="primary"
-            className="pv-avatar-initials pv-avatar-initials--compact"
+            className="pv-avatar-initials"
           />
 
           {/* The repository name has no room on the row, so the number it

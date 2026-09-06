@@ -21,6 +21,14 @@ Don't narrate what the next line does, don't restate a name, don't leave a heade
 
 When a comment is warranted, one or two sentences is the size. If it runs longer, the reasoning probably belongs in the commit message, which is where someone asking "why is this like this?" will actually look.
 
+## Typography
+
+Type sizes come from Reshaped, never from raw pixels. Normally that is `Text`'s `variant`; where a component writes its own `font-size` and takes no typography prop — `Avatar`'s initials are the one case — reach for `var(--rs-font-size-*)` and `var(--rs-line-height-*)` instead of a number.
+
+The scale in the installed Reshaped (4.x) is `body-1` `body-2` `caption-1` `caption-2`. **The mockups are drawn against Reshaped v3.7, which numbers it one step differently** — v3.7's `body-3` is 14/20, which is `body-2` here. Translate before copying a name across.
+
+Getting that wrong fails silently, which is why it is worth the paragraph: `Text` renders an unknown `variant` with no class at all, and its root is `font-size: inherit`, so the text lands on the inherited 16px rather than erroring. Nothing in the app sets a base size, and neither typecheck nor lint catches it — `variant` is typed loosely in the bundle entrypoint the app imports from.
+
 ## Releases
 
 Everything happens in CI: pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds the dmgs into a draft GitHub release, writes the notes, and publishes it. To cut a release, from a clean synced `main`:
