@@ -48,7 +48,7 @@ export const CI_BADGES: Record<
  * the badge's chroma well clear of the neutral hover wash underneath it, so
  * the fill draws the boundary on its own.
  */
-const TINT_PERCENT = 18
+const TINT_PERCENT = 12
 
 export function accentTint(accent: Accent): string {
   return `color-mix(in oklab, var(--rs-color-foreground-${accent}) ${TINT_PERCENT}%, transparent)`
