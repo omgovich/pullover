@@ -1,70 +1,55 @@
-import type { TextProps, ViewProps } from 'reshaped/bundle'
+import type { TextProps } from 'reshaped/bundle'
 
-interface PillColor {
-  text: NonNullable<TextProps['color']>
-  background: NonNullable<ViewProps['backgroundColor']>
-  /**
-   * Without an edge the pills disappear on a hovered card: the hover wash and
-   * every `*-faded` fill sit at the same lightness (L 0.98 in light mode, 0.24
-   * in dark), separated only by a couple of hundredths of chroma. The matching
-   * `*-faded` border is a step away from its fill in both modes, so it draws
-   * the boundary the fill alone cannot.
-   */
-  border: NonNullable<ViewProps['borderColor']>
-}
+/**
+ * The accent a row's colours are drawn from. One name drives both the
+ * Reshaped `color` prop and the CSS variable behind `accentTint`, so an icon
+ * and the patch it sits on can never be tinted from two different hues.
+ */
+export type Accent = NonNullable<TextProps['color']>
 
 // Keyed off the exact reason strings `src/core/classify.ts` produces. The
 // counted reasons ("3 new replies", "2 open threads") aren't listed here on
-// purpose — they fall through to the default accent pair below.
-const STATUS_PILL_COLORS: Record<string, PillColor> = {
-  'CI is red': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
-  'Changes requested': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
-  'Merge conflicts': { text: 'critical', background: 'critical-faded', border: 'critical-faded' },
-  'Ready to merge': { text: 'positive', background: 'positive-faded', border: 'positive-faded' },
-  'Waiting on author': {
-    text: 'neutral-faded',
-    background: 'neutral-faded',
-    border: 'neutral-faded',
-  },
-  'Waiting on reviewers': {
-    text: 'neutral-faded',
-    background: 'neutral-faded',
-    border: 'neutral-faded',
-  },
-  Snoozed: { text: 'neutral-faded', background: 'neutral-faded', border: 'neutral-faded' },
-  Mentioned: { text: 'warning', background: 'warning-faded', border: 'warning-faded' },
+// purpose — they fall through to the default accent below.
+const STATUS_ACCENTS: Record<string, Accent> = {
+  'CI is red': 'critical',
+  'Changes requested': 'critical',
+  'Merge conflicts': 'critical',
+  'Ready to merge': 'positive',
+  'Waiting on author': 'neutral-faded',
+  'Waiting on reviewers': 'neutral-faded',
+  Snoozed: 'neutral-faded',
+  Mentioned: 'warning',
 }
 
-const DEFAULT_STATUS_PILL_COLOR: PillColor = {
-  text: 'primary',
-  background: 'primary-faded',
-  border: 'primary-faded',
+const DEFAULT_STATUS_ACCENT: Accent = 'primary'
+
+export function statusAccent(reason: string): Accent {
+  return STATUS_ACCENTS[reason] ?? DEFAULT_STATUS_ACCENT
 }
 
-export function statusPillColor(reason: string): PillColor {
-  return STATUS_PILL_COLORS[reason] ?? DEFAULT_STATUS_PILL_COLOR
-}
-
-export const CI_PILL_COLORS: Record<
+export const CI_BADGES: Record<
   'success' | 'failure' | 'pending',
-  PillColor & { label: string }
+  { accent: Accent; label: string }
 > = {
-  success: {
-    text: 'positive',
-    background: 'positive-faded',
-    border: 'positive-faded',
-    label: 'CI green',
-  },
-  failure: {
-    text: 'critical',
-    background: 'critical-faded',
-    border: 'critical-faded',
-    label: 'CI failing',
-  },
-  pending: {
-    text: 'warning',
-    background: 'warning-faded',
-    border: 'warning-faded',
-    label: 'CI running',
-  },
+  success: { accent: 'positive', label: 'CI green' },
+  failure: { accent: 'critical', label: 'CI failing' },
+  pending: { accent: 'warning', label: 'CI running' },
+}
+
+/**
+ * A translucent wash of the accent, for a badge that carries a fill and no
+ * border.
+ *
+ * The `*-faded` background tokens cannot do this job: they sit at the same
+ * lightness as the tint on a hovered card (L 0.98 in light mode, 0.24 in
+ * dark) and differ only by hundredths of chroma, so a badge filled with one
+ * vanishes on exactly the row the cursor is on. That is what the border used
+ * to compensate for. Mixing the *foreground* accent into transparency keeps
+ * the badge's chroma well clear of the neutral hover wash underneath it, so
+ * the fill draws the boundary on its own.
+ */
+const TINT_PERCENT = 18
+
+export function accentTint(accent: Accent): string {
+  return `color-mix(in oklab, var(--rs-color-foreground-${accent}) ${TINT_PERCENT}%, transparent)`
 }

@@ -1,7 +1,7 @@
 import type { CiStatus } from '@shared/types'
 import { Check, Clock, X } from 'lucide-react'
 import { Icon, Text, View } from 'reshaped/bundle'
-import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
+import { accentTint, CI_BADGES, statusAccent } from './pr-colors'
 
 const CI_ICONS = { success: Check, failure: X, pending: Clock } as const
 
@@ -20,10 +20,14 @@ export function initialsOf(login: string): string {
 /**
  * The CI state as an icon alone. The chip is the only thing carrying it, so
  * the label rides along as the accessible name rather than as visible text.
+ *
+ * Fill and no border, which is why the background comes from `accentTint`
+ * rather than a `backgroundColor` token — see `pr-colors.ts` for why a
+ * `*-faded` fill cannot hold an edge by itself.
  */
 export function CiChip({ status }: { status: CiStatus }): React.JSX.Element | null {
   if (status === 'none') return null
-  const ci = CI_PILL_COLORS[status]
+  const ci = CI_BADGES[status]
 
   return (
     <View
@@ -32,12 +36,13 @@ export function CiChip({ status }: { status: CiStatus }): React.JSX.Element | nu
       align="center"
       justify="center"
       borderRadius="small"
-      backgroundColor={ci.background}
-      border
-      borderColor={ci.border}
-      attributes={{ role: 'img', 'aria-label': ci.label }}
+      attributes={{
+        role: 'img',
+        'aria-label': ci.label,
+        style: { backgroundColor: accentTint(ci.accent) },
+      }}
     >
-      <Icon svg={CI_ICONS[status]} size="10px" color={ci.text} />
+      <Icon svg={CI_ICONS[status]} size="10px" color={ci.accent} />
     </View>
   )
 }
@@ -53,7 +58,7 @@ export function StatusText({ reason }: { reason: string }): React.JSX.Element | 
   if (reason === '') return null
 
   return (
-    <Text as="span" variant="caption-1" weight="semibold" color={statusPillColor(reason).text}>
+    <Text as="span" variant="caption-1" weight="semibold" color={statusAccent(reason)}>
       {reason}
     </Text>
   )
