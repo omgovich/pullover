@@ -1,12 +1,11 @@
 import { formatAge } from '@core/format'
 import type { StackCardRow } from '@core/stack'
 import type { ClassifiedPullRequest } from '@shared/types'
-import { Layers } from 'lucide-react'
+import { Ellipsis, Layers } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { Avatar, Badge, Text, View } from 'reshaped/bundle'
+import { Avatar, Badge, Button, Text, View } from 'reshaped/bundle'
 import { pointerAnchor, showPrMenu } from '../pr-menu'
-import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
-import SnoozeMenu from './SnoozeMenu'
+import { CiChip, initialsOf, StatusText } from './pr-row-parts'
 import StackConnector from './StackConnector'
 
 interface Props {
@@ -18,28 +17,38 @@ interface Props {
   onSnoozed: (item: ClassifiedPullRequest) => void
 }
 
-// The connector's geometry is derived from this row's own layout rather
-// than tuned by hand: the constants below are the values the props further
-// down are actually given, so changing the padding or the avatar moves the
-// line with it.
+// The connector's geometry is derived from this row's own layout rather than
+// tuned by hand: the constants below are the values the props further down are
+// actually given, so changing the padding or the avatar moves the line with it.
 const UNIT_PX = 4
-// Reshaped units, spent directly on the props below, so the connector and
-// the layout it hides behind cannot drift apart.
-const AVATAR_SIZE = 8
+const AVATAR_SIZE = 7
 /** Also spent on the section heading, so it lines up with the avatars. */
-export const ROW_PADDING_INLINE = 2.5
-const ROW_PADDING_TOP = 2.25
+export const ROW_PADDING_INLINE = 1.5
+const ROW_PADDING_TOP = 2
+const ROW_PADDING_BOTTOM = 2.25
+
+// Both lines are given a fixed height, which is what makes the row's own
+// height — and so the centred avatar and the connector below it — arithmetic
+// rather than a measurement.
+const META_HEIGHT_PX = 15
+const TITLE_HEIGHT_PX = 19
+
 const AVATAR_SIZE_PX = AVATAR_SIZE * UNIT_PX
 const ROW_PADDING_INLINE_PX = ROW_PADDING_INLINE * UNIT_PX
-const ROW_PADDING_TOP_PX = ROW_PADDING_TOP * UNIT_PX
+const ROW_HEIGHT_PX =
+  ROW_PADDING_TOP * UNIT_PX + META_HEIGHT_PX + TITLE_HEIGHT_PX + ROW_PADDING_BOTTOM * UNIT_PX
 
 const CONNECTOR_WIDTH_PX = 2
 const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
-const CONNECTOR_BELOW_TOP_PX = ROW_PADDING_TOP_PX + AVATAR_SIZE_PX
+const AVATAR_TOP_PX = (ROW_HEIGHT_PX - AVATAR_SIZE_PX) / 2
+const CONNECTOR_BELOW_TOP_PX = AVATAR_TOP_PX + AVATAR_SIZE_PX
 
-/** The segment below the avatar runs the height of the card, so a fade over
-    all of it would smear; it has gone by here instead. */
+/** The segment below the avatar runs to the card's edge, so a fade over all
+    of it would smear; it has gone by here instead. */
 const OPEN_FADE_BELOW_PX = 12
+
+/** Breathing room between the actions button and the menu it drops. */
+const MENU_GAP_PX = 4
 
 /** Imperative surface App needs for keyboard navigation. */
 export interface PullRequestCardHandle {
@@ -48,18 +57,17 @@ export interface PullRequestCardHandle {
   focus: () => void
 }
 
-function initialsOf(login: string): string {
-  return login.slice(0, 1).toUpperCase()
-}
-
+/**
+ * Two lines per pull request: the meta line comfortable always had, over the
+ * title-and-status line compact fits into one. Nothing is dropped — this is
+ * the dense row with the repository, the age and the diff counts put back.
+ */
 const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRequestCard(
   { row, now, isActive, onHover, onSelect, onSnoozed }: Props,
   ref,
 ) {
   const { item } = row
   const { pr } = item
-  const ci = pr.ciStatus === 'none' ? null : CI_PILL_COLORS[pr.ciStatus]
-  const status = item.reason !== '' ? statusPillColor(item.reason) : null
   const cardRef = useRef<HTMLDivElement>(null)
 
   useImperativeHandle(ref, () => ({
@@ -90,12 +98,13 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
     <div ref={cardRef} tabIndex={-1} className="pv-card-focus">
       <View
         direction="row"
-        align="start"
-        gap={2.75}
+        align="center"
+        gap={2.5}
+        wrap={false}
         paddingTop={ROW_PADDING_TOP}
+        paddingBottom={ROW_PADDING_BOTTOM}
         paddingInline={ROW_PADDING_INLINE}
-        paddingBottom={2.5}
-        borderRadius="large"
+        borderRadius="medium"
         backgroundColor={isActive ? 'neutral-faded' : undefined}
         position="relative"
         attributes={{
@@ -103,17 +112,14 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           onClick: handleOpen,
           onContextMenu: handleContextMenu,
           onMouseEnter: () => onHover(pr.id),
-          style: {
-            cursor: 'pointer',
-            transition: 'background 140ms',
-          },
+          style: { cursor: 'pointer', transition: 'background 140ms' },
         }}
       >
         {/* Before `Avatar`, so the line paints underneath it. */}
         <StackConnector
           row={row}
           left={CONNECTOR_LEFT_PX}
-          aboveHeight={ROW_PADDING_TOP_PX}
+          aboveHeight={AVATAR_TOP_PX}
           belowTop={CONNECTOR_BELOW_TOP_PX}
           fadeBelowHeight={OPEN_FADE_BELOW_PX}
         />
@@ -127,14 +133,22 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
           // Through `className`, not `attributes.style`: `Avatar` writes its
           // own `style` after spreading the caller's, so a style set here is
           // dropped. No Reshaped prop reaches font-size or letter-spacing.
-          className="pv-avatar-initials pv-avatar-initials--comfortable"
+          className="pv-avatar-initials pv-avatar-initials--compact"
         />
 
         <View.Item grow>
-          <View direction="column" gap={1} minWidth={0}>
-            {/* Meta row: repo, #number, age, diff counts. `wrap={false}` keeps
-                it one line so the repo name ellipsises instead of wrapping. */}
-            <View direction="row" align="center" gap={2} wrap={false} minWidth={0}>
+          <View direction="column" minWidth={0}>
+            {/* Meta line: repo, #number, stack, age, diff counts, then the
+                actions button. `wrap={false}` keeps it one line so the repo
+                name ellipsises instead of the row wrapping. */}
+            <View
+              direction="row"
+              align="center"
+              gap={2}
+              wrap={false}
+              minWidth={0}
+              height={`${META_HEIGHT_PX}px`}
+            >
               <View shrink minWidth={0}>
                 <Text as="span" variant="caption-1" color="neutral-faded" maxLines={1}>
                   {pr.repository}
@@ -180,86 +194,55 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   {pr.deletions}
                 </Text>
               </View>
-            </View>
 
-            <Text as="div" variant="body-2" weight="semibold" maxLines={1}>
-              {pr.title}
-            </Text>
-
-            {/* Status pill, CI pill, a spacer, then the snooze pill.
-                `wrap={false}` keeps it one line so the status pill shrinks
-                and ellipsises instead of the row wrapping. */}
-            <View direction="row" align="center" gap={2} wrap={false} minWidth={0}>
-              {status !== null && (
-                <View
-                  shrink
-                  minWidth={0}
-                  overflow="hidden"
-                  paddingBlock={0.5}
-                  paddingInline={2.25}
-                  borderRadius="circular"
-                  backgroundColor={status.background}
-                  border
-                  borderColor={status.border}
-                >
-                  <Text
-                    as="span"
-                    variant="caption-1"
-                    weight="semibold"
-                    maxLines={1}
-                    color={status.text}
-                  >
-                    {item.reason}
-                  </Text>
-                </View>
-              )}
-
-              {ci !== null && (
-                <View
-                  direction="row"
-                  align="center"
-                  gap={1.5}
-                  paddingBlock={0.5}
-                  paddingInline={2.25}
-                  borderRadius="circular"
-                  backgroundColor={ci.background}
-                  border
-                  borderColor={ci.border}
-                >
-                  <View
-                    width="5px"
-                    height="5px"
-                    borderRadius="circular"
-                    backgroundColor={ci.text}
-                    attributes={{ style: { flexShrink: 0 } }}
-                  />
-                  <Text
-                    as="span"
-                    variant="caption-1"
-                    weight="semibold"
-                    maxLines={1}
-                    color={ci.text}
-                  >
-                    {ci.label}
-                  </Text>
-                </View>
-              )}
-
-              {/* Snooze pill: stays in the flow (visibility/opacity via CSS,
-                  not conditional rendering) so hovering between cards never
-                  reflows the row. `gapBefore="auto"` pins it to the row's end. */}
+              {/* The same menu the right-click and the M key open — the
+                  button is only the affordance that says it is there. Stays
+                  in the flow (visibility via CSS, not conditional rendering)
+                  so hovering between cards never reflows the row.
+                  `gapBefore="auto"` pins it to the line's end. */}
               <View.Item gapBefore="auto">
                 <View
                   className={`pv-card-actions${isActive ? ' pv-card-actions--active' : ''}`}
                   attributes={{ 'aria-hidden': !isActive }}
                 >
-                  <SnoozeMenu
-                    prId={pr.id}
-                    isSnoozed={item.isSnoozed}
-                    onSnoozed={() => onSnoozed(item)}
+                  <Button
+                    variant="ghost"
+                    color="neutral"
+                    size="small"
+                    icon={Ellipsis}
+                    stopPropagation
+                    onClick={(event) => {
+                      const box = event.currentTarget.getBoundingClientRect()
+                      onSelect(pr.id)
+                      void showPrMenu(item, { x: box.left, y: box.bottom + MENU_GAP_PX }, onSnoozed)
+                    }}
+                    attributes={{ title: 'Actions — M', 'aria-label': 'Actions' }}
                   />
                 </View>
               </View.Item>
+            </View>
+
+            {/* Title line: the title yields to the CI chip and the reason. */}
+            <View
+              direction="row"
+              align="center"
+              gap={2}
+              wrap={false}
+              minWidth={0}
+              height={`${TITLE_HEIGHT_PX}px`}
+            >
+              <View.Item grow>
+                <View minWidth={0}>
+                  <Text as="div" variant="caption-1" weight="medium" maxLines={1}>
+                    {pr.title}
+                  </Text>
+                </View>
+              </View.Item>
+
+              <View direction="row" align="center" gap={1.75} wrap={false}>
+                <CiChip status={pr.ciStatus} />
+                <StatusText reason={item.reason} />
+              </View>
             </View>
           </View>
         </View.Item>
