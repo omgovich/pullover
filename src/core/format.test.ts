@@ -1,4 +1,4 @@
-import { formatAge, formatWait } from '@core/format'
+import { formatAge, formatWait, repositoryName } from '@core/format'
 import { describe, expect, it } from 'vitest'
 
 const NOW = '2026-08-10T12:00:00Z'
@@ -64,5 +64,25 @@ describe('formatWait', () => {
 
   it('pins the minute boundary just past 60 seconds', () => {
     expect(formatWait('2026-08-10T12:01:01Z', NOW)).toBe('2 minutes')
+  })
+})
+
+describe('repositoryName', () => {
+  it('drops the owner', () => {
+    expect(repositoryName('mozilla/pdf.js')).toBe('pdf.js')
+    expect(repositoryName('omgovich/pullover')).toBe('pullover')
+  })
+
+  it('leaves a bare name alone', () => {
+    expect(repositoryName('pullover')).toBe('pullover')
+  })
+
+  it('keeps the last segment when there are extra slashes', () => {
+    expect(repositoryName('enterprise/team/repo')).toBe('repo')
+  })
+
+  it('survives the degenerate shapes rather than throwing', () => {
+    expect(repositoryName('')).toBe('')
+    expect(repositoryName('owner/')).toBe('')
   })
 })

@@ -31,3 +31,16 @@ export function formatWait(iso: string, now: string): string {
   const hours = Math.ceil(remaining / HOUR)
   return hours === 1 ? '1 hour' : `${hours} hours`
 }
+
+/**
+ * Just the repository, dropping the owner `nameWithOwner` carries.
+ *
+ * Only for display: `pr.repository` stays the full name everywhere else,
+ * because that is what groups a stack, what the watch list matches against
+ * and what the settings picker lists — an owner-less name would collide
+ * between two organisations.
+ */
+export function repositoryName(fullName: string): string {
+  const slash = fullName.lastIndexOf('/')
+  return slash === -1 ? fullName : fullName.slice(slash + 1)
+}

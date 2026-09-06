@@ -1,4 +1,4 @@
-import { formatAge } from '@core/format'
+import { formatAge, repositoryName } from '@core/format'
 import type { StackCardRow } from '@core/stack'
 import type { ClassifiedPullRequest } from '@shared/types'
 import { Ellipsis, Layers } from 'lucide-react'
@@ -149,9 +149,18 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
               minWidth={0}
               height={`${META_HEIGHT_PX}px`}
             >
+              {/* The owner is dropped: it is the same for most of the list
+                  and eats the width the repository name needs. It comes back
+                  on hover, where two same-named repositories are told apart. */}
               <View shrink minWidth={0}>
-                <Text as="span" variant="caption-1" color="neutral-faded" maxLines={1}>
-                  {pr.repository}
+                <Text
+                  as="span"
+                  variant="caption-1"
+                  color="neutral-faded"
+                  maxLines={1}
+                  attributes={{ title: pr.repository }}
+                >
+                  {repositoryName(pr.repository)}
                 </Text>
               </View>
               <View as="span" direction="row" align="center" gap={1}>
