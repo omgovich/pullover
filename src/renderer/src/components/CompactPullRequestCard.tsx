@@ -169,7 +169,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
             }`}
             attributes={{ ref: titleRef }}
           >
-            <Text as="div" variant="body-3" weight="medium">
+            <Text as="div" variant="body-2" weight="medium">
               {pr.title}
             </Text>
           </View.Item>

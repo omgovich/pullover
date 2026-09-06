@@ -31,7 +31,7 @@ const ROW_PADDING_BOTTOM = 2.25
 // height — and so the centred avatar and the connector below it — arithmetic
 // rather than a measurement.
 const META_HEIGHT_PX = 15
-const TITLE_HEIGHT_PX = 19
+const TITLE_HEIGHT_PX = 20
 
 const AVATAR_SIZE_PX = AVATAR_SIZE * UNIT_PX
 const ROW_PADDING_INLINE_PX = ROW_PADDING_INLINE * UNIT_PX
@@ -242,7 +242,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
             >
               <View.Item grow>
                 <View minWidth={0}>
-                  <Text as="div" variant="caption-1" weight="medium" maxLines={1}>
+                  <Text as="div" variant="body-2" weight="medium" maxLines={1}>
                     {pr.title}
                   </Text>
                 </View>
