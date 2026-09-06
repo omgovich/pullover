@@ -189,7 +189,7 @@ body {
    ellipsis for an overflowing inline-block child, so the usual inner span
    would trade the resting state for the animated one. */
 .pv-marquee {
-  --pv-marquee-fade: 8px;
+  --pv-marquee-fade: 6px;
 
   display: block;
   overflow: hidden;
