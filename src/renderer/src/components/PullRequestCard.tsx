@@ -32,11 +32,17 @@ const ROW_PADDING_BOTTOM = 2.25
 // rather than a measurement.
 const META_HEIGHT_PX = 15
 const TITLE_HEIGHT_PX = 20
+/** Reshaped units, spent on the column below and counted into the row height. */
+const LINE_GAP = 0.5
 
 const AVATAR_SIZE_PX = AVATAR_SIZE * UNIT_PX
 const ROW_PADDING_INLINE_PX = ROW_PADDING_INLINE * UNIT_PX
 const ROW_HEIGHT_PX =
-  ROW_PADDING_TOP * UNIT_PX + META_HEIGHT_PX + TITLE_HEIGHT_PX + ROW_PADDING_BOTTOM * UNIT_PX
+  ROW_PADDING_TOP * UNIT_PX +
+  META_HEIGHT_PX +
+  LINE_GAP * UNIT_PX +
+  TITLE_HEIGHT_PX +
+  ROW_PADDING_BOTTOM * UNIT_PX
 
 const CONNECTOR_WIDTH_PX = 2
 const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
@@ -137,7 +143,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
         />
 
         <View.Item grow>
-          <View direction="column" minWidth={0}>
+          <View direction="column" gap={LINE_GAP} minWidth={0}>
             {/* Meta line: repo, #number, stack, age, diff counts, then the
                 actions button. `wrap={false}` keeps it one line so the repo
                 name ellipsises instead of the row wrapping. */}
