@@ -84,7 +84,8 @@ Click the menu-bar item, hit **Sign in with GitHub**. Pullover shows you a short
 
 ### Development
 
-- `npm test` — unit tests (all the classification logic lives in `src/core/`)
+- `npm test` — unit tests (all the classification logic lives in `src/core/`) and screenshot tests
+- `npm run test:visual` — screenshot tests alone. They render components in a real Chromium and compare against committed PNGs, so they need `npx playwright install chromium` once. Re-record with `npm run test:visual -- -u`.
 - `npm run typecheck` — type checking
 - `npm run lint` — lint + formatting check ([Biome](https://biomejs.dev), config in `biome.json`)
 - `npm run lint:fix` — apply every safe lint fix and reformat

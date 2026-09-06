@@ -17,6 +17,7 @@
     "lint:fix": "biome check --write",
     "format": "biome format --write",
     "test": "vitest run",
+    "test:visual": "vitest run --project=visual",
     "test:watch": "vitest",
     "dist": "npm run build && electron-builder --mac"
   },
@@ -36,11 +37,15 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/browser": "^4.1.11",
+    "@vitest/browser-playwright": "^4.1.11",
     "electron": "^44.0.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
+    "playwright": "^1.63.0",
     "typescript": "^7.0.2",
     "vite": "^7.0.0",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "vitest-browser-react": "^2.3.0"
   }
 }
