@@ -32,13 +32,13 @@ function RepositoryName({ fullName }: { fullName: string }): React.JSX.Element {
   const slash = fullName.indexOf('/')
   if (slash === -1)
     return (
-      <Text as="span" variant="body-3">
+      <Text as="span" variant="body-2">
         {fullName}
       </Text>
     )
   return (
-    <Text as="span" variant="body-3">
-      <Text as="span" variant="body-3" color="neutral-faded">
+    <Text as="span" variant="body-2">
+      <Text as="span" variant="body-2" color="neutral-faded">
         {fullName.slice(0, slash + 1)}
       </Text>
       {fullName.slice(slash + 1)}

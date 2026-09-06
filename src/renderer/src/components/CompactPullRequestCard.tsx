@@ -1,18 +1,12 @@
 import type { StackCardRow } from '@core/stack'
 import type { ClassifiedPullRequest } from '@shared/types'
-import { Check, Clock, Layers, X } from 'lucide-react'
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react'
+import { Layers } from 'lucide-react'
+import { forwardRef, useImperativeHandle, useRef } from 'react'
 import { Avatar, Icon, Text, Tooltip, View } from 'reshaped/bundle'
 import { pointerAnchor, showPrMenu } from '../pr-menu'
+import Marquee from './Marquee'
 import type { PullRequestCardHandle } from './PullRequestCard'
-import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
+import { CiChip, initialsOf, StatusText } from './pr-row-parts'
 import StackConnector from './StackConnector'
 
 interface Props {
@@ -40,21 +34,6 @@ const CONNECTOR_WIDTH_PX = 2
 const CONNECTOR_LEFT_PX = ROW_PADDING_INLINE_PX + AVATAR_SIZE_PX / 2 - CONNECTOR_WIDTH_PX / 2
 const AVATAR_TOP_PX = (ROW_HEIGHT_PX - AVATAR_SIZE_PX) / 2
 
-const CI_ICONS = { success: Check, failure: X, pending: Clock } as const
-
-// A constant speed, not a constant duration: the same number of seconds for
-// every title makes a barely-clipped one crawl and a very long one race.
-const MARQUEE_PX_PER_SECOND = 32
-/**
- * Pause at either end of a pass. `alternate` runs the easing backwards on the
- * return, so each turnaround holds twice this before setting off again.
- */
-const MARQUEE_HOLD_SECONDS = 0.7
-
-function initialsOf(login: string): string {
-  return login.slice(0, 2).toUpperCase()
-}
-
 /**
  * One row per pull request. The repository name, the age and the diff counts
  * are dropped rather than shrunk — at this density something has to go, and
@@ -64,43 +43,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
   function CompactPullRequestCard({ row, isActive, onHover, onSelect, onSnoozed }: Props, ref) {
     const { item } = row
     const { pr } = item
-    const ci = pr.ciStatus === 'none' ? null : CI_PILL_COLORS[pr.ciStatus]
-    const status = item.reason !== '' ? statusPillColor(item.reason) : null
     const cardRef = useRef<HTMLDivElement>(null)
-    const titleRef = useRef<HTMLDivElement>(null)
-    // `off` for a title that fits — there is nothing to scroll, and running an
-    // animation that cannot move would also swap the ellipsis for a clip on
-    // every row the cursor rests on. `holding` starts the animation, whose
-    // easing sits at zero, so the ellipsis survives the opening pause; only
-    // `moving` opens the box to the full title.
-    const [marquee, setMarquee] = useState<'off' | 'holding' | 'moving'>('off')
-
-    // Measured per activation rather than once: the reason, the CI chip and
-    // the stack count all share the row and size what is left for the title.
-    // Laid out before paint, so a row never paints mid-swap.
-    useLayoutEffect(() => {
-      if (!isActive) {
-        setMarquee('off')
-        return
-      }
-      const clip = titleRef.current
-      const text = clip?.firstElementChild
-      if (clip == null || text == null) return
-      const overflow = Math.max(0, text.scrollWidth - clip.clientWidth)
-      if (overflow === 0) return
-
-      const seconds = MARQUEE_HOLD_SECONDS * 2 + overflow / MARQUEE_PX_PER_SECOND
-      const holdPercent = (MARQUEE_HOLD_SECONDS / seconds) * 100
-      clip.style.setProperty('--pv-marquee-duration', `${seconds}s`)
-      clip.style.setProperty(
-        '--pv-marquee-ease',
-        `linear(0 0%, 0 ${holdPercent}%, 1 ${100 - holdPercent}%, 1 100%)`,
-      )
-      setMarquee('holding')
-
-      const timer = setTimeout(() => setMarquee('moving'), MARQUEE_HOLD_SECONDS * 1000)
-      return () => clearTimeout(timer)
-    }, [isActive])
 
     useImperativeHandle(ref, () => ({
       element: cardRef.current,
@@ -152,7 +95,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
             size={AVATAR_SIZE}
             variant="faded"
             color="primary"
-            className="pv-avatar-initials pv-avatar-initials--compact"
+            className="pv-avatar-initials"
           />
 
           {/* The repository name has no room on the row, so the number it
@@ -174,18 +117,9 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
             )}
           </Tooltip>
 
-          {/* `maxLines` would clamp with -webkit-line-clamp, which the
-              marquee cannot slide; `.pv-marquee` ellipsises the same way and
-              scrolls a title too long for the row while the row is active. */}
-          <View.Item
-            grow
-            className={`pv-marquee${marquee !== 'off' ? ' pv-marquee--active' : ''}${
-              marquee === 'moving' ? ' pv-marquee--moving' : ''
-            }`}
-            attributes={{ ref: titleRef }}
-          >
-            <Text as="div" variant="body-3" weight="medium">
-              {pr.title}
+          <View.Item grow className="pv-card-title">
+            <Text as="div" variant="body-2" weight="medium">
+              <Marquee active={isActive}>{pr.title}</Marquee>
             </Text>
           </View.Item>
 
@@ -199,34 +133,8 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
               </View>
             )}
 
-            {/* The icon carries the CI state alone here, so the label the
-                comfortable card prints becomes the accessible name. */}
-            {pr.ciStatus !== 'none' && ci !== null && (
-              <View
-                width="16px"
-                height="16px"
-                align="center"
-                justify="center"
-                borderRadius="small"
-                backgroundColor={ci.background}
-                border
-                borderColor={ci.border}
-                attributes={{ role: 'img', 'aria-label': ci.label }}
-              >
-                <Icon svg={CI_ICONS[pr.ciStatus]} size="10px" color={ci.text} />
-              </View>
-            )}
-
-            {/* Uncapped, so the title yields instead: the reason is why the
-                row is in the inbox at all, and a clipped one ("Re-review
-                reque…") says less than the title it was protecting. Every
-                reason `classify` produces is short — the longest is
-                "Waiting on reviewers". */}
-            {status !== null && (
-              <Text as="span" variant="caption-1" weight="semibold" color={status.text}>
-                {item.reason}
-              </Text>
-            )}
+            <CiChip status={pr.ciStatus} />
+            <StatusText reason={item.reason} />
           </View>
         </View>
       </div>

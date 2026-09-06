@@ -18,11 +18,9 @@ const SEPARATOR: PrMenuEntry = { type: 'separator' }
  * ordering can be tested without an Electron runtime.
  */
 export function prMenuEntries(isSnoozed: boolean): PrMenuEntry[] {
-  // The wording follows the options on the card's own snooze pill
-  // (`SnoozeMenu.tsx`) — two names for one action is worse than one
-  // imperfect name. "New activity" is deliberately vaguer than the wake
-  // condition in `snooze.ts`, which is a push or a reply in a thread you
-  // are already in — not every comment on the pull request.
+  // "New activity" is deliberately vaguer than the wake condition in
+  // `snooze.ts`, which is a push or a reply in a thread you are already in —
+  // not every comment on the pull request.
   const snooze: PrMenuEntry[] = isSnoozed
     ? [{ type: 'item', label: 'Unsnooze', action: 'unsnooze' }]
     : [

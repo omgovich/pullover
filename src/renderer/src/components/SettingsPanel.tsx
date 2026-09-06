@@ -199,7 +199,7 @@ export default function SettingsPanel({
                 onChange={({ checked }) => setLaunchAtLogin(checked)}
               />
               <View grow minWidth={0}>
-                <Text variant="body-3" weight="medium">
+                <Text variant="body-2" weight="medium">
                   Start at login
                 </Text>
                 <Text variant="caption-1" color="neutral-faded">
@@ -219,7 +219,7 @@ export default function SettingsPanel({
                 icon={myLogin === null ? User : undefined}
               />
               <View minWidth={0}>
-                <Text variant="body-3" weight="semibold" maxLines={1}>
+                <Text variant="body-2" weight="semibold" maxLines={1}>
                   {myLogin ?? 'Signed in'}
                 </Text>
                 <Text variant="caption-1" color="neutral-faded">
