@@ -81,6 +81,14 @@ body {
   opacity: 1;
 }
 
+/* Breathing room between a row's title and whatever sits after it, on top
+   of the row's own gap. `View` has no margin prop — only `bleed`, which is
+   the negative one — so this is CSS, with the step still off Reshaped's
+   scale. */
+.pv-card-title {
+  margin-inline-end: var(--rs-unit-x1);
+}
+
 /* The card's actions button. `Actionable` brings no resting or hover skin of
    its own, and the sizes here are smaller than any Reshaped button offers. */
 .pv-card-menu {

@@ -116,7 +116,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
             )}
           </Tooltip>
 
-          <View.Item grow>
+          <View.Item grow className="pv-card-title">
             <Text as="div" variant="body-2" weight="medium">
               <Marquee active={isActive}>{pr.title}</Marquee>
             </Text>

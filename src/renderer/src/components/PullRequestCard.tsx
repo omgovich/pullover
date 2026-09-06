@@ -274,7 +274,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
               minWidth={0}
               height={`${TITLE_HEIGHT_PX}px`}
             >
-              <View.Item grow>
+              <View.Item grow className="pv-card-title">
                 <Text as="div" variant="body-2" weight="medium">
                   <Marquee active={isActive}>{pr.title}</Marquee>
                 </Text>
