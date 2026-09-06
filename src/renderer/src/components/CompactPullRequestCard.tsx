@@ -1,4 +1,5 @@
 import type { StackCardRow } from '@core/stack'
+import type { ClassifiedPullRequest } from '@shared/types'
 import { Check, Clock, Layers, X } from 'lucide-react'
 import {
   forwardRef,
@@ -9,6 +10,7 @@ import {
   useState,
 } from 'react'
 import { Avatar, Icon, Text, Tooltip, View } from 'reshaped/bundle'
+import { pointerAnchor, showPrMenu } from '../pr-menu'
 import type { PullRequestCardHandle } from './PullRequestCard'
 import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
 import StackConnector from './StackConnector'
@@ -18,6 +20,8 @@ interface Props {
   isActive: boolean
   onHover: (prId: string) => void
   onSelect: (prId: string) => void
+  /** Fired after the context menu snoozes, so the card can show the undo toast. */
+  onSnoozed: (item: ClassifiedPullRequest) => void
 }
 
 // Reshaped units, spent directly on the props below, so the connector and the
@@ -57,7 +61,7 @@ function initialsOf(login: string): string {
  * those are the three that least often decide whether to open a PR.
  */
 const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
-  function CompactPullRequestCard({ row, isActive, onHover, onSelect }: Props, ref) {
+  function CompactPullRequestCard({ row, isActive, onHover, onSelect, onSnoozed }: Props, ref) {
     const { item } = row
     const { pr } = item
     const ci = pr.ciStatus === 'none' ? null : CI_PILL_COLORS[pr.ciStatus]
@@ -108,6 +112,13 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
       void window.api.openPr(pr.url)
     }
 
+    // Selects first, so the card the menu acts on is also the one that is
+    // tinted — a right-click can land on a card the pointer never entered.
+    const handleContextMenu = (event: React.MouseEvent): void => {
+      onSelect(pr.id)
+      void showPrMenu(item, pointerAnchor(event), onSnoozed)
+    }
+
     return (
       <div ref={cardRef} tabIndex={-1} className="pv-card-focus">
         <View
@@ -123,6 +134,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
           attributes={{
             role: 'button',
             onClick: handleOpen,
+            onContextMenu: handleContextMenu,
             onMouseEnter: () => onHover(pr.id),
             style: { cursor: 'pointer', transition: 'background 140ms' },
           }}

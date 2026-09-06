@@ -15,6 +15,14 @@ type Handler = (event: unknown, ...args: never[]) => unknown
 // nothing else in `src/main` exercises `ipcMain` directly either.
 const handlers = new Map<string, Handler>()
 
+interface PoppedMenu {
+  items: { label?: string; type?: string; click?: () => void }[]
+  options: { x: number; y: number; callback: () => void }
+}
+
+const poppedMenus: PoppedMenu[] = []
+const clipboardWrites: string[] = []
+
 vi.mock('electron', () => ({
   ipcMain: {
     handle: (channel: string, handler: Handler) => {
@@ -22,6 +30,18 @@ vi.mock('electron', () => ({
     },
   },
   shell: { openExternal: vi.fn() },
+  clipboard: {
+    writeText: (text: string) => {
+      clipboardWrites.push(text)
+    },
+  },
+  Menu: {
+    buildFromTemplate: (items: PoppedMenu['items']) => ({
+      popup: (options: PoppedMenu['options']) => {
+        poppedMenus.push({ items, options })
+      },
+    }),
+  },
 }))
 
 class MemoryStore implements KeyValueStore {
@@ -43,6 +63,8 @@ let shortcutCalls: (string | null)[]
 
 beforeEach(() => {
   handlers.clear()
+  poppedMenus.length = 0
+  clipboardWrites.length = 0
   store = new AppStore(new MemoryStore())
   send = vi.fn()
   hide = vi.fn()
@@ -127,5 +149,63 @@ describe('hidePopup', () => {
   it('hides the window', () => {
     call(IPC.hidePopup)
     expect(hide).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('pull request context menu', () => {
+  function popMenu(isSnoozed: boolean): { menu: PoppedMenu; action: Promise<unknown> } {
+    const action = call(IPC.showPrMenu, {
+      isSnoozed,
+      x: 12.4,
+      y: 40.6,
+    } as never) as Promise<unknown>
+    return { menu: poppedMenus[0], action }
+  }
+
+  function clickItem(menu: PoppedMenu, label: string): void {
+    const item = menu.items.find((entry) => entry.label === label)
+    if (item?.click === undefined) throw new Error(`no menu item labelled "${label}"`)
+    item.click()
+  }
+
+  it('pops at whole pixels — Electron wants integer window coordinates', () => {
+    const { menu } = popMenu(false)
+    expect(menu.options.x).toBe(12)
+    expect(menu.options.y).toBe(41)
+  })
+
+  it('reports the clicked item even when the close callback lands first', async () => {
+    const { menu, action } = popMenu(false)
+    menu.options.callback()
+    clickItem(menu, 'Copy branch name')
+    await expect(action).resolves.toBe('copy-branch')
+  })
+
+  it('reports the clicked item when the click lands first', async () => {
+    const { menu, action } = popMenu(false)
+    clickItem(menu, 'Open files changed')
+    menu.options.callback()
+    await expect(action).resolves.toBe('open-files')
+  })
+
+  it('resolves with null when the menu is dismissed', async () => {
+    const { menu, action } = popMenu(false)
+    menu.options.callback()
+    await expect(action).resolves.toBeNull()
+  })
+
+  it('offers Unsnooze in place of the snooze options for a snoozed pull request', async () => {
+    const { menu, action } = popMenu(true)
+    expect(menu.items.filter((entry) => entry.type === 'separator')).toHaveLength(2)
+    clickItem(menu, 'Unsnooze')
+    menu.options.callback()
+    await expect(action).resolves.toBe('unsnooze')
+  })
+})
+
+describe('clipboard', () => {
+  it('writes the given text', () => {
+    call(IPC.copyText, 'feature/context-menu' as never)
+    expect(clipboardWrites).toEqual(['feature/context-menu'])
   })
 })

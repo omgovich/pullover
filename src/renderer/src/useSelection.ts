@@ -20,6 +20,8 @@ export interface Selection {
   selectCard: (prId: string) => void
   moveSelection: (delta: 1 | -1) => void
   registerCard: (prId: string, handle: PullRequestCardHandle | null) => void
+  /** The cursor's card in the DOM — the context menu pops at its corner. */
+  selectedElement: () => HTMLElement | null
 }
 
 /**
@@ -48,6 +50,11 @@ export function useSelection(visibleItems: ClassifiedPullRequest[]): Selection {
   const selectCard = useCallback((prId: string): void => {
     setCursor({ prId, quiet: false })
   }, [])
+
+  const selectedElement = useCallback((): HTMLElement | null => {
+    if (selectedId === null) return null
+    return cardHandles.current.get(selectedId)?.element ?? null
+  }, [selectedId])
 
   const moveSelection = useCallback(
     (delta: 1 | -1): void => {
@@ -95,5 +102,5 @@ export function useSelection(visibleItems: ClassifiedPullRequest[]): Selection {
     return () => window.removeEventListener('focus', handleWindowFocus)
   }, [selectedId])
 
-  return { selectedId, pointAt, selectCard, moveSelection, registerCard }
+  return { selectedId, pointAt, selectCard, moveSelection, registerCard, selectedElement }
 }

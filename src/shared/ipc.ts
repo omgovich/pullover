@@ -11,6 +11,29 @@ export interface InboxSnapshot {
   knownRepositories: string[]
 }
 
+/**
+ * What the pull-request context menu came back with, or null when it was
+ * dismissed. The main process only reports the choice; the renderer carries
+ * it out, so a snooze from the menu raises the same undo toast as the pill.
+ */
+export type PrMenuAction =
+  | 'snooze-until-activity'
+  | 'snooze-4-hours'
+  | 'snooze-until-tomorrow'
+  | 'unsnooze'
+  | 'open'
+  | 'open-files'
+  | 'copy-link'
+  | 'copy-branch'
+
+export interface PrMenuRequest {
+  /** Collapses the snooze options into a single Unsnooze, as the card's pill does. */
+  isSnoozed: boolean
+  /** Where to pop the menu, in window coordinates. */
+  x: number
+  y: number
+}
+
 export interface DeviceCodePayload {
   userCode: string
   verificationUri: string
@@ -21,6 +44,8 @@ export const IPC = {
   snapshotChanged: 'inbox:snapshot-changed',
   refresh: 'inbox:refresh',
   openPr: 'inbox:open-pr',
+  showPrMenu: 'inbox:show-pr-menu',
+  copyText: 'clipboard:write-text',
   snooze: 'inbox:snooze',
   unsnooze: 'inbox:unsnooze',
   getSettings: 'settings:get',
@@ -46,6 +71,8 @@ export interface RendererApi {
   onDeviceCode: (listener: (payload: DeviceCodePayload) => void) => () => void
   refresh: () => Promise<void>
   openPr: (url: string) => Promise<void>
+  showPrMenu: (request: PrMenuRequest) => Promise<PrMenuAction | null>
+  copyText: (text: string) => Promise<void>
   snooze: (prId: string, type: SnoozeType, hours?: number) => Promise<void>
   unsnooze: (prId: string) => Promise<void>
   getSettings: () => Promise<Settings>

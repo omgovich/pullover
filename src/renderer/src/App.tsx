@@ -8,6 +8,7 @@ import InboxSection from './components/InboxSection'
 import SettingsPanel from './components/SettingsPanel'
 import SignIn from './components/SignIn'
 import Toast from './components/Toast'
+import { showPrMenu } from './pr-menu'
 import { useScrollMemory } from './useScrollMemory'
 import { useSectionCollapse } from './useSectionCollapse'
 import { useSelection } from './useSelection'
@@ -15,6 +16,8 @@ import { useSettings } from './useSettings'
 import { useSnapshot } from './useSnapshot'
 import { useToast } from './useToast'
 import { useUpdate } from './useUpdate'
+
+const MENU_ANCHOR_INSET_PX = 16
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -83,7 +86,7 @@ export default function App(): React.JSX.Element {
     return result
   }, [orderedByCategory, collapsed])
 
-  const { selectedId, pointAt, selectCard, moveSelection, registerCard } =
+  const { selectedId, pointAt, selectCard, moveSelection, registerCard, selectedElement } =
     useSelection(visibleItems)
 
   // `useHotkeys` (from `reshaped/bundle`) has no built-in "ignore while
@@ -137,7 +140,7 @@ export default function App(): React.JSX.Element {
           void window.api.unsnooze(selectedId)
         } else {
           // Skips the dropdown the mouse path uses and snoozes straight
-          // away with "until something changes" — the keyboard shortcut is
+          // away with "until new activity" — the keyboard shortcut is
           // for speed, not for picking a duration. Still raises the same
           // toast as the mouse path so Undo keeps working.
           void window.api.snooze(selectedId, 'until-activity').then(() => showToast(item))
@@ -147,8 +150,19 @@ export default function App(): React.JSX.Element {
         if (isTypingTarget(event?.target ?? null)) return
         refresh()
       },
+      m: (event?: KeyboardEvent) => {
+        if (isTypingTarget(event?.target ?? null)) return
+        if (selectedId === null) return
+        const item = snapshot.items.find((i) => i.pr.id === selectedId)
+        if (item === undefined) return
+        // Hung off the card's bottom-left, roughly where a right-click on it
+        // would have landed. No rect means no card on screen to hang it off.
+        const rect = selectedElement()?.getBoundingClientRect()
+        if (rect === undefined) return
+        void showPrMenu(item, { x: rect.left + MENU_ANCHOR_INSET_PX, y: rect.bottom }, showToast)
+      },
     },
-    [selectedId, snapshot.items, refresh, showToast],
+    [selectedId, snapshot.items, refresh, showToast, selectedElement],
     { disabled: showSettings },
   )
 

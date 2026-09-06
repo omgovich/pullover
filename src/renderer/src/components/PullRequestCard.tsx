@@ -4,6 +4,7 @@ import type { ClassifiedPullRequest } from '@shared/types'
 import { Layers } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
 import { Avatar, Badge, Text, View } from 'reshaped/bundle'
+import { pointerAnchor, showPrMenu } from '../pr-menu'
 import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
 import SnoozeMenu from './SnoozeMenu'
 import StackConnector from './StackConnector'
@@ -74,6 +75,13 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
     void window.api.openPr(pr.url)
   }
 
+  // Selects first, so the card the menu acts on is also the one that is
+  // tinted — a right-click can land on a card the pointer never entered.
+  const handleContextMenu = (event: React.MouseEvent): void => {
+    onSelect(pr.id)
+    void showPrMenu(item, pointerAnchor(event), onSnoozed)
+  }
+
   // A plain `<div>`, not `View`, wraps the row: `View` isn't `forwardRef`, so
   // it can't carry `cardRef`. `tabIndex={-1}` makes it focusable via the
   // handle's `focus()` without adding it to the Tab order; `role="button"`
@@ -93,6 +101,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
         attributes={{
           role: 'button',
           onClick: handleOpen,
+          onContextMenu: handleContextMenu,
           onMouseEnter: () => onHover(pr.id),
           style: {
             cursor: 'pointer',
