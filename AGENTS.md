@@ -23,11 +23,9 @@ When a comment is warranted, one or two sentences is the size. If it runs longer
 
 ## Typography
 
-Type sizes come from Reshaped, never from raw pixels. Normally that is `Text`'s `variant`; where a component writes its own `font-size` and takes no typography prop — `Avatar`'s initials are the one case — reach for `var(--rs-font-size-*)` and `var(--rs-line-height-*)` instead of a number.
+Type sizes come from Reshaped — `Text`'s `variant`, or `var(--rs-font-size-*)` where a component writes its own `font-size` and takes no prop for it. Never a raw pixel value.
 
-The scale in the installed Reshaped (4.x) is `body-1` `body-2` `caption-1` `caption-2`. **The mockups are drawn against Reshaped v3.7, which numbers it one step differently** — v3.7's `body-3` is 14/20, which is `body-2` here. Translate before copying a name across.
-
-Getting that wrong fails silently, which is why it is worth the paragraph: `Text` renders an unknown `variant` with no class at all, and its root is `font-size: inherit`, so the text lands on the inherited 16px rather than erroring. Nothing in the app sets a base size, and neither typecheck nor lint catches it — `variant` is typed loosely in the bundle entrypoint the app imports from.
+The scale is `body-1` `body-2` `caption-1` `caption-2`, plus `featured-*` and `headline-*`. Anything else silently does nothing: `Text` gives a variant it doesn't know no class at all, the text falls back to the inherited 16px, and neither typecheck nor lint objects.
 
 ## Releases
 
