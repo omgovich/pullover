@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react'
 import { Avatar, Icon, Text, Tooltip, View } from 'reshaped/bundle'
-import { showPrMenu } from '../pr-menu'
+import { pointerAnchor, showPrMenu } from '../pr-menu'
 import type { PullRequestCardHandle } from './PullRequestCard'
 import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
 import StackConnector from './StackConnector'
@@ -116,7 +116,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
     // tinted — a right-click can land on a card the pointer never entered.
     const handleContextMenu = (event: React.MouseEvent): void => {
       onSelect(pr.id)
-      void showPrMenu(item, { x: event.clientX, y: event.clientY }, onSnoozed)
+      void showPrMenu(item, pointerAnchor(event), onSnoozed)
     }
 
     return (

@@ -7,6 +7,15 @@ export interface MenuAnchor {
 }
 
 /**
+ * Popping exactly at the click puts the pointer inside the first item, which
+ * comes up highlighted. macOS leaves the pointer in the menu's top-left
+ * corner, clear of every row, so the menu hangs down and to the right of it.
+ */
+export function pointerAnchor(event: { clientX: number; clientY: number }): MenuAnchor {
+  return { x: event.clientX + 2, y: event.clientY + 6 }
+}
+
+/**
  * Pops the card's context menu and carries out whatever was chosen.
  *
  * The main process only reports the choice, so every action runs through the

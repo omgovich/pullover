@@ -4,7 +4,7 @@ import type { ClassifiedPullRequest } from '@shared/types'
 import { Layers } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
 import { Avatar, Badge, Text, View } from 'reshaped/bundle'
-import { showPrMenu } from '../pr-menu'
+import { pointerAnchor, showPrMenu } from '../pr-menu'
 import { CI_PILL_COLORS, statusPillColor } from './pr-colors'
 import SnoozeMenu from './SnoozeMenu'
 import StackConnector from './StackConnector'
@@ -79,7 +79,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
   // tinted — a right-click can land on a card the pointer never entered.
   const handleContextMenu = (event: React.MouseEvent): void => {
     onSelect(pr.id)
-    void showPrMenu(item, { x: event.clientX, y: event.clientY }, onSnoozed)
+    void showPrMenu(item, pointerAnchor(event), onSnoozed)
   }
 
   // A plain `<div>`, not `View`, wraps the row: `View` isn't `forwardRef`, so
