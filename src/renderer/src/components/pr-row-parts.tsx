@@ -5,6 +5,9 @@ import { accentTint, CI_BADGES, statusAccent } from './pr-colors'
 
 const CI_ICONS = { success: Check, failure: X, pending: Clock } as const
 
+/** Every badge on a meta line stands this tall, so a row's badges line up. */
+export const BADGE_HEIGHT_PX = 16
+
 /**
  * The pieces both card layouts draw the same way. They were compact's alone
  * until the comfortable row was rebuilt around the same right-hand group;
@@ -31,8 +34,8 @@ export function CiChip({ status }: { status: CiStatus }): React.JSX.Element | nu
 
   return (
     <View
-      width="16px"
-      height="16px"
+      width={`${BADGE_HEIGHT_PX}px`}
+      height={`${BADGE_HEIGHT_PX}px`}
       align="center"
       justify="center"
       borderRadius="small"

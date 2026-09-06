@@ -7,7 +7,7 @@ import { Actionable, Avatar, Icon, Text, View } from 'reshaped/bundle'
 import { pointerAnchor, showPrMenu } from '../pr-menu'
 import Marquee from './Marquee'
 import { accentTint } from './pr-colors'
-import { CiChip, initialsOf, StatusText } from './pr-row-parts'
+import { BADGE_HEIGHT_PX, CiChip, initialsOf, StatusText } from './pr-row-parts'
 import StackConnector from './StackConnector'
 
 interface Props {
@@ -189,6 +189,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                     direction="row"
                     align="center"
                     gap={0.75}
+                    height={`${BADGE_HEIGHT_PX}px`}
                     paddingInline={1.5}
                     borderRadius="circular"
                     attributes={{ style: { backgroundColor: accentTint('primary') } }}
