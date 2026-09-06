@@ -3,9 +3,10 @@ import type { StackCardRow } from '@core/stack'
 import type { ClassifiedPullRequest } from '@shared/types'
 import { Ellipsis, Layers } from 'lucide-react'
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { Actionable, Avatar, Badge, Icon, Text, View } from 'reshaped/bundle'
+import { Actionable, Avatar, Icon, Text, View } from 'reshaped/bundle'
 import { pointerAnchor, showPrMenu } from '../pr-menu'
 import { useMarquee } from '../useMarquee'
+import { accentTint } from './pr-colors'
 import { CiChip, initialsOf, StatusText } from './pr-row-parts'
 import StackConnector from './StackConnector'
 
@@ -180,12 +181,24 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                 <Text as="span" variant="caption-1" numeric color="primary">
                   #{pr.number}
                 </Text>
+                {/* Not Reshaped's `Badge`: its faded variant fills with the
+                    `*-faded` token, which needs the border it also draws to
+                    stay visible on a hovered row. Same tint as the CI chip
+                    instead — see `accentTint`. */}
                 {item.stack !== null && (
-                  <Badge size="small" color="primary" variant="faded" icon={Layers}>
-                    <Text as="span" numeric>
+                  <View
+                    direction="row"
+                    align="center"
+                    gap={0.75}
+                    paddingInline={1.5}
+                    borderRadius="circular"
+                    attributes={{ style: { backgroundColor: accentTint('primary') } }}
+                  >
+                    <Icon svg={Layers} size="9px" color="primary" />
+                    <Text as="span" variant="caption-2" weight="bold" numeric color="primary">
                       {item.stack.index}/{item.stack.total}
                     </Text>
-                  </Badge>
+                  </View>
                 )}
               </View>
               <Text
