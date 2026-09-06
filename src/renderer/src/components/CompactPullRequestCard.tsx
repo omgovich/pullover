@@ -44,6 +44,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
     const { item } = row
     const { pr } = item
     const cardRef = useRef<HTMLDivElement>(null)
+
     useImperativeHandle(ref, () => ({
       element: cardRef.current,
       focus: () => cardRef.current?.focus({ preventScroll: true }),

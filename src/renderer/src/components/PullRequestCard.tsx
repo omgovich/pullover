@@ -58,8 +58,9 @@ const OPEN_FADE_BELOW_PX = 12
 /** Breathing room between the actions button and the menu it drops. */
 const MENU_GAP_PX = 4
 
-// Wider than it is tall, so the three dots get room without the button
-// growing past the meta line it sits in.
+// Wider than it is tall, so the three dots get room. It still stands taller
+// than the 15px line it sits in, which is fine — the line's height is fixed,
+// so the button overhangs it rather than stretching the row.
 const MENU_BUTTON_WIDTH_PX = 22
 const MENU_BUTTON_HEIGHT_PX = 20
 

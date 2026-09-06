@@ -3,17 +3,17 @@ import { Check, Clock, X } from 'lucide-react'
 import { Icon, Text, View } from 'reshaped/bundle'
 import { accentTint, CI_BADGES, statusAccent } from './pr-colors'
 
-const CI_ICONS = { success: Check, failure: X, pending: Clock } as const
-
-/** Every badge on a meta line stands this tall, so a row's badges line up. */
-export const BADGE_HEIGHT_PX = 16
-
 /**
  * The pieces both card layouts draw the same way. They were compact's alone
  * until the comfortable row was rebuilt around the same right-hand group;
  * keeping one copy is what stops the two layouts drifting apart on a colour
  * or a size that is meant to read as the same thing.
  */
+
+const CI_ICONS = { success: Check, failure: X, pending: Clock } as const
+
+/** Every badge on a meta line stands this tall, so a row's badges line up. */
+export const BADGE_HEIGHT_PX = 16
 
 /** Two letters: one is ambiguous at a glance across a list of teammates. */
 export function initialsOf(login: string): string {

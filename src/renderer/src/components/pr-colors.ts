@@ -1,11 +1,14 @@
-import type { TextProps } from 'reshaped/bundle'
-
 /**
  * The accent a row's colours are drawn from. One name drives both the
  * Reshaped `color` prop and the CSS variable behind `accentTint`, so an icon
  * and the patch it sits on can never be tinted from two different hues.
+ *
+ * Spelled out rather than taken from `TextProps['color']`: that union also
+ * holds names with no `--rs-color-foreground-*` behind them, and `accentTint`
+ * would turn one of those into an invalid declaration and no fill at all,
+ * without complaint.
  */
-export type Accent = NonNullable<TextProps['color']>
+export type Accent = 'primary' | 'critical' | 'positive' | 'warning' | 'neutral-faded'
 
 // Keyed off the exact reason strings `src/core/classify.ts` produces. The
 // counted reasons ("3 new replies", "2 open threads") aren't listed here on

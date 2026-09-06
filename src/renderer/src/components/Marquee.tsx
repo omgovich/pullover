@@ -4,8 +4,10 @@ import { useLayoutEffect, useRef, useState } from 'react'
 // every title makes a barely-clipped one crawl and a very long one race.
 const PX_PER_SECOND = 32
 /**
- * Pause at either end of a pass. `alternate` runs the easing backwards on the
- * return, so each turnaround holds twice this before setting off again.
+ * Pause at either end of a pass, spent inside the easing rather than by
+ * delaying the start — the box widens and the animation begins together, and
+ * the easing simply sits at zero until the wait is up. `alternate` runs it
+ * backwards on the return, so each turnaround holds twice this.
  */
 const HOLD_SECONDS = 0.7
 
@@ -30,14 +32,14 @@ interface Props {
  */
 export default function Marquee({ active, children }: Props): React.JSX.Element {
   const clipRef = useRef<HTMLSpanElement>(null)
-  const [phase, setPhase] = useState<'off' | 'holding' | 'moving'>('off')
+  const [scrolling, setScrolling] = useState(false)
 
   // Measured per activation rather than once: whatever shares the row with
   // the text sizes what is left for it. Laid out before paint, so a row never
   // paints mid-swap.
   useLayoutEffect(() => {
     if (!active) {
-      setPhase('off')
+      setScrolling(false)
       return
     }
     const clip = clipRef.current
@@ -61,19 +63,11 @@ export default function Marquee({ active, children }: Props): React.JSX.Element 
       '--pv-marquee-ease',
       `linear(0 0%, 0 ${holdPercent}%, 1 ${100 - holdPercent}%, 1 100%)`,
     )
-    setPhase('holding')
-
-    const timer = setTimeout(() => setPhase('moving'), HOLD_SECONDS * 1000)
-    return () => clearTimeout(timer)
+    setScrolling(true)
   }, [active])
 
   return (
-    <span
-      ref={clipRef}
-      className={`pv-marquee${phase !== 'off' ? ' pv-marquee--active' : ''}${
-        phase === 'moving' ? ' pv-marquee--moving' : ''
-      }`}
-    >
+    <span ref={clipRef} className={`pv-marquee${scrolling ? ' pv-marquee--scrolling' : ''}`}>
       <span className="pv-marquee-text">{children}</span>
     </span>
   )

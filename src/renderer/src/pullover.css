@@ -188,14 +188,11 @@ body {
   background-size: 2px 3px;
 }
 
-/* A compact title too long for its row scrolls out to its end while its row
-   is the active one, then back. The distance is exact and needs no measuring
-   in JS: `100cqw` is the clip box's width and a percentage inside a transform
+/* A title too long for its row scrolls out to its end while its row is the
+   active one, then back. The distance is exact and needs no measuring in JS:
+   `100cqw` is the clip box's width and a percentage inside a transform
    resolves against the element's own, so their difference is precisely the
-   overflow — and `min()` with zero leaves a title that fits alone. The text
-   has to stay direct inline content of the ellipsising box: Chrome draws no
-   ellipsis for an overflowing inline-block child, so the usual inner span
-   would trade the resting state for the animated one. */
+   overflow — and `min()` with zero leaves a title that fits alone. */
 .pv-marquee {
   --pv-marquee-fade: 6px;
 
@@ -227,23 +224,17 @@ body {
   white-space: nowrap;
 }
 
-/* Two states, because the ellipsis and the travel start at different times.
-   The animation runs from the moment the row goes active, but its easing
-   holds at zero first, so nothing moves and the row can keep the ellipsis it
-   already had. Only when the travel actually begins does the box open up to
-   the full title — otherwise the ellipsis vanished the instant the pointer
-   arrived and then nothing happened for the length of the pause. */
-.pv-marquee--active > .pv-marquee-text {
+/* Widening the box and starting the animation are the same moment: the
+   easing holds at zero for the opening pause, so nothing moves until the
+   wait is up and there is no second state to switch into. */
+.pv-marquee--scrolling > .pv-marquee-text {
+  width: max-content;
   animation: pv-marquee var(--pv-marquee-duration, 6s) var(--pv-marquee-ease, linear) infinite
     alternate;
 }
 
-.pv-marquee--moving > .pv-marquee-text {
-  width: max-content;
-}
-
 /* Pure travel, end to end. The pauses at either end live in the easing
-   instead (`--pv-marquee-ease`, built by the card): a keyframe offset is a
+   instead (`--pv-marquee-ease`, built by `Marquee`): a keyframe offset is a
    literal percentage and so would scale with the duration, which is how the
    wait before a long title started moving came to be longer than the wait
    before a short one. */
@@ -256,9 +247,11 @@ body {
   }
 }
 
+/* No travel, and the ellipsis back in its place — on every row, not just the
+   active one, so a title reads the same wherever the cursor is. The mask is
+   left alone: it fades the padding, which the clamped text never reaches. */
 @media (prefers-reduced-motion: reduce) {
-  .pv-marquee--active > *,
-  .pv-marquee--moving > * {
+  .pv-marquee-text {
     width: auto;
     overflow: hidden;
     text-overflow: ellipsis;
