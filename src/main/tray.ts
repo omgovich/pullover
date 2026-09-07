@@ -7,9 +7,13 @@ import { createTrayIcon } from './tray-icon'
 /**
  * Pure string-building for the tray title, kept separate so it can be unit
  * tested without constructing a real `Tray` (which needs a running Electron).
+ *
+ * Zero renders as no title: the bar carries a number or just the glyph. That
+ * also covers every state before the first fetch, where the count is zero
+ * because nothing has been counted — not because nothing is waiting.
  */
 export function formatBadgeTitle(count: number): string {
-  if (count === 0) return 'No PRs'
+  if (count === 0) return ''
   return count === 1 ? '1 PR' : `${count} PRs`
 }
 
