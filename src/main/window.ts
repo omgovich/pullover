@@ -2,8 +2,8 @@ import { join } from 'node:path'
 import { BrowserWindow, type Rectangle, screen, shell } from 'electron'
 import { isSafeExternalUrl } from './safe-url'
 
-// The window is exactly the size of the popup's visible card — must match
-// `.pv-shell`'s width/height in src/renderer/src/pullover.css.
+// The window is exactly the size of the popup's visible card: the renderer's
+// shell fills it edge to edge, so these are the only place the size lives.
 const CARD_WIDTH = 440
 const CARD_HEIGHT = 620
 

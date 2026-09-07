@@ -25,8 +25,8 @@ body {
 
 /* Scroll area */
 
-/* `ScrollArea` (App.tsx) has no `grow` prop, so filling the rest of
-   `.pv-shell`'s column still needs an explicit flex declaration. */
+/* `ScrollArea` (App.tsx) has no `grow` prop, so filling the rest of the
+   shell's column still needs an explicit flex declaration. */
 .pv-scroll {
   flex: 1 1 auto;
   min-height: 0;
