@@ -5,8 +5,10 @@ import { formatBadgeTitle, formatRefreshItem, formatStatusLine, formatUpdateItem
 // `Tray` needs a running Electron and cannot be constructed headlessly, so
 // only the pure string-building is covered here.
 describe('formatBadgeTitle', () => {
-  it('reads "No PRs" for zero', () => {
-    expect(formatBadgeTitle(0)).toBe('No PRs')
+  // Also the state before the first fetch returns, where zero means "not
+  // counted yet" — a badge for it would claim something the app can't know.
+  it('shows no title for zero, leaving the bar to the icon alone', () => {
+    expect(formatBadgeTitle(0)).toBe('')
   })
 
   it('reads "1 PR" for exactly one', () => {
