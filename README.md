@@ -26,15 +26,15 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 
 ## ✨ Features
 
-- 🎯 **Only what needs you.** Fresh review requests, re-reviews after new commits, unanswered comment threads, mentions — each PR lands in the inbox with the reason it's there. PRs where the ball is in someone else's court stay out of sight.
+- 🎯 **Only what needs you.** A review you were asked for, a reply you haven't answered, a re-review after new commits or a second request, a mention — each PR sits under the reason it's there, longest wait first. The ones where the ball is in someone else's court collapse into a “Waiting on others” section you can leave shut.
 - 🧑‍💻 **Your own PRs, too.** They surface only when there's something for you to do: changes requested, a comment you haven't answered, red CI, merge conflicts, or approved and ready to merge.
 - 🧬 **Stacks stay together.** A stacked PR shows its place in the chain (`4/8`), and the stack is drawn as one connected run — with a dotted break standing in for the parts that don't need you, so you can see the shape of it without the noise.
 - 💤 **Snooze that un-snoozes itself.** Park a PR for a while — it wakes up on its own when something actually happens: new commits or a new reply.
 - 📌 **Lives in the menu bar.** A quiet count of PRs waiting on you; no Dock icon, no window to manage.
-- ⚡ **Open it from anywhere.** `⌃⌥P` toggles the window over whatever you are in, so you never have to aim for the menu bar. Pick a different combination in **Settings**, or turn it off.
+- ⚡ **Open it from anywhere.** `⌃⌥P` toggles the window over whatever you are in, so you never have to aim for the menu bar. Pick a different combination in Settings, or turn it off.
 - ⌨️ **Drive it from the keyboard.** `↑` `↓` move, `⏎` opens the pull request, `S` snoozes, `R` refreshes and `esc` closes the window — all of it printed along the window's bottom edge, so there is nothing to memorise. `M` opens the actions menu on the row you are on.
 - 🌗 **Light and dark themes.** Follows your macOS appearance out of the box, or pick one in Settings.
-- 📐 **Two layouts.** Comfortable by default. If you have a lot of pull requests, turn on compact in **Settings** and each one takes a single row.
+- 📐 **Two layouts.** Comfortable by default. If you have a lot of pull requests, turn on compact in Settings and each one takes a single row.
 - ⬇️ **Updates itself quietly.** New versions download in the background; Pullover then offers a restart and waits for you to take it.
 - 👀 **Read-only by design.** Pullover never comments, approves, or merges. Clicking a PR opens it on github.com — you act where you always did.
 - 🔒 **Works where you actually review.** Private repositories, and review requests that reached you through a team rather than by name, show up like anything else.
