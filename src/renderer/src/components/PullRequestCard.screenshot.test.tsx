@@ -66,18 +66,32 @@ visualCase(
 visualCase(
   'crowded-meta',
   card(
-    makeRow({
-      repository: 'acme/platform-infrastructure-terraform-modules',
-      additions: 9999,
-      deletions: 8888,
-      updatedAt: '2026-05-02T09:00:00Z',
-    }),
+    makeRow(
+      {
+        repository: 'acme/platform-infrastructure-terraform-modules',
+        additions: 9999,
+        deletions: 8888,
+        updatedAt: '2026-05-02T09:00:00Z',
+      },
+      // Named here too, or the waiting time — which is what the meta line
+      // actually prints — would stay two hours wide and leave this case
+      // testing a meta line that isn't crowded.
+      { waitingSince: '2026-05-02T09:00:00Z' },
+    ),
   ),
 )
 
 visualCase(
   'ci-failure',
   card(makeRow({ ciStatus: 'failure' }, { reason: 'CI is red', category: 'my-pr-action' })),
+)
+
+// The meta line's other half: nothing in `waiting` is the user's move, so
+// the row has no waiting time and prints the last activity instead. Every
+// other case here is on the `waiting Xh` side of that branch.
+visualCase(
+  'waiting-on-author',
+  card(makeRow({}, { category: 'waiting', reason: 'Waiting on author' })),
 )
 
 visualCase('no-avatar', card(makeRow({ authorAvatarUrl: '', authorLogin: 'octocat' })))

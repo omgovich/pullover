@@ -1,4 +1,4 @@
-import { formatAge, repositoryName } from '@core/format'
+import { formatAge, formatWaiting, repositoryName } from '@core/format'
 import type { StackCardRow } from '@core/stack'
 import type { ClassifiedPullRequest } from '@shared/types'
 import { Ellipsis, Layers } from 'lucide-react'
@@ -210,8 +210,12 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
               >
                 ·
               </Text>
+              {/* Also what the section is sorted by, so the top row says why
+                  it is the top row. The `waiting` section has no such time. */}
               <Text as="span" variant="caption-1" color="neutral-faded" numeric>
-                {formatAge(pr.updatedAt, now)}
+                {item.waitingSince !== null
+                  ? formatWaiting(item.waitingSince, now)
+                  : formatAge(pr.updatedAt, now)}
               </Text>
               <Text
                 as="span"

@@ -126,7 +126,7 @@ describe('classify — reviewer branch', () => {
   it('mentioned when only @-mentioned', () => {
     const pr = makePullRequest({
       buckets: ['mentions', 'involves'],
-      lastMentionAt: '2026-08-05T10:00:00Z',
+      mentionsAt: ['2026-08-05T10:00:00Z'],
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('mentioned')
@@ -138,7 +138,7 @@ describe('classify — reviewer branch', () => {
       buckets: ['involves', 'mentions'],
       reviews: [{ authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' }],
       lastCommitPushedAt: '2026-08-01T10:00:00Z',
-      lastMentionAt: '2026-08-05T10:00:00Z',
+      mentionsAt: ['2026-08-05T10:00:00Z'],
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('mentioned')
@@ -150,7 +150,7 @@ describe('classify — reviewer branch', () => {
       buckets: ['involves', 'mentions'],
       reviews: [{ authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-05T10:00:00Z' }],
       lastCommitPushedAt: '2026-08-01T10:00:00Z',
-      lastMentionAt: '2026-08-01T10:00:00Z',
+      mentionsAt: ['2026-08-01T10:00:00Z'],
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('waiting')
@@ -160,7 +160,7 @@ describe('classify — reviewer branch', () => {
     // Team mentions, mentions in a review body we don't fetch, commit-message
     // mentions, etc. all leave lastMentionAt null even though GitHub's
     // mentions:@me search did match this PR. It must not be dropped.
-    const pr = makePullRequest({ buckets: ['mentions'], lastMentionAt: null })
+    const pr = makePullRequest({ buckets: ['mentions'], mentionsAt: [] })
     const result = classify(pr, ctx())
     expect(result.category).toBe('mentioned')
   })
@@ -169,7 +169,7 @@ describe('classify — reviewer branch', () => {
     const pr = makePullRequest({
       buckets: ['involves', 'mentions'],
       updatedAt: '2026-08-01T10:00:00Z',
-      lastMentionAt: null,
+      mentionsAt: [],
       reviews: [makeReview(ME, '2026-08-05T10:00:00Z')],
     })
     const result = classify(pr, ctx())
@@ -183,7 +183,7 @@ describe('classify — reviewer branch', () => {
     const pr = makePullRequest({
       buckets: ['review-requested', 'mentions'],
       conversationComments: [makeComment(ME, '2026-08-01T10:00:00Z')],
-      lastMentionAt: '2026-08-05T10:00:00Z',
+      mentionsAt: ['2026-08-05T10:00:00Z'],
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('waiting')
@@ -411,7 +411,7 @@ describe('classify — snooze override', () => {
 })
 
 describe('classifyAll', () => {
-  it('drops hidden PRs and orders by category then recency', () => {
+  it('drops hidden PRs and orders by category, then longest-waiting first', () => {
     const prs = [
       makePullRequest({
         id: 'PR_waiting',
@@ -421,18 +421,372 @@ describe('classifyAll', () => {
       }),
       makePullRequest({ id: 'PR_hidden', buckets: ['involves'] }),
       makePullRequest({
-        id: 'PR_old_review',
+        id: 'PR_fresh_request',
         buckets: ['review-requested'],
-        updatedAt: '2026-08-01T10:00:00Z',
+        reviewRequestedAt: '2026-08-09T10:00:00Z',
       }),
       makePullRequest({
-        id: 'PR_new_review',
+        id: 'PR_stale_request',
         buckets: ['review-requested'],
-        updatedAt: '2026-08-08T10:00:00Z',
+        reviewRequestedAt: '2026-08-01T10:00:00Z',
       }),
     ]
     const ids = classifyAll(prs, ctx()).map((item) => item.pr.id)
-    expect(ids).toEqual(['PR_new_review', 'PR_old_review', 'PR_waiting'])
+    expect(ids).toEqual(['PR_stale_request', 'PR_fresh_request', 'PR_waiting'])
+  })
+
+  it('puts the longest-waiting PR first even when it is the least recently active', () => {
+    // The bug this ordering exists to kill: a comment an hour ago used to
+    // float a fortnight-old obligation to the bottom of the section.
+    const prs = [
+      makePullRequest({
+        id: 'PR_chatty',
+        buckets: ['review-requested'],
+        reviewRequestedAt: '2026-08-09T10:00:00Z',
+        updatedAt: '2026-08-10T11:00:00Z',
+      }),
+      makePullRequest({
+        id: 'PR_forgotten',
+        buckets: ['review-requested'],
+        reviewRequestedAt: '2026-07-27T10:00:00Z',
+        updatedAt: '2026-07-27T10:00:00Z',
+      }),
+    ]
+    const ids = classifyAll(prs, ctx()).map((item) => item.pr.id)
+    expect(ids).toEqual(['PR_forgotten', 'PR_chatty'])
+  })
+
+  it('still orders the waiting section newest-activity first', () => {
+    // Nothing there is waiting on the user, so there is no waiting time to
+    // sort by — recency is all that section has ever meant.
+    const prs = [
+      makePullRequest({
+        id: 'PR_older',
+        authorLogin: ME,
+        buckets: ['author'],
+        updatedAt: '2026-08-01T10:00:00Z',
+      }),
+      makePullRequest({
+        id: 'PR_newer',
+        authorLogin: ME,
+        buckets: ['author'],
+        updatedAt: '2026-08-09T10:00:00Z',
+      }),
+    ]
+    const ids = classifyAll(prs, ctx()).map((item) => item.pr.id)
+    expect(ids).toEqual(['PR_newer', 'PR_older'])
+  })
+})
+
+describe('classify — waitingSince', () => {
+  const mine = { authorLogin: ME, buckets: ['author' as const] }
+
+  it('dates needs-review from the review request', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested'],
+      reviewRequestedAt: '2026-08-03T10:00:00Z',
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    expect(classify(pr, ctx()).waitingSince).toBe('2026-08-03T10:00:00Z')
+  })
+
+  it("falls back to the PR's creation when the request has no timestamp", () => {
+    // A team request names no user, so `reviewRequestedAt` is null — opening
+    // time is the closest honest answer, and for a reviewer named at open
+    // time it is the exact one.
+    const pr = makePullRequest({
+      buckets: ['review-requested'],
+      createdAt: '2026-08-02T10:00:00Z',
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    expect(classify(pr, ctx()).waitingSince).toBe('2026-08-02T10:00:00Z')
+  })
+
+  it('dates new-replies from the oldest reply I owe', () => {
+    const thread = (id: string, replyAt: string) =>
+      makeThread({
+        id,
+        comments: [makeComment(ME, '2026-08-01T10:00:00Z'), makeComment('alice', replyAt)],
+      })
+
+    const pr = makePullRequest({
+      buckets: ['involves'],
+      reviewThreads: [
+        thread('fresh', '2026-08-10T11:00:00Z'),
+        thread('stale', '2026-08-04T10:00:00Z'),
+      ],
+    })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('new-replies')
+    expect(result.waitingSince).toBe('2026-08-04T10:00:00Z')
+  })
+
+  it('dates a re-review from the commit that invalidated my review', () => {
+    const pr = makePullRequest({
+      buckets: ['involves'],
+      reviews: [makeReview(ME, '2026-08-01T10:00:00Z', { state: 'CHANGES_REQUESTED' })],
+      lastCommitPushedAt: '2026-08-05T10:00:00Z',
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.reason).toBe('New commits')
+    expect(result.waitingSince).toBe('2026-08-05T10:00:00Z')
+  })
+
+  it('ignores a review request that predates my own review', () => {
+    // I reviewed on the 3rd, which cleared me from the reviewer list; the
+    // request on the 1st is the one I already answered. A team re-request
+    // names nobody, so there is nothing newer to read — but dating this from
+    // the 1st would claim it waited through my own review.
+    const pr = makePullRequest({
+      buckets: ['review-requested', 'involves'],
+      reviews: [makeReview(ME, '2026-08-03T10:00:00Z', { state: 'APPROVED' })],
+      reviewRequestedAt: '2026-08-01T10:00:00Z',
+      updatedAt: '2026-08-09T10:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.reason).toBe('Re-review requested')
+    expect(result.waitingSince).toBe('2026-08-09T10:00:00Z')
+  })
+
+  it('dates a red CI from the PR itself when the commit predates it', () => {
+    // `lastCommitPushedAt` is the commit's authoring date, so a branch that
+    // sat around for a month before being opened must not read as an
+    // obligation older than the pull request.
+    const pr = makePullRequest({
+      ...mine,
+      ciStatus: 'failure',
+      createdAt: '2026-08-09T10:00:00Z',
+      lastCommitPushedAt: '2026-07-01T10:00:00Z',
+      updatedAt: '2026-08-09T11:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.reason).toBe('CI is red')
+    expect(result.waitingSince).toBe('2026-08-09T10:00:00Z')
+  })
+
+  it('dates changes-requested from the oldest request still standing', () => {
+    // Alice's is cleared by her own later approval, so Bob's older one is the
+    // only thing still blocking — and it is what the author has been on the
+    // hook for. Taking the latest review still reading CHANGES_REQUESTED
+    // would answer with Alice's, which blocks nothing.
+    const pr = makePullRequest({
+      ...mine,
+      reviewDecision: 'CHANGES_REQUESTED',
+      reviews: [
+        makeReview('bob', '2026-08-02T10:00:00Z', { state: 'CHANGES_REQUESTED' }),
+        makeReview('alice', '2026-08-05T10:00:00Z', { state: 'CHANGES_REQUESTED' }),
+        makeReview('alice', '2026-08-06T10:00:00Z', { state: 'APPROVED' }),
+      ],
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    expect(classify(pr, ctx()).waitingSince).toBe('2026-08-02T10:00:00Z')
+  })
+
+  it('dates two live change requests from the first of them', () => {
+    const pr = makePullRequest({
+      ...mine,
+      reviewDecision: 'CHANGES_REQUESTED',
+      reviews: [
+        makeReview('bob', '2026-08-02T10:00:00Z', { state: 'CHANGES_REQUESTED' }),
+        makeReview('alice', '2026-08-08T10:00:00Z', { state: 'CHANGES_REQUESTED' }),
+      ],
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    expect(classify(pr, ctx()).waitingSince).toBe('2026-08-02T10:00:00Z')
+  })
+
+  it('is not reset by a nudge in a thread I already owed an answer in', () => {
+    const pr = makePullRequest({
+      buckets: ['involves'],
+      reviewThreads: [
+        makeThread({
+          comments: [
+            makeComment(ME, '2026-08-01T10:00:00Z'),
+            makeComment('alice', '2026-08-02T10:00:00Z'),
+            makeComment('alice', '2026-08-10T11:00:00Z'),
+          ],
+        }),
+      ],
+    })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('new-replies')
+    expect(result.waitingSince).toBe('2026-08-02T10:00:00Z')
+  })
+
+  it('dates a mention from the first one I have not answered', () => {
+    // Being called out again today does not mean I was only called out
+    // today — the clock started at the mention I left unanswered.
+    const pr = makePullRequest({
+      buckets: ['mentions'],
+      mentionsAt: ['2026-08-02T10:00:00Z', '2026-08-10T11:00:00Z'],
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('mentioned')
+    expect(result.waitingSince).toBe('2026-08-02T10:00:00Z')
+  })
+
+  it('skips mentions I answered and dates from the first one after', () => {
+    const pr = makePullRequest({
+      buckets: ['mentions'],
+      mentionsAt: ['2026-08-01T10:00:00Z', '2026-08-06T10:00:00Z', '2026-08-09T10:00:00Z'],
+      conversationComments: [makeComment(ME, '2026-08-03T10:00:00Z')],
+      updatedAt: '2026-08-09T10:00:00Z',
+    })
+    expect(classify(pr, ctx()).waitingSince).toBe('2026-08-06T10:00:00Z')
+  })
+
+  it('never dates a wait from before a draft became reviewable', () => {
+    // Reviewers can be requested while a PR is still a draft, and a draft is
+    // hidden — so those eleven days were waiting on nobody.
+    const pr = makePullRequest({
+      buckets: ['review-requested'],
+      createdAt: '2026-07-25T10:00:00Z',
+      reviewRequestedAt: '2026-07-25T11:00:00Z',
+      readyForReviewAt: '2026-08-05T10:00:00Z',
+      updatedAt: '2026-08-05T10:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('needs-review')
+    expect(result.waitingSince).toBe('2026-08-05T10:00:00Z')
+  })
+
+  it('leaves a request that postdates the draft alone', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested'],
+      createdAt: '2026-07-25T10:00:00Z',
+      readyForReviewAt: '2026-08-01T10:00:00Z',
+      reviewRequestedAt: '2026-08-03T10:00:00Z',
+    })
+    expect(classify(pr, ctx()).waitingSince).toBe('2026-08-03T10:00:00Z')
+  })
+
+  it('dates ready-to-merge from the approval that unblocked it, not a later one', () => {
+    const pr = makePullRequest({
+      ...mine,
+      reviewDecision: 'APPROVED',
+      reviews: [
+        makeReview('alice', '2026-08-03T10:00:00Z', { state: 'APPROVED' }),
+        makeReview('bob', '2026-08-09T10:00:00Z', { state: 'APPROVED' }),
+      ],
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.reason).toBe('Ready to merge')
+    expect(result.waitingSince).toBe('2026-08-03T10:00:00Z')
+  })
+
+  it('dates a re-review request from the request', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested', 'involves'],
+      reviews: [makeReview(ME, '2026-08-01T10:00:00Z', { state: 'CHANGES_REQUESTED' })],
+      reviewRequestedAt: '2026-08-06T10:00:00Z',
+      lastCommitPushedAt: '2026-07-30T10:00:00Z',
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.reason).toBe('Re-review requested')
+    expect(result.waitingSince).toBe('2026-08-06T10:00:00Z')
+  })
+
+  it('dates a mention from the mention', () => {
+    const pr = makePullRequest({
+      buckets: ['mentions'],
+      mentionsAt: ['2026-08-04T10:00:00Z'],
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('mentioned')
+    expect(result.waitingSince).toBe('2026-08-04T10:00:00Z')
+  })
+
+  it('dates changes-requested from the review that asked', () => {
+    const pr = makePullRequest({
+      ...mine,
+      reviewDecision: 'CHANGES_REQUESTED',
+      reviews: [makeReview('alice', '2026-08-03T10:00:00Z', { state: 'CHANGES_REQUESTED' })],
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    expect(classify(pr, ctx()).waitingSince).toBe('2026-08-03T10:00:00Z')
+  })
+
+  it('dates open threads on my PR from the oldest unanswered one', () => {
+    const pr = makePullRequest({
+      ...mine,
+      reviewThreads: [
+        makeThread({ id: 'fresh', comments: [makeComment('alice', '2026-08-10T11:00:00Z')] }),
+        makeThread({ id: 'stale', comments: [makeComment('bob', '2026-08-02T10:00:00Z')] }),
+      ],
+    })
+    const result = classify(pr, ctx())
+    expect(result.reason).toBe('2 open threads')
+    expect(result.waitingSince).toBe('2026-08-02T10:00:00Z')
+  })
+
+  it('dates a red CI from the commit whose checks failed', () => {
+    const pr = makePullRequest({
+      ...mine,
+      ciStatus: 'failure',
+      lastCommitPushedAt: '2026-08-06T10:00:00Z',
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.reason).toBe('CI is red')
+    expect(result.waitingSince).toBe('2026-08-06T10:00:00Z')
+  })
+
+  it('dates ready-to-merge from the approval that unblocked it', () => {
+    const pr = makePullRequest({
+      ...mine,
+      reviewDecision: 'APPROVED',
+      reviews: [makeReview('alice', '2026-08-07T10:00:00Z', { state: 'APPROVED' })],
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.reason).toBe('Ready to merge')
+    expect(result.waitingSince).toBe('2026-08-07T10:00:00Z')
+  })
+
+  it('dates merge conflicts from the last activity, having no event to point at', () => {
+    const pr = makePullRequest({
+      ...mine,
+      mergeable: 'CONFLICTING',
+      updatedAt: '2026-08-08T10:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.reason).toBe('Merge conflicts')
+    expect(result.waitingSince).toBe('2026-08-08T10:00:00Z')
+  })
+
+  it('is null when nothing is waiting on me', () => {
+    const waiting = makePullRequest({ ...mine })
+    expect(classify(waiting, ctx()).category).toBe('waiting')
+    expect(classify(waiting, ctx()).waitingSince).toBeNull()
+
+    const draft = makePullRequest({ isDraft: true, buckets: ['review-requested'] })
+    expect(classify(draft, ctx()).waitingSince).toBeNull()
+  })
+
+  it('is null while snoozed, and comes back when the snooze lapses', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested'],
+      reviewRequestedAt: '2026-08-01T10:00:00Z',
+    })
+    const snoozes = {
+      PR_1: {
+        prId: 'PR_1',
+        type: 'until-time' as const,
+        snoozedAt: '2026-08-10T10:00:00Z',
+        until: '2026-08-10T14:00:00Z',
+      },
+    }
+    expect(classify(pr, ctx(snoozes)).waitingSince).toBeNull()
+
+    // Lapsed, the request comes back as the answer — the snooze neither
+    // restarted the clock nor became the new start of it.
+    const lapsed = { PR_1: { ...snoozes.PR_1, until: '2026-08-10T11:00:00Z' } }
+    expect(classify(pr, ctx(lapsed)).waitingSince).toBe('2026-08-01T10:00:00Z')
   })
 })
 

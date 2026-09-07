@@ -32,6 +32,7 @@ function detailNode(id: string, overrides: Record<string, unknown> = {}) {
     comments: { nodes: [] },
     bodyText: '',
     commits: { nodes: [] },
+    timelineItems: { nodes: [] },
     ...overrides,
   }
 }
@@ -158,7 +159,7 @@ describe('fetchPullRequests', () => {
       detailNode('PR_1', { bodyText: 'Hey @vlad, take a look' }),
     ])
     const prs = await fetchPullRequests(client, 'vlad')
-    expect(prs[0]!.lastMentionAt).not.toBeNull()
+    expect(prs[0]!.mentionsAt).not.toHaveLength(0)
   })
 
   it('issues all four bucket searches concurrently rather than waiting for each to resolve', async () => {

@@ -67,6 +67,16 @@ export interface PullRequestNode {
       }
     } | null>
   }
+  /** Review-requested and ready-for-review events only; see `DETAILS_QUERY`. */
+  timelineItems: {
+    nodes: Array<{
+      __typename: string
+      createdAt: string
+      /** Only a `User` reviewer carries a login — a team or a bot has none.
+          Absent entirely on a ready-for-review event. */
+      requestedReviewer?: { login?: string } | null
+    } | null>
+  }
 }
 
 /**
@@ -100,13 +110,13 @@ function latestIso(dates: string[]): string | null {
   return dates.reduce((latest, d) => (compareIso(d, latest) > 0 ? d : latest))
 }
 
-function computeLastMentionAt(
+function computeMentionsAt(
   node: PullRequestNode,
   conversationComments: ThreadComment[],
   reviewThreadComments: ThreadComment[],
   reviews: Review[],
   myLogin: string,
-): string | null {
+): string[] {
   const candidates: string[] = []
 
   for (const c of [...conversationComments, ...reviewThreadComments]) {
@@ -127,7 +137,42 @@ function computeLastMentionAt(
     candidates.push(node.createdAt)
   }
 
-  return latestIso(candidates)
+  // Sorted, because the classifier reads both ends: the newest decides
+  // whether a mention still stands, the oldest unanswered one since when.
+  return candidates.sort(compareIso)
+}
+
+type RequestEvent = { createdAt: string; requestedReviewer?: { login?: string } | null }
+
+function reviewRequests(node: PullRequestNode): RequestEvent[] {
+  return node.timelineItems.nodes.flatMap((event) =>
+    event !== null && event.__typename === 'ReviewRequestedEvent' ? [event] : [],
+  )
+}
+
+/**
+ * When the user was last asked to review, or null if nothing suggests they
+ * were. A request naming a teammate must not restart this user's clock, so
+ * only requests naming them count — falling back to one naming nobody, since
+ * a team or bot request is why GitHub matched this PR at all.
+ */
+function computeReviewRequestedAt(node: PullRequestNode, myLogin: string): string | null {
+  const requests = reviewRequests(node)
+  const named = latestIso(
+    requests.flatMap((e) => (e.requestedReviewer?.login === myLogin ? [e.createdAt] : [])),
+  )
+  if (named !== null) return named
+  return latestIso(
+    requests.flatMap((e) => (e.requestedReviewer?.login === undefined ? [e.createdAt] : [])),
+  )
+}
+
+function computeReadyForReviewAt(node: PullRequestNode): string | null {
+  return latestIso(
+    node.timelineItems.nodes.flatMap((event) =>
+      event !== null && event.__typename === 'ReadyForReviewEvent' ? [event.createdAt] : [],
+    ),
+  )
 }
 
 export function mapCiStatus(state: string | null | undefined): CiStatus {
@@ -207,7 +252,9 @@ export function mapPullRequest(
     reviews,
     reviewThreads,
     conversationComments,
-    lastMentionAt: computeLastMentionAt(
+    reviewRequestedAt: computeReviewRequestedAt(node, myLogin),
+    readyForReviewAt: computeReadyForReviewAt(node),
+    mentionsAt: computeMentionsAt(
       node,
       conversationComments,
       reviewThreadComments,

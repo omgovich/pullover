@@ -1,3 +1,4 @@
+import { classifyAll } from '@core/classify'
 import { computeStackPositions, orderSection, sectionRows } from '@core/stack'
 import { makePullRequest } from '@core/test-factory'
 import type { ClassifiedPullRequest, PullRequest, StackPosition } from '@shared/types'
@@ -19,6 +20,7 @@ function classified(
     pr: makePullRequest({ id, ...overrides }),
     category: 'needs-review',
     reason: '',
+    waitingSince: null,
     isSnoozed: false,
     stack,
   }
@@ -263,7 +265,7 @@ describe('orderSection', () => {
     expect(ordered.map((item) => item.pr.id)).toEqual(['PR_1', 'PR_2', 'PR_3', 'PR_x'])
   })
 
-  it('keeps a category-then-recency order between stacks and lets the earliest-appearing stack float up', () => {
+  it('keeps the incoming order between stacks and lets the earliest-appearing stack float up', () => {
     const items = [
       classified('PR_b1', { id: 'stack-b', index: 1, total: 2 }),
       classified('PR_a2', { id: 'stack-a', index: 2, total: 2 }),
@@ -277,6 +279,45 @@ describe('orderSection', () => {
     // position. Stack "a" collapses to where its earliest-appearing member
     // (#2, at index 1 of the input) was, sorted ascending by index.
     expect(ordered.map((item) => item.pr.id)).toEqual(['PR_b1', 'PR_b2', 'PR_a1', 'PR_a2'])
+  })
+
+  it('floats a stack to its longest-waiting member, chain order intact', () => {
+    // Driven through the real classifier so this pins the two sorts
+    // together: a stack must not sink below a lone pull request that has
+    // been waiting less time than any of its members, and inside the run
+    // the chain still reads root-first even though 2/2 has waited longer.
+    const stacked = (id: string, head: string, base: string, requestedAt: string) =>
+      makePullRequest({
+        id,
+        headRefName: head,
+        baseRefName: base,
+        buckets: ['review-requested'],
+        reviewRequestedAt: requestedAt,
+      })
+    const prs = [
+      stacked('PR_root', 'part-1', 'main', '2026-08-05T10:00:00Z'),
+      stacked('PR_tip', 'part-2', 'part-1', '2026-08-02T10:00:00Z'),
+      makePullRequest({
+        id: 'PR_lone',
+        headRefName: 'unrelated',
+        buckets: ['review-requested'],
+        reviewRequestedAt: '2026-08-04T10:00:00Z',
+      }),
+    ]
+    const stacks = computeStackPositions(prs)
+    const items = classifyAll(prs, {
+      myLogin: 'vlad',
+      snoozes: {},
+      now: '2026-08-10T12:00:00Z',
+    }).map((item) => ({ ...item, stack: stacks.get(item.pr.id) ?? null }))
+
+    // The sort alone puts PR_tip (waiting longest) first, then PR_lone, then
+    // PR_root — splitting the stack around the unrelated PR.
+    expect(items.map((item) => item.pr.id)).toEqual(['PR_tip', 'PR_lone', 'PR_root'])
+
+    const ordered = orderSection(items)
+
+    expect(ordered.map((item) => item.pr.id)).toEqual(['PR_root', 'PR_tip', 'PR_lone'])
   })
 })
 

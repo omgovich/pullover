@@ -1,4 +1,4 @@
-import { formatAge, formatWait, repositoryName } from '@core/format'
+import { formatAge, formatWait, formatWaiting, repositoryName } from '@core/format'
 import { describe, expect, it } from 'vitest'
 
 const NOW = '2026-08-10T12:00:00Z'
@@ -34,6 +34,34 @@ describe('formatAge', () => {
 
   it('pins day boundary at exactly 86400 seconds', () => {
     expect(formatAge('2026-08-09T12:00:00Z', NOW)).toBe('1d ago')
+  })
+})
+
+describe('formatWaiting', () => {
+  it('reports minutes under an hour', () => {
+    expect(formatWaiting('2026-08-10T11:30:00Z', NOW)).toBe('waiting 30m')
+  })
+
+  it('reports hours under a day', () => {
+    expect(formatWaiting('2026-08-10T09:00:00Z', NOW)).toBe('waiting 3h')
+  })
+
+  it('reports days beyond a day', () => {
+    expect(formatWaiting('2026-08-05T12:00:00Z', NOW)).toBe('waiting 5d')
+  })
+
+  it('reports "<1m" under a minute rather than "0m"', () => {
+    expect(formatWaiting('2026-08-10T11:59:30Z', NOW)).toBe('waiting <1m')
+  })
+
+  it('clamps a future timestamp the same way', () => {
+    expect(formatWaiting('2026-08-10T13:00:00Z', NOW)).toBe('waiting <1m')
+  })
+
+  it("shares formatAge's boundaries", () => {
+    expect(formatWaiting('2026-08-10T11:59:00Z', NOW)).toBe('waiting 1m')
+    expect(formatWaiting('2026-08-10T11:00:00Z', NOW)).toBe('waiting 1h')
+    expect(formatWaiting('2026-08-09T12:00:00Z', NOW)).toBe('waiting 1d')
   })
 })
 

@@ -83,6 +83,93 @@ export function myLastActivityAt(pr: PullRequest, myLogin: string): string | nul
   return dates.reduce((latest, d) => (compareIso(d, latest) > 0 ? d : latest))
 }
 
+function oldestIso(dates: string[]): string | null {
+  if (dates.length === 0) return null
+  return dates.reduce((oldest, d) => (compareIso(d, oldest) < 0 ? d : oldest))
+}
+
+/**
+ * When the user was first left owing an answer in `thread`: the comment right
+ * after their last one — everything before it their own comment answered —
+ * or the thread's first if they never spoke. Null when they spoke last.
+ */
+function pendingSinceIn(thread: ReviewThread, myLogin: string): string | null {
+  let mine = -1
+  for (let i = thread.comments.length - 1; i >= 0; i--) {
+    if (thread.comments[i]?.authorLogin === myLogin) {
+      mine = i
+      break
+    }
+  }
+  return thread.comments[mine + 1]?.createdAt ?? null
+}
+
+/**
+ * The oldest answer the user owes across `threads`, or null if they owe none.
+ * Oldest at both levels, because this dates how long they have been on the
+ * hook: a "bump?" today must not make last week's question read as fresh.
+ */
+export function oldestPendingReplyAt(threads: ReviewThread[], myLogin: string): string | null {
+  return oldestIso(
+    threads.flatMap((thread) => {
+      const at = pendingSinceIn(thread, myLogin)
+      return at === null ? [] : [at]
+    }),
+  )
+}
+
+/**
+ * When this pull request became approved, or null if no approval stands: the
+ * first approval after the last request for changes, since a second reviewer
+ * piling on a week later moved nothing.
+ */
+export function approvedSince(pr: PullRequest): string | null {
+  const others = pr.reviews.filter((r) => r.authorLogin !== pr.authorLogin)
+  const lastBlock = others
+    .filter((r) => r.state === 'CHANGES_REQUESTED')
+    .map((r) => r.submittedAt)
+    .reduce<string | null>(
+      (latest, d) => (latest === null || compareIso(d, latest) > 0 ? d : latest),
+      null,
+    )
+
+  return oldestIso(
+    others
+      .filter((r) => r.state === 'APPROVED')
+      .map((r) => r.submittedAt)
+      .filter((at) => lastBlock === null || compareIso(at, lastBlock) > 0),
+  )
+}
+
+/**
+ * When the oldest still-standing "changes requested" review was submitted, or
+ * null if none stands. Replayed per reviewer rather than filtered by state,
+ * because a review keeps the state it was submitted with forever.
+ */
+export function oldestBlockingChangeRequestAt(pr: PullRequest): string | null {
+  const byReviewer = new Map<string, Review[]>()
+  for (const review of pr.reviews) {
+    if (review.authorLogin === pr.authorLogin) continue
+    const mine = byReviewer.get(review.authorLogin)
+    if (mine) mine.push(review)
+    else byReviewer.set(review.authorLogin, [review])
+  }
+
+  const standing: string[] = []
+  for (const reviews of byReviewer.values()) {
+    let since: string | null = null
+    for (const review of [...reviews].sort((a, b) => compareIso(a.submittedAt, b.submittedAt))) {
+      if (review.state === 'CHANGES_REQUESTED') since ??= review.submittedAt
+      // A dismissal voids that reviewer's stance as an approval does: a
+      // dismissed approval leaves them neutral, not back where they were.
+      else if (review.state === 'APPROVED' || review.state === 'DISMISSED') since = null
+    }
+    if (since !== null) standing.push(since)
+  }
+
+  return oldestIso(standing)
+}
+
 export function hasNewReplyInMyThreadsSince(
   pr: PullRequest,
   myLogin: string,
