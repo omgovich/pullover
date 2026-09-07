@@ -17,7 +17,8 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshot.png" width="718" alt="Pullover's menu-bar window: an inbox of pull requests grouped into 'Needs your review' and 'Your PRs', each with the reason it needs you" />
+  <img src="docs/screenshot-light.png" width="49%" alt="Pullover's menu-bar window in the light theme: an inbox of pull requests grouped into 'Needs your review', 'Take another look' and 'Your PRs', each with the reason it needs you" />
+  <img src="docs/screenshot-dark.png" width="49%" alt="The same inbox in the dark theme and the compact layout, which fits every section on screen at once" />
 </p>
 
 ---

@@ -7,6 +7,7 @@ Commands:
 - `npm run dev` — run the app locally (needs `.env`, see README)
 - `npm test` — unit tests and screenshot tests
 - `npm run test:visual` — screenshot tests alone
+- `npm run docs:shots` — re-record the two screenshots README shows
 - `npm run typecheck` — type checking
 - `npm run dist` — local build (`dist/*.dmg`); signed only if a Developer ID is in the keychain, never notarized — releases are signed and notarized in CI
 
@@ -35,6 +36,12 @@ Every `*.screenshot.test.tsx` renders a component in a real Chromium through Vit
 The baselines are macOS/Chromium at 2x and live next to the tests, so a change to them reads as an image diff in the pull request. Only a Mac can record them — a Linux runner shares none of the fonts — which is why CI runs on `macos-15`. Re-record with `npm run test:visual -- -u` and look at the PNGs before pushing; a red run leaves the baseline, the render and the diff in `.vitest-attachments/`, which CI uploads as an artifact.
 
 A case must not depend on the clock (pass the harness's `NOW`, never `new Date()`) or on the network (`AVATAR_SRC` is inline). Animations need no handling at all, and for the same reason cannot be captured part-way through — `visualCase` says why.
+
+## Documentation screenshots
+
+`docs/screenshot-light.png` and `docs/screenshot-dark.png` are recorded the same way, by the separate `docs` project: `src/renderer/src/app.docs.test.tsx` renders the whole `App` over a drawn-on macOS menu bar (`test/desktop.tsx`) with an invented inbox behind it (`test/demo-inbox.ts`). Those PNGs *are* the baselines, so `npm test` reports documentation that has fallen behind the interface as a failing screenshot; `npm run docs:shots` brings it back in step, and the update lands in the pull request as an image diff.
+
+The two differ only in colour mode and layout — light comfortable, dark compact — so the pair says what the compact setting buys. Everything the fixture shows must be something `classify` could really produce; a demo that invents its own reasons advertises an app that doesn't exist.
 
 ## Releases
 
