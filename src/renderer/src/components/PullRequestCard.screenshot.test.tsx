@@ -33,10 +33,33 @@ const LONG_TITLE =
 
 visualCase('long-title', card(makeRow({ title: LONG_TITLE })))
 
-// The marquee only measures itself once its row is active. Frozen at its
-// first frame by the harness, so what this holds is the start of the travel
-// and the fade at either edge — see src/renderer/src/test/visual.css.
+// Active but held at the first frame, where the marquee has measured itself
+// and not yet moved: the tint and the actions button are what separate this
+// from `long-title`.
 visualCase('long-title-active', card(makeRow({ title: LONG_TITLE }), true))
+
+/** The longest reason `classify` produces. */
+const LONGEST_REASON = 'Waiting on reviewers'
+
+// Everything on the row long at once. `StatusText` is uncapped on purpose —
+// "the title yields instead" — and this is the only case where there is
+// anything for it to take the width from.
+visualCase(
+  'long-title-and-repo',
+  card(
+    makeRow(
+      { title: LONG_TITLE, repository: 'acme/platform-infrastructure-terraform-modules' },
+      { reason: LONGEST_REASON, category: 'waiting' },
+    ),
+  ),
+)
+
+// A long title with nothing on its right to yield to: the widest the title
+// ever gets, and the only case where its own clip is what ends it.
+visualCase(
+  'long-title-alone',
+  card(makeRow({ title: LONG_TITLE, ciStatus: 'none' }, { reason: '', category: 'waiting' })),
+)
 
 // The meta line is `wrap={false}`, so everything on it has to give way to the
 // repository name's ellipsis rather than the row growing a second line.

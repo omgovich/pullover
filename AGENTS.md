@@ -36,7 +36,7 @@ The baselines are macOS/Chromium at 2x, which is why CI runs on `macos-15` — a
 
 When a change is meant to move pixels, re-record with `npm run test:visual -- -u` and read the PNGs in the diff before pushing. A red run writes the baseline, the render and the diff into `.vitest-attachments/`; CI uploads that as an artifact.
 
-Two things a case must not depend on: the clock (pass the harness's `NOW`, never `new Date()`) and the network (`AVATAR_SRC` is inline). Animations are frozen at their first frame — see `src/renderer/src/test/visual.css` for why that is a stylesheet rather than `prefers-reduced-motion`.
+Two things a case must not depend on: the clock (pass the harness's `NOW`, never `new Date()`) and the network (`AVATAR_SRC` is inline). Animations need no handling: the screenshot is taken with Playwright's `animations: 'disabled'`, so an infinite one like `Marquee`'s is rewound to its first frame. For the same reason no case can capture it mid-travel.
 
 ## Releases
 

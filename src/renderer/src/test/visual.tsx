@@ -86,6 +86,13 @@ export function makeStackRows(
 /**
  * Declares one visual case, screenshotted once per colour mode.
  *
+ * Nothing here has to stop `Marquee` from animating, though it looks like it
+ * should: `@vitest/browser` takes the screenshot with Playwright's
+ * `animations: 'disabled'`, which rewinds an infinite animation to its first
+ * frame and disables transitions. That is also why a case cannot capture the
+ * marquee mid-travel — a stylesheet can seek it in the DOM, but the capture
+ * puts it back.
+ *
  * A function is called inside the test rather than at collection, which is
  * what a case needing setup of its own — a stubbed IPC bridge, say — hangs
  * that setup off.

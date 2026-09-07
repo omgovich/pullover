@@ -29,6 +29,10 @@ visualCase('active', card(makeRow(), true))
 const LONG_TITLE =
   'Rework the snapshot pipeline so the classifier stops re-reading threads it has already seen'
 
+// At rest and scrolled. The compact row has less width to give the title
+// than the comfortable one, so where its clip falls is its own answer.
+visualCase('long-title', card(makeRow({ title: LONG_TITLE })))
+
 visualCase('long-title-active', card(makeRow({ title: LONG_TITLE }), true))
 
 visualCase(
