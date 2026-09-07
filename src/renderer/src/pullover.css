@@ -32,19 +32,28 @@ body {
   min-height: 0;
 }
 
-/* Applied via `ScrollArea`'s `scrollableClassName`, since this padding
-   belongs on the scrolled content, not the scroll container. Values are
-   snapped to Reshaped's 4px steps. */
+/*
+ * Applied via `ScrollArea`'s `scrollableClassName`. No padding of its own:
+ * every inset in the list belongs to a section, which is what lets the rules
+ * between sections run to the window's edges and leaves the space either
+ * side of one under a single component's control.
+ */
 .pv-scroll-content {
-  padding: 0 8px 16px;
   /*
-   * Reshaped's own `.content` class sets `height: 100%` here, pinning the
-   * content box to the scroll container's height — the padding above then
-   * sits at the container's end rather than after the last child, so
-   * overflowing content scrolls past it and the bottom padding never shows.
-   * `height: auto` lets the box grow with its children instead.
+   * Reshaped's own `.content` class sets `height: 100%` here, which pins the
+   * content box to the scroll container's height instead of letting it grow
+   * with its children.
    */
   height: auto;
+  /*
+   * A column so the empty state can take whatever room the list isn't using:
+   * `.content` also carries `min-height: 100%`, so with nothing to scroll the
+   * growing child fills the viewport and leaves a collapsed section sitting
+   * on its bottom edge. Once the list is long enough to overflow, the box
+   * grows past 100% and the empty state is back to its own height.
+   */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Card list */

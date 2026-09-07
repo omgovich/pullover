@@ -8,7 +8,18 @@ interface Props {
 
 export default function EmptyState({ isError }: Props): React.JSX.Element {
   return (
-    <View align="center" textAlign="center" paddingTop={16} paddingBottom={15} paddingInline={6}>
+    // Grows into whatever room the list leaves, which is what pushes a
+    // collapsed section onto the bottom edge of the scroll area; the paddings
+    // are the height it falls back to once an open section needs the room.
+    <View
+      grow
+      justify="center"
+      align="center"
+      textAlign="center"
+      paddingTop={16}
+      paddingBottom={15}
+      paddingInline={8}
+    >
       <Icon
         svg={isError ? CloudOff : Check}
         size="28px"

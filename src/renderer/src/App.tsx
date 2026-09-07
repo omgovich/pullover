@@ -1,7 +1,7 @@
 import { orderSection } from '@core/stack'
 import { type Category, type ClassifiedPullRequest, VISIBLE_CATEGORIES } from '@shared/types'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader, ScrollArea, Text, useHotkeys, View } from 'reshaped/bundle'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Divider, Loader, ScrollArea, Text, useHotkeys, View } from 'reshaped/bundle'
 import EmptyState from './components/EmptyState'
 import Header from './components/Header'
 import InboxSection from './components/InboxSection'
@@ -168,6 +168,15 @@ export default function App(): React.JSX.Element {
 
   const showEmptyState = snapshot.attentionCount === 0
 
+  // The sections the list actually holds — `InboxSection` draws nothing for
+  // an empty category. Needed here rather than left to each section because
+  // the rules between them are drawn from out here.
+  const drawnCategories = useMemo(
+    () =>
+      VISIBLE_CATEGORIES.filter((category) => (orderedByCategory.get(category)?.length ?? 0) > 0),
+    [orderedByCategory],
+  )
+
   // `App` always renders the one card `View` at the bottom of this function;
   // only what goes inside it changes between states, so the window's
   // silhouette never changes when signing in or opening settings.
@@ -220,21 +229,28 @@ export default function App(): React.JSX.Element {
         >
           {showEmptyState && <EmptyState isError={snapshot.status === 'error'} />}
 
-          {VISIBLE_CATEGORIES.map((category) => (
-            <InboxSection
-              key={category}
-              category={category}
-              items={orderedByCategory.get(category) ?? []}
-              now={now}
-              layout={settings.layout}
-              open={!collapsed.has(category)}
-              onToggle={() => toggleCategory(category)}
-              activePrId={selectedId}
-              onHoverCard={pointAt}
-              onSelectCard={selectCard}
-              onSnoozed={showToast}
-              registerCard={registerCard}
-            />
+          {/* The rules live between the blocks rather than on them: a seam
+              belongs to neither side, and only out here is it known what a
+              section follows. `neutral` is the shell's own border colour, so
+              every line in the window reads as the same one. Nothing opens
+              the list with a rule — the header's border is already there. */}
+          {drawnCategories.map((category, index) => (
+            <Fragment key={category}>
+              {(showEmptyState || index > 0) && <Divider color="neutral" />}
+              <InboxSection
+                category={category}
+                items={orderedByCategory.get(category) ?? []}
+                now={now}
+                layout={settings.layout}
+                open={!collapsed.has(category)}
+                onToggle={() => toggleCategory(category)}
+                activePrId={selectedId}
+                onHoverCard={pointAt}
+                onSelectCard={selectCard}
+                onSnoozed={showToast}
+                registerCard={registerCard}
+              />
+            </Fragment>
           ))}
         </ScrollArea>
 
@@ -244,7 +260,7 @@ export default function App(): React.JSX.Element {
           gap={3.5}
           paddingBlock={2.5}
           paddingInline={4}
-          borderColor="neutral-faded"
+          borderColor="neutral"
           borderTop
           backgroundColor="elevation-base"
         >
