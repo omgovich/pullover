@@ -33,21 +33,16 @@ export default defineConfig({
           setupFiles: ['src/renderer/src/test/setup.ts'],
           browser: {
             enabled: true,
-            // 2x, because that is the only density this app ever renders at:
-            // it ships for macOS only, and every Mac still supported has a
-            // Retina display. The point is fidelity, not sensitivity — a
-            // hairline border, a half-pixel offset or a hinted glyph resolves
-            // differently at 1x, so 1x baselines would hold a rendering no
-            // user ever sees. It buys very little detection on its own:
-            // recolouring the CI chip moves 6 pixels here against 5 at 1x,
-            // since the extra edge pixels are also softer ones.
+            // 2x is the only density this app ships at, and a hairline, a
+            // half-pixel offset and a hinted glyph all resolve differently at
+            // 1x. Fidelity, not sensitivity — it barely helps detection.
             provider: playwright({ contextOptions: { deviceScaleFactor: 2 } }),
             headless: true,
             // One instance, because the baselines are macOS/Chromium and CI
-            // runs on macos-15 to match — see AGENTS.md. The viewport has to
-            // clear the 440px shell the cases render into (the default 414px
-            // would crop it) and still fit the headless window whole: a
-            // taller tester iframe gets scaled down to fit, and every
+            // runs on macos-15 to match — see .github/workflows/ci.yml. The
+            // viewport has to clear the 440px shell the cases render into (the
+            // default 414px would crop it) and still fit the headless window
+            // whole: a taller tester iframe gets scaled down to fit, and every
             // screenshot then comes out at that scale.
             instances: [{ browser: 'chromium', viewport: { width: 640, height: 640 } }],
             // `toMatchScreenshot` writes its own reference/actual/diff trio
@@ -55,13 +50,10 @@ export default defineConfig({
             // baselines it is meant to be compared against.
             screenshotFailures: false,
             expect: {
-              // No mismatch budget on purpose. A ratio generous enough to
-              // absorb antialiasing also absorbs a whole recoloured 16px
-              // chip on a 440x30 image — measured, not guessed. pixelmatch
-              // still ignores sub-threshold wobble pixel by pixel, so what
-              // is left to count is real ink. If the runner does turn out to
-              // draw differently, set a budget from the number it reports
-              // rather than from a guess.
+              // No mismatch budget on purpose: any ratio loose enough to
+              // absorb antialiasing also absorbed a whole recoloured chip,
+              // which is measured rather than assumed. If a runner ever does
+              // draw differently, set the budget from the number it reports.
               toMatchScreenshot: { comparatorName: 'pixelmatch' },
             },
           },
