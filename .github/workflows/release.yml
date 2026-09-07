@@ -52,6 +52,19 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # `npm test` includes the screenshot tests, which drive a real Chromium.
+      # Same cache key as ci.yml, and the same runner OS, so this usually
+      # restores what the CI run on this very commit already downloaded.
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium
+
       - run: npm run typecheck
       - run: npm test
 
