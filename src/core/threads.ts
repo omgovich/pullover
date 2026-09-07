@@ -1,4 +1,4 @@
-import type { PullRequest, Review, ReviewThread, ThreadComment } from '@shared/types'
+import type { PullRequest, Review, ReviewState, ReviewThread, ThreadComment } from '@shared/types'
 
 export function lastComment(thread: ReviewThread): ThreadComment | null {
   return thread.comments.at(-1) ?? null
@@ -81,6 +81,83 @@ export function myLastActivityAt(pr: PullRequest, myLogin: string): string | nul
 
   if (dates.length === 0) return null
   return dates.reduce((latest, d) => (compareIso(d, latest) > 0 ? d : latest))
+}
+
+function oldestIso(dates: string[]): string | null {
+  if (dates.length === 0) return null
+  return dates.reduce((oldest, d) => (compareIso(d, oldest) < 0 ? d : oldest))
+}
+
+/**
+ * When the user was first left owing an answer in `thread`: the comment right
+ * after their last one — everything before it their own comment answered —
+ * or the thread's first if they never spoke. Null when they spoke last.
+ */
+function pendingSinceIn(thread: ReviewThread, myLogin: string): string | null {
+  let mine = -1
+  for (let i = thread.comments.length - 1; i >= 0; i--) {
+    if (thread.comments[i]?.authorLogin === myLogin) {
+      mine = i
+      break
+    }
+  }
+  return thread.comments[mine + 1]?.createdAt ?? null
+}
+
+/**
+ * The oldest answer the user owes across `threads`, or null if they owe none.
+ * Oldest at both levels, because this dates how long they have been on the
+ * hook: a "bump?" today must not make last week's question read as fresh.
+ */
+export function oldestPendingReplyAt(threads: ReviewThread[], myLogin: string): string | null {
+  return oldestIso(
+    threads.flatMap((thread) => {
+      const at = pendingSinceIn(thread, myLogin)
+      return at === null ? [] : [at]
+    }),
+  )
+}
+
+/**
+ * When a review with `state` was last submitted on this pull request, or null
+ * if none was. The pull request's own author is skipped: `reviewDecision`
+ * never counts a self-review, so neither may the moment it points at.
+ */
+export function latestReviewAt(pr: PullRequest, state: ReviewState): string | null {
+  const dates = pr.reviews
+    .filter((r) => r.state === state && r.authorLogin !== pr.authorLogin)
+    .map((r) => r.submittedAt)
+  if (dates.length === 0) return null
+  return dates.reduce((latest, d) => (compareIso(d, latest) > 0 ? d : latest))
+}
+
+/**
+ * When the oldest still-standing "changes requested" review was submitted, or
+ * null if none stands. Each reviewer's history is replayed in order rather
+ * than filtered by state, because a review never loses the state it was
+ * submitted with — only a later approval from the same reviewer clears one,
+ * and commenting does not.
+ */
+export function oldestBlockingChangeRequestAt(pr: PullRequest): string | null {
+  const byReviewer = new Map<string, Review[]>()
+  for (const review of pr.reviews) {
+    if (review.authorLogin === pr.authorLogin) continue
+    const mine = byReviewer.get(review.authorLogin)
+    if (mine) mine.push(review)
+    else byReviewer.set(review.authorLogin, [review])
+  }
+
+  const standing: string[] = []
+  for (const reviews of byReviewer.values()) {
+    let since: string | null = null
+    for (const review of [...reviews].sort((a, b) => compareIso(a.submittedAt, b.submittedAt))) {
+      if (review.state === 'CHANGES_REQUESTED') since ??= review.submittedAt
+      else if (review.state === 'APPROVED') since = null
+    }
+    if (since !== null) standing.push(since)
+  }
+
+  return oldestIso(standing)
 }
 
 export function hasNewReplyInMyThreadsSince(

@@ -89,6 +89,8 @@ export interface PullRequest {
   reviewThreads: ReviewThread[]
   /** Latest conversation-tab comments, oldest first. Inline review comments live in `reviewThreads`. */
   conversationComments: ThreadComment[]
+  /** When the user was last asked to review this PR, or null if never (or by a team). */
+  reviewRequestedAt: string | null
   /** When the user was last @-mentioned on this PR, or null if never. */
   lastMentionAt: string | null
   buckets: SearchBucket[]
@@ -129,6 +131,12 @@ export interface ClassifiedPullRequest {
   pr: PullRequest
   category: Category
   reason: string
+  /**
+   * When the ball landed in the user's court, which is what each category is
+   * ordered by. Null exactly for the categories where nothing is waiting on
+   * them, so a null is the answer "not your move" rather than missing data.
+   */
+  waitingSince: string | null
   isSnoozed: boolean
   /** This pull request's position within its stack, or null when it isn't part of one. */
   stack: StackPosition | null

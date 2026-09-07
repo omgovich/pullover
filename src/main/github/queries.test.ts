@@ -21,6 +21,19 @@ describe('DETAILS_QUERY', () => {
     expect(DETAILS_QUERY).toContain('baseRefName')
   })
 
+  it('fetches the review requests a waiting time is dated from', () => {
+    // Without these, `needs-review` can only guess from the PR's creation —
+    // wrong by days for a reviewer added long after it opened.
+    expect(DETAILS_QUERY).toContain('itemTypes: [REVIEW_REQUESTED_EVENT]')
+    expect(DETAILS_QUERY).toContain('requestedReviewer { ... on User { login } }')
+  })
+
+  it('paginates review requests from the newest end', () => {
+    // Only the most recent request naming the user matters, and a CODEOWNERS
+    // repo can bury it under requests naming everybody else.
+    expect(DETAILS_QUERY).toContain('timelineItems(last: 50')
+  })
+
   it('paginates review threads from the newest end', () => {
     // `first: 50` takes the OLDEST 50 threads on a busy PR, dropping exactly
     // the newest thread — where a fresh mention is most likely to live.

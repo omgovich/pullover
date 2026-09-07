@@ -134,12 +134,15 @@ export function computeStackPositions(prs: PullRequest[]): Map<string, StackPosi
 /**
  * Reorders `items` so each stack's members sit together, in one contiguous
  * run, ascending by `index` — the incoming order is otherwise preserved
- * (that order is already the classifier's category-then-recency sort).
+ * (that order is already the classifier's category-then-waiting-time sort).
  *
- * A stack takes the position of its earliest-appearing member, so the most
- * relevant stack still floats to the top of its section. Pull requests with
- * no stack keep their place. Ordering within a section is a display
- * concern, so this stays out of the classifier.
+ * A stack takes the position of its earliest-appearing member, which under
+ * that sort is the one waiting longest — so a stack sinks no further than its
+ * oldest obligation. Inside the run, chain order wins over waiting time,
+ * because a chain drawn out of order isn't a chain.
+ *
+ * Pull requests with no stack keep their place. Ordering within a section is
+ * a display concern, so this stays out of the classifier.
  */
 export function orderSection(items: ClassifiedPullRequest[]): ClassifiedPullRequest[] {
   const groups = new Map<string, ClassifiedPullRequest[]>()

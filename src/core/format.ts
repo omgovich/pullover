@@ -2,12 +2,31 @@ const MINUTE = 60_000
 const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
 
+/**
+ * Elapsed time as the coarsest unit that fits: `10d`, `3h`, `30m`, or `<1m`
+ * below a minute, since neither caller has room for `0m`.
+ */
+function elapsedSince(iso: string, now: string): string {
+  const elapsed = Date.parse(now) - Date.parse(iso)
+  if (elapsed < MINUTE) return '<1m'
+  if (elapsed < HOUR) return `${Math.floor(elapsed / MINUTE)}m`
+  if (elapsed < DAY) return `${Math.floor(elapsed / HOUR)}h`
+  return `${Math.floor(elapsed / DAY)}d`
+}
+
 export function formatAge(iso: string, now: string): string {
   const elapsed = Date.parse(now) - Date.parse(iso)
   if (elapsed < MINUTE) return 'just now'
-  if (elapsed < HOUR) return `${Math.floor(elapsed / MINUTE)}m ago`
-  if (elapsed < DAY) return `${Math.floor(elapsed / HOUR)}h ago`
-  return `${Math.floor(elapsed / DAY)}d ago`
+  return `${elapsedSince(iso, now)} ago`
+}
+
+/**
+ * How long a pull request has been waiting on the user — `waiting 10d`, which
+ * says what `10d ago` cannot: that the ball has been in their court that whole
+ * time, not merely that somebody touched the thread then.
+ */
+export function formatWaiting(iso: string, now: string): string {
+  return `waiting ${elapsedSince(iso, now)}`
 }
 
 /**

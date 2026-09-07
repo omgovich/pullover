@@ -67,6 +67,14 @@ export interface PullRequestNode {
       }
     } | null>
   }
+  /** Review-requested events only; see `DETAILS_QUERY`. */
+  timelineItems: {
+    nodes: Array<{
+      createdAt: string
+      /** Only a `User` reviewer carries a login — a team or a bot has none. */
+      requestedReviewer: { login?: string } | null
+    } | null>
+  }
 }
 
 /**
@@ -128,6 +136,20 @@ function computeLastMentionAt(
   }
 
   return latestIso(candidates)
+}
+
+/**
+ * When the user was last asked to review, or null. Requests naming somebody
+ * else are skipped — a review asked of a teammate an hour ago must not
+ * restart this user's clock — and a team or bot reviewer carries no login to
+ * match, so it reads as null and the classifier falls back.
+ */
+function computeReviewRequestedAt(node: PullRequestNode, myLogin: string): string | null {
+  return latestIso(
+    node.timelineItems.nodes.flatMap((event) =>
+      event !== null && event.requestedReviewer?.login === myLogin ? [event.createdAt] : [],
+    ),
+  )
 }
 
 export function mapCiStatus(state: string | null | undefined): CiStatus {
@@ -207,6 +229,7 @@ export function mapPullRequest(
     reviews,
     reviewThreads,
     conversationComments,
+    reviewRequestedAt: computeReviewRequestedAt(node, myLogin),
     lastMentionAt: computeLastMentionAt(
       node,
       conversationComments,

@@ -25,6 +25,7 @@ function node(overrides: Partial<PullRequestNode> = {}): PullRequestNode {
     comments: { nodes: [] },
     bodyText: '',
     commits: { nodes: [] },
+    timelineItems: { nodes: [] },
     ...overrides,
   }
 }
@@ -319,6 +320,59 @@ describe('mapPullRequest', () => {
       { authorLogin: 'alice', createdAt: '2026-08-01T10:00:00Z', bodyText: 'first' },
       { authorLogin: 'bob', createdAt: '2026-08-03T10:00:00Z', bodyText: 'second' },
     ])
+  })
+
+  describe('reviewRequestedAt', () => {
+    function requested(login: string | null, createdAt: string) {
+      return { createdAt, requestedReviewer: login === null ? null : { login } }
+    }
+
+    it('takes the most recent request naming me', () => {
+      const n = node({
+        timelineItems: {
+          nodes: [
+            requested('vlad', '2026-07-20T10:00:00Z'),
+            requested('vlad', '2026-08-01T10:00:00Z'),
+          ],
+        },
+      })
+      expect(mapPullRequest(n, [], 'vlad').reviewRequestedAt).toBe('2026-08-01T10:00:00Z')
+    })
+
+    it('ignores requests naming somebody else', () => {
+      // Otherwise a review requested from Bob an hour ago would restart the
+      // clock on a PR that has been waiting on me for a fortnight.
+      const n = node({
+        timelineItems: {
+          nodes: [
+            requested('vlad', '2026-07-20T10:00:00Z'),
+            requested('bob', '2026-08-02T10:00:00Z'),
+          ],
+        },
+      })
+      expect(mapPullRequest(n, [], 'vlad').reviewRequestedAt).toBe('2026-07-20T10:00:00Z')
+    })
+
+    it('is null for a team or bot reviewer, which GitHub returns as {}', () => {
+      const n = node({
+        timelineItems: { nodes: [{ createdAt: '2026-08-02T10:00:00Z', requestedReviewer: {} }] },
+      })
+      expect(mapPullRequest(n, [], 'vlad').reviewRequestedAt).toBeNull()
+    })
+
+    it('is null for a reviewer GitHub returns as null', () => {
+      const n = node({ timelineItems: { nodes: [requested(null, '2026-08-02T10:00:00Z')] } })
+      expect(mapPullRequest(n, [], 'vlad').reviewRequestedAt).toBeNull()
+    })
+
+    it('is null when nothing was ever requested', () => {
+      expect(mapPullRequest(node(), [], 'vlad').reviewRequestedAt).toBeNull()
+    })
+
+    it('survives a null node', () => {
+      const n = node({ timelineItems: { nodes: [null] } })
+      expect(mapPullRequest(n, [], 'vlad').reviewRequestedAt).toBeNull()
+    })
   })
 
   describe('lastMentionAt', () => {
