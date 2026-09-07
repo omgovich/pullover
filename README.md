@@ -34,10 +34,10 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 - ⚡ **Open it from anywhere.** `⌃⌥P` toggles the window over whatever you are in, so you never have to aim for the menu bar. Pick a different combination in **Settings**, or turn it off.
 - ⌨️ **Drive it from the keyboard.** `↑` `↓` move, `⏎` opens the pull request, `S` snoozes, `R` refreshes and `esc` closes the window — all of it printed along the window's bottom edge, so there is nothing to memorise. `M` opens the actions menu on the row you are on.
 - 🌗 **Light and dark themes.** Follows your macOS appearance out of the box, or pick one in Settings.
-- 📐 **Two densities.** Comfortable rows, or a compact list that drops the age and the diff counts, tucks the repository name into a tooltip, and fits nearly twice as many pull requests on screen.
+- 📐 **Two layouts.** Comfortable by default. If you have a lot of pull requests, turn on compact in **Settings** and each one takes a single row.
 - ⬇️ **Updates itself quietly.** New versions download in the background; Pullover then offers a restart and waits for you to take it.
 - 👀 **Read-only by design.** Pullover never comments, approves, or merges. Clicking a PR opens it on github.com — you act where you always did.
-- 🔒 **Private repos and team review requests** work out of the box (that's what the `repo` and `read:org` scopes are for — details below).
+- 🔒 **Works where you actually review.** Private repositories, and review requests that reached you through a team rather than by name, show up like anything else.
 
 ## 📦 Install
 
