@@ -20,21 +20,25 @@ const ME = 'vlad'
 
 /**
  * A face per person, from DiceBear's `line-face` — CC0, so nothing here owes
- * an attribution line. The login is the seed, so everyone gets their own
- * face; the background is pinned rather than left to the seed, whose whole
- * palette is a muted beige that reads as five copies of one avatar.
+ * an attribution line. The style also survives both colour modes without a
+ * second set of URLs: the strokes are dark, but they sit on a light disc
+ * rather than on transparency, so nothing disappears into the dark theme.
  *
- * The style also survives both colour modes without a second set of URLs:
- * the strokes are dark, but they sit on a light disc rather than on
- * transparency, so nothing disappears into the dark theme.
+ * `line-face` derives the eyes, nose and mouth from the seed alone — its API
+ * accepts `eyes=`/`nose=`/`mouth=` and then ignores them — so the logins here
+ * were picked for the faces they hash to: all five differ in every feature,
+ * not merely in colour. Renaming one redraws it and may collide with another,
+ * which is a thing to look at rather than a thing that fails. The background
+ * *is* a real option, and is pinned because the seed's own palette is a muted
+ * beige that reads as five copies of one avatar.
  */
 const AVATAR_STYLE = 'line-face'
 
 const CAST = {
   vlad: 'c0aede',
-  mchen: 'ffdfbf',
+  kirill: 'ffdfbf',
   sdiaz: 'd1d4f9',
-  rojas: 'ffd5dc',
+  mira: 'ffd5dc',
   tpark: 'a7e0a0',
 }
 
@@ -42,13 +46,6 @@ function avatarUrl(login: keyof typeof CAST): string {
   return `https://api.dicebear.com/10.x/${AVATAR_STYLE}/svg?seed=${login}&backgroundColor=${CAST[login]}`
 }
 
-/**
- * Every avatar the demo draws, for the screenshot to warm before it captures.
- *
- * These are the one thing in the whole screenshot suite that comes over the
- * network — a deliberate exception, taken because the app fetches a real
- * GitHub avatar the same way. The cost is a red run when DiceBear is down.
- */
 export const DEMO_AVATAR_URLS: string[] = Object.keys(CAST).map((login) =>
   avatarUrl(login as keyof typeof CAST),
 )
@@ -90,7 +87,7 @@ const ROWS: DemoRow[] = [
     repository: 'acme/dashboard',
     number: 2184,
     title: 'Lazy-load the preview pane',
-    author: 'mchen',
+    author: 'kirill',
     additions: 412,
     deletions: 96,
     ci: 'success',
@@ -111,7 +108,7 @@ const ROWS: DemoRow[] = [
     repository: 'acme/billing',
     number: 476,
     title: 'Checkout: cart model',
-    author: 'rojas',
+    author: 'mira',
     additions: 218,
     deletions: 140,
     ci: 'success',
@@ -137,7 +134,7 @@ const ROWS: DemoRow[] = [
     repository: 'acme/billing',
     number: 480,
     title: 'Checkout: promo field',
-    author: 'mchen',
+    author: 'kirill',
     additions: 41,
     deletions: 9,
     ci: 'success',
@@ -204,7 +201,7 @@ const ROWS: DemoRow[] = [
     repository: 'acme/dashboard',
     number: 2190,
     title: 'Release notes for 4.2',
-    author: 'rojas',
+    author: 'mira',
     additions: 33,
     deletions: 4,
     ci: 'success',
@@ -217,7 +214,7 @@ const ROWS: DemoRow[] = [
     repository: 'acme/dashboard',
     number: 2176,
     title: 'Keyboard shortcuts',
-    author: 'mchen',
+    author: 'kirill',
     additions: 128,
     deletions: 37,
     ci: 'success',
