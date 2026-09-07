@@ -7,6 +7,7 @@ Commands:
 - `npm run dev` — run the app locally (needs `.env`, see README)
 - `npm test` — unit tests and screenshot tests
 - `npm run test:visual` — screenshot tests alone
+- `npm run docs:shots` — re-record the two screenshots README shows
 - `npm run typecheck` — type checking
 - `npm run dist` — local build (`dist/*.dmg`); signed only if a Developer ID is in the keychain, never notarized — releases are signed and notarized in CI
 
@@ -35,6 +36,12 @@ Every `*.screenshot.test.tsx` renders a component in a real Chromium through Vit
 The baselines are macOS/Chromium at 2x and live next to the tests, so a change to them reads as an image diff in the pull request. Only a Mac can record them — a Linux runner shares none of the fonts — which is why CI runs on `macos-15`. Re-record with `npm run test:visual -- -u` and look at the PNGs before pushing; a red run leaves the baseline, the render and the diff in `.vitest-attachments/`, which CI uploads as an artifact.
 
 A case must not depend on the clock (pass the harness's `NOW`, never `new Date()`) or on the network (`AVATAR_SRC` is inline). Animations need no handling at all, and for the same reason cannot be captured part-way through — `visualCase` says why.
+
+## Documentation screenshots
+
+The two pictures README shows are recorded by the separate `docs` project: `src/renderer/src/app.docs.test.tsx` renders the whole `App` over a drawn-on macOS menu bar, with an invented inbox behind it. Those PNGs *are* the baselines, so `npm test` reports documentation that has fallen behind the interface as a failing screenshot, and `npm run docs:shots` brings it back in step.
+
+Unlike the component tests, these fetch their avatars from DiceBear — the one place in the suite that reaches the network, and a trade taken on purpose rather than an oversight. Keep to a CC0 style. The pair differs only in colour mode and layout, which is the argument for the compact setting; everything the fixture shows must be something `classify` could really produce.
 
 ## Releases
 
