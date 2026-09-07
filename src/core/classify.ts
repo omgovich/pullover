@@ -214,6 +214,32 @@ export function classify(
   return { pr, ...verdict, waitingSince, isSnoozed: false }
 }
 
+/** The fields the inbox order is decided from, and nothing more. */
+type Ordered = Pick<ClassifiedPullRequest, 'category' | 'waitingSince'> & {
+  pr: Pick<PullRequest, 'updatedAt'>
+}
+
+/**
+ * The order the inbox is drawn in: by section, then longest-waiting first, so
+ * a section's top row is its oldest obligation rather than its noisiest.
+ *
+ * Both timestamps are set or neither is — `waitingSince` is null exactly for
+ * `waiting`, whose rows keep the newest-activity order they have always had.
+ *
+ * Exported so the documentation screenshots can put their fixture through the
+ * real thing; a demo that arranged its own rows could advertise an order the
+ * app doesn't have. `orderSection` runs after this and is the one exception
+ * to it — a stack's members follow the chain, not the clock.
+ */
+export function compareInboxOrder(a: Ordered, b: Ordered): number {
+  const byCategory = VISIBLE_CATEGORIES.indexOf(a.category) - VISIBLE_CATEGORIES.indexOf(b.category)
+  if (byCategory !== 0) return byCategory
+  if (a.waitingSince !== null && b.waitingSince !== null) {
+    return compareIso(a.waitingSince, b.waitingSince)
+  }
+  return compareIso(b.pr.updatedAt, a.pr.updatedAt)
+}
+
 export function classifyAll(
   prs: PullRequest[],
   ctx: ClassifyContext,
@@ -221,19 +247,7 @@ export function classifyAll(
   return prs
     .map((pr) => classify(pr, ctx))
     .filter((item) => item.category !== 'hidden')
-    .sort((a, b) => {
-      const byCategory =
-        VISIBLE_CATEGORIES.indexOf(a.category) - VISIBLE_CATEGORIES.indexOf(b.category)
-      if (byCategory !== 0) return byCategory
-      // Longest-waiting first, so a section's top row is its oldest
-      // obligation rather than its noisiest. Both timestamps are set or
-      // neither is — `waitingSince` is null exactly for `waiting`, whose rows
-      // keep the newest-activity order they have always had.
-      if (a.waitingSince !== null && b.waitingSince !== null) {
-        return compareIso(a.waitingSince, b.waitingSince)
-      }
-      return compareIso(b.pr.updatedAt, a.pr.updatedAt)
-    })
+    .sort(compareInboxOrder)
 }
 
 export function countAttention(items: Omit<ClassifiedPullRequest, 'stack'>[]): number {

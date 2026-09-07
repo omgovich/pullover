@@ -31,7 +31,10 @@ const FRAME_WIDTH_PX = POPUP_WIDTH_PX + 2 * SIDE_MARGIN_PX
 
 const WALLPAPER: Record<ColorMode, string> = {
   light: 'linear-gradient(155deg, #eceff6 0%, #e7e3f0 48%, #f6eef1 100%)',
-  dark: 'linear-gradient(155deg, #191b27 0%, #211e2d 48%, #2b2131 100%)',
+  // Well clear of the popup's own near-black, so both the translucent menu
+  // bar and the window's edge read as something sitting on a desktop rather
+  // than as one dark field with shapes cut out of it.
+  dark: 'linear-gradient(155deg, #333a52 0%, #3f3a58 48%, #52405c 100%)',
 }
 
 const MENU_BAR_BACKGROUND: Record<ColorMode, string> = {

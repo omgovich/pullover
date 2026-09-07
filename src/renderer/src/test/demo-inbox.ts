@@ -1,3 +1,4 @@
+import { compareInboxOrder } from '@core/classify'
 import { makePullRequest } from '@core/test-factory'
 import type { InboxSnapshot } from '@shared/ipc'
 import { ATTENTION_CATEGORIES, type Category, type ClassifiedPullRequest } from '@shared/types'
@@ -14,7 +15,6 @@ import { ATTENTION_CATEGORIES, type Category, type ClassifiedPullRequest } from 
  */
 
 const MINUTE_MS = 60_000
-const HOUR_MS = 60 * MINUTE_MS
 
 const ME = 'vlad'
 
@@ -65,6 +65,8 @@ interface DemoRow {
   reason: string
   /** How long the ball has been in the user's court, in minutes. */
   waitingMinutes: number | null
+  /** Minutes since the last activity; only read where nothing is waiting. */
+  updatedMinutes?: number
   /** Position in a stack, as `index/total`, or null for a lone pull request. */
   stack: [id: string, index: number, total: number] | null
   snoozed?: boolean
@@ -72,7 +74,20 @@ interface DemoRow {
 
 const ROWS: DemoRow[] = [
   {
-    repository: 'acme/web-app',
+    repository: 'acme/billing',
+    number: 482,
+    title: 'Proration on upgrades',
+    author: 'sdiaz',
+    additions: 733,
+    deletions: 214,
+    ci: 'pending',
+    category: 'needs-review',
+    reason: 'Review requested',
+    waitingMinutes: 6 * 60,
+    stack: null,
+  },
+  {
+    repository: 'acme/dashboard',
     number: 2184,
     title: 'Lazy-load the preview pane',
     author: 'mchen',
@@ -81,30 +96,21 @@ const ROWS: DemoRow[] = [
     ci: 'success',
     category: 'needs-review',
     reason: 'Review requested',
-    waitingMinutes: 18,
+    waitingMinutes: 40,
     stack: null,
   },
+  // One feature split into a chain of four, three of which need the user — so
+  // the run draws solid between 1 and 2 and dotted where 3 is missing. Their
+  // waiting times climb down the list rather than up, which is the one place
+  // the inbox's order gives way: inside a stack the chain wins.
+  //
+  // Three different authors, because a chain is grouped by its branches and
+  // never by who wrote them, and one face three rows running reads as a
+  // rendering fault rather than as a stack.
   {
-    repository: 'acme/api',
-    number: 2181,
-    title: 'Split view for compare mode',
-    author: 'sdiaz',
-    additions: 733,
-    deletions: 214,
-    ci: 'pending',
-    category: 'needs-review',
-    reason: 'Review requested',
-    waitingMinutes: 2 * 60,
-    stack: null,
-  },
-  // A stack of four, three of which need the user — so the run draws solid
-  // between 1 and 2 and dotted where 3 is missing. Three different authors,
-  // because a chain is grouped by its branches and not by who wrote them, and
-  // one person's avatar three rows running looks like a rendering fault.
-  {
-    repository: 'acme/infra',
-    number: 310,
-    title: 'Deploy: extract build',
+    repository: 'acme/billing',
+    number: 476,
+    title: 'Checkout: cart model',
     author: 'rojas',
     additions: 218,
     deletions: 140,
@@ -112,12 +118,12 @@ const ROWS: DemoRow[] = [
     category: 're-review',
     reason: 'Re-review requested',
     waitingMinutes: 5 * 60,
-    stack: ['stack-infra', 1, 4],
+    stack: ['stack-checkout', 1, 4],
   },
   {
-    repository: 'acme/infra',
-    number: 311,
-    title: 'Deploy: sign in its own job',
+    repository: 'acme/billing',
+    number: 477,
+    title: 'Checkout: promo API',
     author: 'tpark',
     additions: 96,
     deletions: 12,
@@ -125,12 +131,12 @@ const ROWS: DemoRow[] = [
     category: 're-review',
     reason: 'New commits',
     waitingMinutes: 8 * 60,
-    stack: ['stack-infra', 2, 4],
+    stack: ['stack-checkout', 2, 4],
   },
   {
-    repository: 'acme/infra',
-    number: 314,
-    title: 'Deploy: notarize dmg',
+    repository: 'acme/billing',
+    number: 480,
+    title: 'Checkout: promo field',
     author: 'mchen',
     additions: 41,
     deletions: 9,
@@ -138,27 +144,14 @@ const ROWS: DemoRow[] = [
     category: 're-review',
     reason: 'Re-review requested',
     waitingMinutes: 9 * 60,
-    stack: ['stack-infra', 4, 4],
+    stack: ['stack-checkout', 4, 4],
   },
   // Two rows only: they are all the user's own, so a third would just repeat
   // the same avatar again.
   {
-    repository: 'acme/api',
-    number: 2182,
-    title: 'Cache the parsed layout',
-    author: 'vlad',
-    additions: 573,
-    deletions: 24,
-    ci: 'failure',
-    category: 'my-pr-action',
-    reason: 'CI is red',
-    waitingMinutes: 3 * 60,
-    stack: null,
-  },
-  {
-    repository: 'acme/web-app',
+    repository: 'acme/dashboard',
     number: 2179,
-    title: 'Search options at runtime',
+    title: 'Empty state for saved views',
     author: 'vlad',
     additions: 234,
     deletions: 4,
@@ -169,48 +162,22 @@ const ROWS: DemoRow[] = [
     stack: null,
   },
   {
-    repository: 'acme/web-app',
-    number: 2190,
-    title: 'Release notes for 4.2',
-    author: 'rojas',
-    additions: 33,
-    deletions: 4,
-    ci: 'success',
-    category: 'mentioned',
-    reason: 'Mentioned',
-    waitingMinutes: 45,
+    repository: 'acme/mobile',
+    number: 318,
+    title: 'Offline mode for the inbox',
+    author: 'vlad',
+    additions: 573,
+    deletions: 24,
+    ci: 'failure',
+    category: 'my-pr-action',
+    reason: 'CI is red',
+    waitingMinutes: 3 * 60,
     stack: null,
   },
   {
-    repository: 'acme/api',
-    number: 2176,
-    title: 'Rate limit the search API',
-    author: 'mchen',
-    additions: 128,
-    deletions: 37,
-    ci: 'success',
-    category: 'mentioned',
-    reason: 'Mentioned',
-    waitingMinutes: 4 * 60,
-    stack: null,
-  },
-  {
-    repository: 'acme/infra',
-    number: 308,
-    title: 'Pin the runner image',
-    author: 'sdiaz',
-    additions: 6,
-    deletions: 6,
-    ci: 'success',
-    category: 'mentioned',
-    reason: 'Mentioned',
-    waitingMinutes: 7 * 60,
-    stack: null,
-  },
-  {
-    repository: 'acme/web-app',
-    number: 2171,
-    title: 'Form fields: tab order',
+    repository: 'acme/mobile',
+    number: 315,
+    title: 'Push permissions prompt',
     author: 'tpark',
     additions: 64,
     deletions: 28,
@@ -221,7 +188,48 @@ const ROWS: DemoRow[] = [
     stack: null,
   },
   {
-    repository: 'acme/web-app',
+    repository: 'acme/billing',
+    number: 479,
+    title: 'Refund flow copy',
+    author: 'sdiaz',
+    additions: 6,
+    deletions: 6,
+    ci: 'success',
+    category: 'mentioned',
+    reason: 'Mentioned',
+    waitingMinutes: 7 * 60,
+    stack: null,
+  },
+  {
+    repository: 'acme/dashboard',
+    number: 2190,
+    title: 'Release notes for 4.2',
+    author: 'rojas',
+    additions: 33,
+    deletions: 4,
+    ci: 'success',
+    category: 'mentioned',
+    reason: 'Mentioned',
+    waitingMinutes: 4 * 60,
+    stack: null,
+  },
+  {
+    repository: 'acme/dashboard',
+    number: 2176,
+    title: 'Keyboard shortcuts',
+    author: 'mchen',
+    additions: 128,
+    deletions: 37,
+    ci: 'success',
+    category: 'mentioned',
+    reason: 'Mentioned',
+    waitingMinutes: 45,
+    stack: null,
+  },
+  // Nothing is waiting on the user here, so these two are ordered by their
+  // own last activity instead — the section's own rule.
+  {
+    repository: 'acme/dashboard',
     number: 2150,
     title: 'Drop the print stylesheet',
     author: 'vlad',
@@ -231,11 +239,12 @@ const ROWS: DemoRow[] = [
     category: 'waiting',
     reason: 'Waiting on reviewers',
     waitingMinutes: null,
+    updatedMinutes: 90,
     stack: null,
   },
   {
-    repository: 'acme/web-app',
-    number: 2146,
+    repository: 'acme/mobile',
+    number: 310,
     title: 'Bump the icon set to v2',
     author: 'tpark',
     additions: 8,
@@ -244,6 +253,7 @@ const ROWS: DemoRow[] = [
     category: 'waiting',
     reason: 'Snoozed',
     waitingMinutes: null,
+    updatedMinutes: 6 * 60,
     stack: null,
     snoozed: true,
   },
@@ -265,8 +275,7 @@ function classified(row: DemoRow, now: number): ClassifiedPullRequest {
       additions: row.additions,
       deletions: row.deletions,
       ciStatus: row.ci,
-      // Only read for the `waiting` rows, which have no waiting time to show.
-      updatedAt: iso(2 * HOUR_MS),
+      updatedAt: iso((row.updatedMinutes ?? row.waitingMinutes ?? 120) * MINUTE_MS),
     }),
     category: row.category,
     reason: row.reason,
@@ -286,7 +295,11 @@ function classified(row: DemoRow, now: number): ClassifiedPullRequest {
  * 18m" stays "waiting 18m" — which is what the fixed clock was protecting.
  */
 export function demoSnapshot(now: number): InboxSnapshot {
-  const items = ROWS.map((row) => classified(row, now))
+  // Sorted by the app's own comparator rather than by the order they are
+  // written above, so the picture cannot advertise an order the inbox
+  // doesn't have. `App` then applies `orderSection` on top, which gathers
+  // the stack.
+  const items = ROWS.map((row) => classified(row, now)).sort(compareInboxOrder)
 
   return {
     status: 'ready',
