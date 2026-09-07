@@ -28,8 +28,8 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 
 - 🎯 **Only what needs you.** Review requests, re-reviews, replies you owe, mentions — each PR sits under the reason it's there, longest wait first. The ones waiting on somebody else collapse into their own section.
 - 🧑‍💻 **Your own PRs, too.** They surface only when there's something for you to do: changes requested, a comment you haven't answered, red CI, merge conflicts, or approved and ready to merge.
-- 🧬 **Stacks stay together.** A stacked PR shows its place in the chain (`4/8`), and the stack is drawn as one connected run — with a dotted break standing in for the parts that don't need you, so you can see the shape of it without the noise.
-- 💤 **Snooze that un-snoozes itself.** Park a PR for a while — it wakes up on its own when something actually happens: new commits or a new reply.
+- 🧬 **Stacks stay together.** A stacked PR shows its place in the chain (`4/8`), and the stack is drawn as one connected run.
+- 💤 **Snooze until new activity.** Park a PR and it comes back on its own — a new push, or a reply in a thread you're in.
 - 📌 **Lives in the menu bar.** A quiet count of PRs waiting on you; no Dock icon, no window to manage.
 - ⚡ **Open it from anywhere.** `⌃⌥P` toggles the window over whatever you are in, so you never have to aim for the menu bar. Pick a different combination in Settings, or turn it off.
 - ⌨️ **Drive it from the keyboard.** `↑` `↓` move, `⏎` opens the pull request, `S` snoozes, `R` refreshes and `esc` closes the window — all of it printed along the window's bottom edge, so there is nothing to memorise. `M` opens the actions menu on the row you are on.
