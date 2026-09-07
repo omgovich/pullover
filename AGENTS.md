@@ -5,11 +5,12 @@ Pullover is a macOS menu-bar Electron app: an inbox that shows only the pull req
 Commands:
 
 - `npm run dev` — run the app locally (needs `.env`, see README)
-- `npm test` — unit tests
+- `npm test` — unit tests and screenshot tests
+- `npm run test:visual` — screenshot tests alone
 - `npm run typecheck` — type checking
 - `npm run dist` — local build (`dist/*.dmg`); signed only if a Developer ID is in the keychain, never notarized — releases are signed and notarized in CI
 
-Run `npm test` and `npm run typecheck` before committing.
+Run `npm test` and `npm run typecheck` before committing. The screenshot tests need Chromium: `npx playwright install chromium`, once per machine.
 
 Don't hard-wrap markdown files — one paragraph or list item per line.
 
@@ -26,6 +27,14 @@ When a comment is warranted, one or two sentences is the size. If it runs longer
 Type sizes come from Reshaped — `Text`'s `variant`, or `var(--rs-font-size-*)` where a component writes its own `font-size` and takes no prop for it. Never a raw pixel value.
 
 The scale is `body-1` `body-2` `caption-1` `caption-2`, plus `featured-*` and `headline-*`. Anything else silently does nothing: `Text` gives a variant it doesn't know no class at all, the text falls back to the inherited 16px, and neither typecheck nor lint objects.
+
+## Screenshot tests
+
+Every `*.screenshot.test.tsx` renders a component in a real Chromium through Vitest's browser mode and compares it against a committed PNG, once in each colour mode. `src/renderer/src/test/visual.tsx` holds the harness and the fixtures; a case is one `visualCase(name, ui)`.
+
+The baselines are macOS/Chromium at 2x and live next to the tests, so a change to them reads as an image diff in the pull request. Only a Mac can record them — a Linux runner shares none of the fonts — which is why CI runs on `macos-15`. Re-record with `npm run test:visual -- -u` and look at the PNGs before pushing; a red run leaves the baseline, the render and the diff in `.vitest-attachments/`, which CI uploads as an artifact.
+
+A case must not depend on the clock (pass the harness's `NOW`, never `new Date()`) or on the network (`AVATAR_SRC` is inline). Animations need no handling at all, and for the same reason cannot be captured part-way through — `visualCase` says why.
 
 ## Releases
 
