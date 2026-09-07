@@ -168,9 +168,9 @@ export default function App(): React.JSX.Element {
 
   const showEmptyState = snapshot.attentionCount === 0
 
-  // `App` always renders the one `.pv-shell` card (see pullover.css); only
-  // what goes inside it changes between states, so the window's silhouette
-  // never changes when signing in or opening settings.
+  // `App` always renders the one card `View` at the bottom of this function;
+  // only what goes inside it changes between states, so the window's
+  // silhouette never changes when signing in or opening settings.
   let body: React.JSX.Element
   if (snapshot.status === 'signed-out') {
     body = (
@@ -287,7 +287,6 @@ export default function App(): React.JSX.Element {
 
   return (
     <View
-      className="pv-shell"
       height="100%"
       direction="column"
       overflow="hidden"

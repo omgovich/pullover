@@ -18,9 +18,9 @@ interface State {
  * only supports catching render errors via `componentDidCatch`, which has no
  * hook equivalent, so this has to be a class component.
  *
- * The fallback renders its own `.pv-shell` card (see pullover.css and
- * App.tsx) rather than relying on App's — App is exactly what just threw —
- * so the window keeps its usual shape instead of collapsing to nothing.
+ * The fallback renders its own copy of App's card `View` rather than relying
+ * on App's — App is exactly what just threw — so the window keeps its usual
+ * shape instead of collapsing to nothing.
  */
 export default class ErrorBoundary extends Component<Props, State> {
   override state: State = { error: null }
@@ -43,7 +43,6 @@ export default class ErrorBoundary extends Component<Props, State> {
 
     return (
       <View
-        className="pv-shell"
         height="100%"
         direction="column"
         overflow="hidden"
