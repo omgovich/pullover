@@ -78,7 +78,11 @@ function documentationShot(name: string, mode: ColorMode, layout: Layout): void 
     // The list arrives a microtask after mount, and until it does `App` holds
     // a spinner. Without this the capture can land on that frame.
     await expect.element(screen.getByText('Needs your review')).toBeVisible()
-    await expect.poll(() => [...document.images].every((image) => image.complete)).toBe(true)
+    // `complete` alone would be satisfied by an avatar that 404'd — an image
+    // reports it either way — so this waits on the decoded size instead.
+    await expect
+      .poll(() => [...document.images].every((image) => image.complete && image.naturalWidth > 0))
+      .toBe(true)
 
     await expect.element(screen.getByTestId('desktop')).toMatchScreenshot(name)
   })

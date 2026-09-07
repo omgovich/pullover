@@ -220,16 +220,10 @@ type Ordered = Pick<ClassifiedPullRequest, 'category' | 'waitingSince'> & {
 }
 
 /**
- * The order the inbox is drawn in: by section, then longest-waiting first, so
- * a section's top row is its oldest obligation rather than its noisiest.
- *
- * Both timestamps are set or neither is — `waitingSince` is null exactly for
- * `waiting`, whose rows keep the newest-activity order they have always had.
- *
- * Exported so the documentation screenshots can put their fixture through the
- * real thing; a demo that arranged its own rows could advertise an order the
- * app doesn't have. `orderSection` runs after this and is the one exception
- * to it — a stack's members follow the chain, not the clock.
+ * By section, then longest-waiting first, so a section's top row is its oldest
+ * obligation rather than its noisiest. `waitingSince` is null exactly for
+ * `waiting`, whose rows fall back to newest activity; `orderSection` runs
+ * after this and is the one exception, a stack following the chain not the clock.
  */
 export function compareInboxOrder(a: Ordered, b: Ordered): number {
   const byCategory = VISIBLE_CATEGORIES.indexOf(a.category) - VISIBLE_CATEGORIES.indexOf(b.category)

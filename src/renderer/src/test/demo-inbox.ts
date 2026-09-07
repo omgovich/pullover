@@ -296,6 +296,8 @@ export function demoSnapshot(now: number): InboxSnapshot {
     lastUpdatedAt: new Date(now - 12_000).toISOString(),
     errorMessage: null,
     myLogin: ME,
-    knownRepositories: ['acme/web-app', 'acme/api', 'acme/infra'],
+    // Derived rather than listed, so the settings picker can never come to
+    // offer repositories no row in the demo belongs to.
+    knownRepositories: [...new Set(ROWS.map((row) => row.repository))],
   }
 }
