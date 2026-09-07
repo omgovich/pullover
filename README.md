@@ -26,15 +26,17 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 
 ## ✨ Features
 
-- 🎯 **Only what needs you.** Fresh review requests, re-reviews after new commits, unanswered comment threads, mentions — each PR lands in the inbox with the reason it's there. PRs where the ball is in someone else's court stay out of sight.
+- 🎯 **Only what needs you.** Review requests, re-reviews, replies you owe, mentions — each PR sits under the reason it's there, longest wait first. The ones waiting on somebody else collapse into their own section.
 - 🧑‍💻 **Your own PRs, too.** They surface only when there's something for you to do: changes requested, a comment you haven't answered, red CI, merge conflicts, or approved and ready to merge.
-- 🧬 **Stacks stay together.** A stacked PR shows its place in the chain (`4/8`), and the stack is drawn as one connected run — with a dotted break standing in for the parts that don't need you, so you can see the shape of it without the noise.
-- 💤 **Snooze that un-snoozes itself.** Park a PR for a while — it wakes up on its own when something actually happens: new commits or a new reply.
+- 🔒 **Private repos and team requests.** Both land in the inbox like anything else — nothing to configure.
+- 🧬 **Stacks stay together.** A stacked PR shows its place in the chain (`4/8`), and the stack is drawn as one connected run.
+- 💤 **Snooze until new activity.** Park a PR and it comes back on its own — a new push, or a reply in a thread you're in.
 - 📌 **Lives in the menu bar.** A quiet count of PRs waiting on you; no Dock icon, no window to manage.
-- 🌗 **Light and dark themes.** Follows your macOS appearance out of the box, or pick one in Settings.
+- ⚡ **Open it from anywhere.** One keystroke — `⌃⌥P` — and the inbox is in front of you, whatever app you're in.
+- ⌨️ **Drive it from the keyboard.** Get through the list without reaching for the mouse.
+- 🌗 **Light, dark, roomy or dense.** Follows your macOS appearance out of the box, and can pack down to one row per PR when your list gets long.
 - ⬇️ **Updates itself quietly.** New versions download in the background; Pullover then offers a restart and waits for you to take it.
 - 👀 **Read-only by design.** Pullover never comments, approves, or merges. Clicking a PR opens it on github.com — you act where you always did.
-- 🔒 **Private repos and team review requests** work out of the box (that's what the `repo` and `read:org` scopes are for — details below).
 
 ## 📦 Install
 
@@ -93,6 +95,10 @@ Click the menu-bar item, hit **Sign in with GitHub**. Pullover shows you a short
 
 </details>
 
+## 🔐 Privacy
+
+Pullover has no backend. There's no server in the middle, no account to create, no analytics, no telemetry, no crash reporting — the app talks to exactly one place, GitHub's API, straight from your Mac. Your OAuth token never leaves the machine: it's encrypted via the macOS Keychain (Electron's `safeStorage`) and stored locally. And you don't have to take anyone's word for any of this — the entire app is open source, right here in this repo.
+
 ## 🛡️ About the permissions it asks for
 
 At sign-in Pullover requests two scopes:
@@ -100,10 +106,6 @@ At sign-in Pullover requests two scopes:
 - **`repo`** — to read pull requests in private repositories. If everything you review is public, this is more than strictly needed, but GitHub has no narrower read-only scope that covers private PRs.
 - **`read:org`** — so that review requests that reached you through a team, rather than by name, still show up.
 
-Pullover only ever reads. It never writes a comment, review, or anything else.
-
 If a repo belongs to an organisation that restricts third-party OAuth Apps, its pull requests won't appear until an org owner approves Pullover under **Settings → Third-party Actions Access** for that org.
 
-## 🔐 Privacy
-
-Pullover has no backend. There's no server in the middle, no account to create, no analytics, no telemetry, no crash reporting — the app talks to exactly one place, GitHub's API, straight from your Mac. Your OAuth token never leaves the machine: it's encrypted via the macOS Keychain (Electron's `safeStorage`) and stored locally. And you don't have to take anyone's word for any of this — the entire app is open source, right here in this repo.
+Pullover only ever reads. It never writes a comment, review, or anything else.
