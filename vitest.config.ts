@@ -33,7 +33,15 @@ export default defineConfig({
           setupFiles: ['src/renderer/src/test/setup.ts'],
           browser: {
             enabled: true,
-            provider: playwright(),
+            // 2x, because that is the only density this app ever renders at:
+            // it ships for macOS only, and every Mac still supported has a
+            // Retina display. The point is fidelity, not sensitivity — a
+            // hairline border, a half-pixel offset or a hinted glyph resolves
+            // differently at 1x, so 1x baselines would hold a rendering no
+            // user ever sees. It buys very little detection on its own:
+            // recolouring the CI chip moves 6 pixels here against 5 at 1x,
+            // since the extra edge pixels are also softer ones.
+            provider: playwright({ contextOptions: { deviceScaleFactor: 2 } }),
             headless: true,
             // One instance, because the baselines are macOS/Chromium and CI
             // runs on macos-15 to match — see AGENTS.md. The viewport has to

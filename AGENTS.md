@@ -32,7 +32,7 @@ The scale is `body-1` `body-2` `caption-1` `caption-2`, plus `featured-*` and `h
 
 Every `*.screenshot.test.tsx` renders a component in a real Chromium through Vitest's browser mode and compares it against a committed PNG, once in each colour mode. `src/renderer/src/test/visual.tsx` holds the harness and the fixtures; a case is one `visualCase(name, ui)`.
 
-The baselines are macOS/Chromium, which is why CI runs on `macos-15` — a Linux runner has none of the same fonts, so the comparison would be meaningless rather than merely strict. They are committed next to the tests so a change to them shows up as an image diff in the pull request.
+The baselines are macOS/Chromium at 2x, which is why CI runs on `macos-15` — a Linux runner has none of the same fonts, so the comparison would be meaningless rather than merely strict. 2x because that is the only density the app ships at, so a 1x baseline would hold a rendering no user sees. They are committed next to the tests so a change to them shows up as an image diff in the pull request.
 
 When a change is meant to move pixels, re-record with `npm run test:visual -- -u` and read the PNGs in the diff before pushing. A red run writes the baseline, the render and the diff into `.vitest-attachments/`; CI uploads that as an artifact.
 
