@@ -46,7 +46,8 @@ export function makePullRequest(overrides: Partial<PullRequest> = {}): PullReque
     reviewThreads: [],
     conversationComments: [],
     reviewRequestedAt: null,
-    lastMentionAt: null,
+    readyForReviewAt: null,
+    mentionsAt: [],
     buckets: [],
     ...overrides,
   }

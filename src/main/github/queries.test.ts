@@ -24,8 +24,16 @@ describe('DETAILS_QUERY', () => {
   it('fetches the review requests a waiting time is dated from', () => {
     // Without these, `needs-review` can only guess from the PR's creation —
     // wrong by days for a reviewer added long after it opened.
-    expect(DETAILS_QUERY).toContain('itemTypes: [REVIEW_REQUESTED_EVENT]')
+    expect(DETAILS_QUERY).toContain('REVIEW_REQUESTED_EVENT')
     expect(DETAILS_QUERY).toContain('requestedReviewer { ... on User { login } }')
+  })
+
+  it('fetches the moment a draft became reviewable, the floor on any wait', () => {
+    // Reviewers can be requested while a PR is still a draft, and undrafting
+    // emits only this event — without it a week spent as a draft reads as a
+    // week of waiting.
+    expect(DETAILS_QUERY).toContain('READY_FOR_REVIEW_EVENT')
+    expect(DETAILS_QUERY).toContain('... on ReadyForReviewEvent')
   })
 
   it('paginates review requests from the newest end', () => {

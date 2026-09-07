@@ -324,7 +324,20 @@ describe('mapPullRequest', () => {
 
   describe('reviewRequestedAt', () => {
     function requested(login: string | null, createdAt: string) {
-      return { createdAt, requestedReviewer: login === null ? null : { login } }
+      return {
+        __typename: 'ReviewRequestedEvent',
+        createdAt,
+        requestedReviewer: login === null ? null : { login },
+      }
+    }
+
+    /** A team or bot reviewer: the inline fragment matches nothing. */
+    function requestedAnonymously(createdAt: string) {
+      return { __typename: 'ReviewRequestedEvent', createdAt, requestedReviewer: {} }
+    }
+
+    function readyForReview(createdAt: string) {
+      return { __typename: 'ReadyForReviewEvent', createdAt }
     }
 
     it('takes the most recent request naming me', () => {
@@ -353,15 +366,30 @@ describe('mapPullRequest', () => {
       expect(mapPullRequest(n, [], 'vlad').reviewRequestedAt).toBe('2026-07-20T10:00:00Z')
     })
 
-    it('is null for a team or bot reviewer, which GitHub returns as {}', () => {
-      const n = node({
-        timelineItems: { nodes: [{ createdAt: '2026-08-02T10:00:00Z', requestedReviewer: {} }] },
-      })
-      expect(mapPullRequest(n, [], 'vlad').reviewRequestedAt).toBeNull()
+    it('falls back to a request naming nobody — a team or a bot', () => {
+      // GitHub only put this PR in the review-requested bucket because
+      // something asked us, and the event's own time beats dating the wait
+      // from whenever the PR happened to be opened.
+      const n = node({ timelineItems: { nodes: [requestedAnonymously('2026-08-02T10:00:00Z')] } })
+      expect(mapPullRequest(n, [], 'vlad').reviewRequestedAt).toBe('2026-08-02T10:00:00Z')
     })
 
-    it('is null for a reviewer GitHub returns as null', () => {
-      const n = node({ timelineItems: { nodes: [requested(null, '2026-08-02T10:00:00Z')] } })
+    it('prefers a request naming me over a later one naming nobody', () => {
+      // I am still on the reviewer list from my own request, so that is when
+      // this started waiting on me.
+      const n = node({
+        timelineItems: {
+          nodes: [
+            requested('vlad', '2026-08-01T10:00:00Z'),
+            requestedAnonymously('2026-08-08T10:00:00Z'),
+          ],
+        },
+      })
+      expect(mapPullRequest(n, [], 'vlad').reviewRequestedAt).toBe('2026-08-01T10:00:00Z')
+    })
+
+    it('does not read a request naming nobody out of a ready-for-review event', () => {
+      const n = node({ timelineItems: { nodes: [readyForReview('2026-08-02T10:00:00Z')] } })
       expect(mapPullRequest(n, [], 'vlad').reviewRequestedAt).toBeNull()
     })
 
@@ -375,7 +403,31 @@ describe('mapPullRequest', () => {
     })
   })
 
-  describe('lastMentionAt', () => {
+  describe('readyForReviewAt', () => {
+    function readyForReview(createdAt: string) {
+      return { __typename: 'ReadyForReviewEvent', createdAt }
+    }
+
+    it('reads the moment the draft became reviewable', () => {
+      const n = node({ timelineItems: { nodes: [readyForReview('2026-08-05T10:00:00Z')] } })
+      expect(mapPullRequest(n, [], 'vlad').readyForReviewAt).toBe('2026-08-05T10:00:00Z')
+    })
+
+    it('is null for a PR that was never a draft', () => {
+      expect(mapPullRequest(node(), [], 'vlad').readyForReviewAt).toBeNull()
+    })
+
+    it('takes the last of several, a PR having been drafted more than once', () => {
+      const n = node({
+        timelineItems: {
+          nodes: [readyForReview('2026-08-02T10:00:00Z'), readyForReview('2026-08-06T10:00:00Z')],
+        },
+      })
+      expect(mapPullRequest(n, [], 'vlad').readyForReviewAt).toBe('2026-08-06T10:00:00Z')
+    })
+  })
+
+  describe('mentionsAt', () => {
     it('picks the newest mention across conversation comments, thread comments and the PR body', () => {
       // The conversation comment is deliberately the newest source, so a
       // mutant that dropped it from the scan would still fail this test.
@@ -413,7 +465,7 @@ describe('mapPullRequest', () => {
         [],
         'vlad',
       )
-      expect(pr.lastMentionAt).toBe('2026-08-07T10:00:00Z')
+      expect(pr.mentionsAt.at(-1)).toBe('2026-08-07T10:00:00Z')
     })
 
     it('counts a mention inside a review body, using the review submittedAt', () => {
@@ -433,7 +485,7 @@ describe('mapPullRequest', () => {
         [],
         'vlad',
       )
-      expect(pr.lastMentionAt).toBe('2026-08-06T10:00:00Z')
+      expect(pr.mentionsAt.at(-1)).toBe('2026-08-06T10:00:00Z')
     })
 
     it('does not count a mention in a review the user authored themselves', () => {
@@ -453,7 +505,7 @@ describe('mapPullRequest', () => {
         [],
         'vlad',
       )
-      expect(pr.lastMentionAt).toBeNull()
+      expect(pr.mentionsAt).toEqual([])
     })
 
     it('does not count a self-mention in the pull request body', () => {
@@ -465,7 +517,7 @@ describe('mapPullRequest', () => {
         [],
         'vlad',
       )
-      expect(pr.lastMentionAt).toBeNull()
+      expect(pr.mentionsAt).toEqual([])
     })
 
     it('ignores a mention inside a resolved review thread', () => {
@@ -492,7 +544,7 @@ describe('mapPullRequest', () => {
         [],
         'vlad',
       )
-      expect(pr.lastMentionAt).toBeNull()
+      expect(pr.mentionsAt).toEqual([])
     })
 
     it('prefers an older mention in an unresolved thread over a newer one in a resolved thread', () => {
@@ -532,7 +584,7 @@ describe('mapPullRequest', () => {
         [],
         'vlad',
       )
-      expect(pr.lastMentionAt).toBe('2026-08-02T10:00:00Z')
+      expect(pr.mentionsAt.at(-1)).toBe('2026-08-02T10:00:00Z')
     })
 
     it('does not count a mention the user wrote themselves', () => {
@@ -551,7 +603,7 @@ describe('mapPullRequest', () => {
         [],
         'vlad',
       )
-      expect(pr.lastMentionAt).toBeNull()
+      expect(pr.mentionsAt).toEqual([])
     })
 
     it('is null when nobody mentioned the user', () => {
@@ -571,7 +623,7 @@ describe('mapPullRequest', () => {
         [],
         'vlad',
       )
-      expect(pr.lastMentionAt).toBeNull()
+      expect(pr.mentionsAt).toEqual([])
     })
   })
 })

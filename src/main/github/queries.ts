@@ -58,11 +58,15 @@ export const DETAILS_QUERY = `
             }
           }
         }
-        timelineItems(last: 50, itemTypes: [REVIEW_REQUESTED_EVENT]) {
+        timelineItems(last: 50, itemTypes: [REVIEW_REQUESTED_EVENT, READY_FOR_REVIEW_EVENT]) {
           nodes {
+            __typename
             ... on ReviewRequestedEvent {
               createdAt
               requestedReviewer { ... on User { login } }
+            }
+            ... on ReadyForReviewEvent {
+              createdAt
             }
           }
         }

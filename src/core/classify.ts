@@ -1,8 +1,8 @@
 import { isSnoozeActive } from '@core/snooze'
 import {
+  approvedSince,
   compareIso,
   hasParticipated,
-  latestReviewAt,
   myLastActivityAt,
   myLatestReview,
   oldestBlockingChangeRequestAt,
@@ -42,12 +42,14 @@ function pluralize(n: number, singular: string, plural: string): string {
 }
 
 /**
- * When the last commit landed, never earlier than the pull request itself:
- * `lastCommitPushedAt` is the commit's *authoring* date, so a long-lived
- * branch would otherwise date an hour-old PR from before it existed.
+ * The earliest moment this pull request can have been waiting on anybody: a
+ * draft is hidden, yet reviewers can be requested while it is one, and a
+ * commit's `committedDate` can predate the branch being opened at all.
  */
-function lastCommitOrOpenedAt(pr: PullRequest): string {
-  return compareIso(pr.lastCommitPushedAt, pr.createdAt) > 0 ? pr.lastCommitPushedAt : pr.createdAt
+function visibleSince(pr: PullRequest): string {
+  return pr.readyForReviewAt !== null && compareIso(pr.readyForReviewAt, pr.createdAt) > 0
+    ? pr.readyForReviewAt
+    : pr.createdAt
 }
 
 function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
@@ -90,20 +92,28 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
       return {
         category: 're-review',
         reason: 'New commits',
-        waitingSince: lastCommitOrOpenedAt(pr),
+        waitingSince: pr.lastCommitPushedAt,
       }
     }
   }
 
   if (pr.buckets.includes('mentions') && !requested) {
     const lastActivity = myLastActivityAt(pr, myLogin)
-    // lastMentionAt is null when our own text scan couldn't find where (a
+    // `mentionsAt` is empty when our own text scan couldn't find where (a
     // team mention, etc.) even though GitHub's search matched — fall back to
     // the PR's last activity rather than silently hiding a PR that needs us.
-    const mentionAt = pr.lastMentionAt ?? pr.updatedAt
-    const mentionIsNew = lastActivity === null || mentionAt > lastActivity
+    const latestMention = pr.mentionsAt.at(-1) ?? pr.updatedAt
+    const mentionIsNew = lastActivity === null || latestMention > lastActivity
     if (mentionIsNew) {
-      return { category: 'mentioned', reason: 'Mentioned', waitingSince: mentionAt }
+      // The first mention I have not answered, not the latest: being called
+      // out again today does not mean I was only called out today.
+      const unanswered =
+        lastActivity === null ? pr.mentionsAt[0] : pr.mentionsAt.find((at) => at > lastActivity)
+      return {
+        category: 'mentioned',
+        reason: 'Mentioned',
+        waitingSince: unanswered ?? latestMention,
+      }
     }
   }
 
@@ -146,7 +156,7 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
     return {
       category: 'my-pr-action',
       reason: 'CI is red',
-      waitingSince: lastCommitOrOpenedAt(pr),
+      waitingSince: pr.lastCommitPushedAt,
     }
   }
 
@@ -161,7 +171,7 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
     return {
       category: 'my-pr-action',
       reason: 'Ready to merge',
-      waitingSince: latestReviewAt(pr, 'APPROVED') ?? pr.updatedAt,
+      waitingSince: approvedSince(pr) ?? pr.updatedAt,
     }
   }
 
@@ -193,7 +203,15 @@ export function classify(
     return { pr, category: 'waiting', reason: 'Snoozed', waitingSince: null, isSnoozed: true }
   }
 
-  return { pr, ...verdict, isSnoozed: false }
+  // Clamped once here rather than in every branch above: no verdict may name
+  // a moment when the pull request was still invisible.
+  const floor = visibleSince(pr)
+  const waitingSince =
+    verdict.waitingSince !== null && compareIso(verdict.waitingSince, floor) < 0
+      ? floor
+      : verdict.waitingSince
+
+  return { pr, ...verdict, waitingSince, isSnoozed: false }
 }
 
 export function classifyAll(

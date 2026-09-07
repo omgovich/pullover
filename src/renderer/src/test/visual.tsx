@@ -34,10 +34,9 @@ export function makeItem(overrides: Partial<ClassifiedPullRequest> = {}): Classi
     pr: makePullRequest({ authorAvatarUrl: AVATAR_SRC }),
     category,
     reason: 'Waiting on you',
-    // Derived, not a constant: `classify` leaves this null exactly where
-    // nothing is waiting on the user, and the card reads the null to fall
-    // back to the last activity. A fixture that hard-coded a timestamp would
-    // let a `waiting` case lock in a card the app never draws.
+    // Derived the way `classify` derives it — null exactly where nothing is
+    // waiting on the user — so a `waiting` case cannot lock in a card the
+    // app never draws.
     waitingSince: category === 'waiting' ? null : WAITING_SINCE,
     isSnoozed: false,
     stack: null,

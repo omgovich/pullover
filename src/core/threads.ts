@@ -1,4 +1,4 @@
-import type { PullRequest, Review, ReviewState, ReviewThread, ThreadComment } from '@shared/types'
+import type { PullRequest, Review, ReviewThread, ThreadComment } from '@shared/types'
 
 export function lastComment(thread: ReviewThread): ThreadComment | null {
   return thread.comments.at(-1) ?? null
@@ -119,24 +119,32 @@ export function oldestPendingReplyAt(threads: ReviewThread[], myLogin: string): 
 }
 
 /**
- * When a review with `state` was last submitted on this pull request, or null
- * if none was. The pull request's own author is skipped: `reviewDecision`
- * never counts a self-review, so neither may the moment it points at.
+ * When this pull request became approved, or null if no approval stands: the
+ * first approval after the last request for changes, since a second reviewer
+ * piling on a week later moved nothing.
  */
-export function latestReviewAt(pr: PullRequest, state: ReviewState): string | null {
-  const dates = pr.reviews
-    .filter((r) => r.state === state && r.authorLogin !== pr.authorLogin)
+export function approvedSince(pr: PullRequest): string | null {
+  const others = pr.reviews.filter((r) => r.authorLogin !== pr.authorLogin)
+  const lastBlock = others
+    .filter((r) => r.state === 'CHANGES_REQUESTED')
     .map((r) => r.submittedAt)
-  if (dates.length === 0) return null
-  return dates.reduce((latest, d) => (compareIso(d, latest) > 0 ? d : latest))
+    .reduce<string | null>(
+      (latest, d) => (latest === null || compareIso(d, latest) > 0 ? d : latest),
+      null,
+    )
+
+  return oldestIso(
+    others
+      .filter((r) => r.state === 'APPROVED')
+      .map((r) => r.submittedAt)
+      .filter((at) => lastBlock === null || compareIso(at, lastBlock) > 0),
+  )
 }
 
 /**
  * When the oldest still-standing "changes requested" review was submitted, or
- * null if none stands. Each reviewer's history is replayed in order rather
- * than filtered by state, because a review never loses the state it was
- * submitted with — only a later approval from the same reviewer clears one,
- * and commenting does not.
+ * null if none stands. Replayed per reviewer rather than filtered by state,
+ * because a review keeps the state it was submitted with forever.
  */
 export function oldestBlockingChangeRequestAt(pr: PullRequest): string | null {
   const byReviewer = new Map<string, Review[]>()
@@ -152,7 +160,9 @@ export function oldestBlockingChangeRequestAt(pr: PullRequest): string | null {
     let since: string | null = null
     for (const review of [...reviews].sort((a, b) => compareIso(a.submittedAt, b.submittedAt))) {
       if (review.state === 'CHANGES_REQUESTED') since ??= review.submittedAt
-      else if (review.state === 'APPROVED') since = null
+      // A dismissal voids that reviewer's stance as an approval does: a
+      // dismissed approval leaves them neutral, not back where they were.
+      else if (review.state === 'APPROVED' || review.state === 'DISMISSED') since = null
     }
     if (since !== null) standing.push(since)
   }

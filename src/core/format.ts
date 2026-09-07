@@ -22,8 +22,8 @@ export function formatAge(iso: string, now: string): string {
 
 /**
  * How long a pull request has been waiting on the user — `waiting 10d`, which
- * says what `10d ago` cannot: that the ball has been in their court that whole
- * time, not merely that somebody touched the thread then.
+ * says what `10d ago` cannot: that the ball has been in their court all that
+ * time, not that somebody touched the thread then.
  */
 export function formatWaiting(iso: string, now: string): string {
   return `waiting ${elapsedSince(iso, now)}`

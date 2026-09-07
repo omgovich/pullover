@@ -89,10 +89,15 @@ export interface PullRequest {
   reviewThreads: ReviewThread[]
   /** Latest conversation-tab comments, oldest first. Inline review comments live in `reviewThreads`. */
   conversationComments: ThreadComment[]
-  /** When the user was last asked to review this PR, or null if never (or by a team). */
+  /** When the user was last asked to review this PR, or null if never. */
   reviewRequestedAt: string | null
-  /** When the user was last @-mentioned on this PR, or null if never. */
-  lastMentionAt: string | null
+  /**
+   * When the pull request stopped being a draft, or null if it never was one.
+   * The floor on any waiting time: before it, the PR was hidden.
+   */
+  readyForReviewAt: string | null
+  /** Every @-mention of the user on this PR, oldest first. */
+  mentionsAt: string[]
   buckets: SearchBucket[]
 }
 

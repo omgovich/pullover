@@ -126,7 +126,7 @@ describe('classify — reviewer branch', () => {
   it('mentioned when only @-mentioned', () => {
     const pr = makePullRequest({
       buckets: ['mentions', 'involves'],
-      lastMentionAt: '2026-08-05T10:00:00Z',
+      mentionsAt: ['2026-08-05T10:00:00Z'],
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('mentioned')
@@ -138,7 +138,7 @@ describe('classify — reviewer branch', () => {
       buckets: ['involves', 'mentions'],
       reviews: [{ authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-01T10:00:00Z' }],
       lastCommitPushedAt: '2026-08-01T10:00:00Z',
-      lastMentionAt: '2026-08-05T10:00:00Z',
+      mentionsAt: ['2026-08-05T10:00:00Z'],
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('mentioned')
@@ -150,7 +150,7 @@ describe('classify — reviewer branch', () => {
       buckets: ['involves', 'mentions'],
       reviews: [{ authorLogin: ME, state: 'COMMENTED', submittedAt: '2026-08-05T10:00:00Z' }],
       lastCommitPushedAt: '2026-08-01T10:00:00Z',
-      lastMentionAt: '2026-08-01T10:00:00Z',
+      mentionsAt: ['2026-08-01T10:00:00Z'],
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('waiting')
@@ -160,7 +160,7 @@ describe('classify — reviewer branch', () => {
     // Team mentions, mentions in a review body we don't fetch, commit-message
     // mentions, etc. all leave lastMentionAt null even though GitHub's
     // mentions:@me search did match this PR. It must not be dropped.
-    const pr = makePullRequest({ buckets: ['mentions'], lastMentionAt: null })
+    const pr = makePullRequest({ buckets: ['mentions'], mentionsAt: [] })
     const result = classify(pr, ctx())
     expect(result.category).toBe('mentioned')
   })
@@ -169,7 +169,7 @@ describe('classify — reviewer branch', () => {
     const pr = makePullRequest({
       buckets: ['involves', 'mentions'],
       updatedAt: '2026-08-01T10:00:00Z',
-      lastMentionAt: null,
+      mentionsAt: [],
       reviews: [makeReview(ME, '2026-08-05T10:00:00Z')],
     })
     const result = classify(pr, ctx())
@@ -183,7 +183,7 @@ describe('classify — reviewer branch', () => {
     const pr = makePullRequest({
       buckets: ['review-requested', 'mentions'],
       conversationComments: [makeComment(ME, '2026-08-01T10:00:00Z')],
-      lastMentionAt: '2026-08-05T10:00:00Z',
+      mentionsAt: ['2026-08-05T10:00:00Z'],
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('waiting')
@@ -614,6 +614,69 @@ describe('classify — waitingSince', () => {
     expect(result.waitingSince).toBe('2026-08-02T10:00:00Z')
   })
 
+  it('dates a mention from the first one I have not answered', () => {
+    // Being called out again today does not mean I was only called out
+    // today — the clock started at the mention I left unanswered.
+    const pr = makePullRequest({
+      buckets: ['mentions'],
+      mentionsAt: ['2026-08-02T10:00:00Z', '2026-08-10T11:00:00Z'],
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('mentioned')
+    expect(result.waitingSince).toBe('2026-08-02T10:00:00Z')
+  })
+
+  it('skips mentions I answered and dates from the first one after', () => {
+    const pr = makePullRequest({
+      buckets: ['mentions'],
+      mentionsAt: ['2026-08-01T10:00:00Z', '2026-08-06T10:00:00Z', '2026-08-09T10:00:00Z'],
+      conversationComments: [makeComment(ME, '2026-08-03T10:00:00Z')],
+      updatedAt: '2026-08-09T10:00:00Z',
+    })
+    expect(classify(pr, ctx()).waitingSince).toBe('2026-08-06T10:00:00Z')
+  })
+
+  it('never dates a wait from before a draft became reviewable', () => {
+    // Reviewers can be requested while a PR is still a draft, and a draft is
+    // hidden — so those eleven days were waiting on nobody.
+    const pr = makePullRequest({
+      buckets: ['review-requested'],
+      createdAt: '2026-07-25T10:00:00Z',
+      reviewRequestedAt: '2026-07-25T11:00:00Z',
+      readyForReviewAt: '2026-08-05T10:00:00Z',
+      updatedAt: '2026-08-05T10:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('needs-review')
+    expect(result.waitingSince).toBe('2026-08-05T10:00:00Z')
+  })
+
+  it('leaves a request that postdates the draft alone', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested'],
+      createdAt: '2026-07-25T10:00:00Z',
+      readyForReviewAt: '2026-08-01T10:00:00Z',
+      reviewRequestedAt: '2026-08-03T10:00:00Z',
+    })
+    expect(classify(pr, ctx()).waitingSince).toBe('2026-08-03T10:00:00Z')
+  })
+
+  it('dates ready-to-merge from the approval that unblocked it, not a later one', () => {
+    const pr = makePullRequest({
+      ...mine,
+      reviewDecision: 'APPROVED',
+      reviews: [
+        makeReview('alice', '2026-08-03T10:00:00Z', { state: 'APPROVED' }),
+        makeReview('bob', '2026-08-09T10:00:00Z', { state: 'APPROVED' }),
+      ],
+      updatedAt: '2026-08-10T11:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.reason).toBe('Ready to merge')
+    expect(result.waitingSince).toBe('2026-08-03T10:00:00Z')
+  })
+
   it('dates a re-review request from the request', () => {
     const pr = makePullRequest({
       buckets: ['review-requested', 'involves'],
@@ -630,7 +693,7 @@ describe('classify — waitingSince', () => {
   it('dates a mention from the mention', () => {
     const pr = makePullRequest({
       buckets: ['mentions'],
-      lastMentionAt: '2026-08-04T10:00:00Z',
+      mentionsAt: ['2026-08-04T10:00:00Z'],
       updatedAt: '2026-08-10T11:00:00Z',
     })
     const result = classify(pr, ctx())

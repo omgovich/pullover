@@ -1,9 +1,9 @@
 import {
+  approvedSince,
   compareIso,
   hasNewReplyInMyThreadsSince,
   hasParticipated,
   lastComment,
-  latestReviewAt,
   myLastActivityAt,
   myLatestReview,
   oldestBlockingChangeRequestAt,
@@ -431,6 +431,32 @@ describe('oldestBlockingChangeRequestAt', () => {
     expect(oldestBlockingChangeRequestAt(pr)).toBeNull()
   })
 
+  it("keeps the first of one reviewer's two unanswered requests", () => {
+    // Nothing cleared the first, so the author has been on the hook since it
+    // — asking again does not restart their clock.
+    const pr = makePullRequest({
+      ...authored,
+      reviews: [
+        makeReview('bob', '2026-08-02T10:00:00Z', { state: 'CHANGES_REQUESTED' }),
+        makeReview('bob', '2026-08-07T10:00:00Z', { state: 'CHANGES_REQUESTED' }),
+      ],
+    })
+    expect(oldestBlockingChangeRequestAt(pr)).toBe('2026-08-02T10:00:00Z')
+  })
+
+  it('treats a dismissed approval as clearing, not as reviving the request', () => {
+    // A push can dismiss a stale approval, turning that node into DISMISSED.
+    // The reviewer is then neutral — their old request does not come back.
+    const pr = makePullRequest({
+      ...authored,
+      reviews: [
+        makeReview('bob', '2026-08-02T10:00:00Z', { state: 'CHANGES_REQUESTED' }),
+        makeReview('bob', '2026-08-05T10:00:00Z', { state: 'DISMISSED' }),
+      ],
+    })
+    expect(oldestBlockingChangeRequestAt(pr)).toBeNull()
+  })
+
   it('ignores a dismissed request', () => {
     const pr = makePullRequest({
       ...authored,
@@ -444,38 +470,45 @@ describe('oldestBlockingChangeRequestAt', () => {
   })
 })
 
-describe('latestReviewAt', () => {
-  it('takes the most recent review in that state', () => {
+describe('approvedSince', () => {
+  const authored = { authorLogin: 'me-the-author' }
+
+  it('takes the first approval, not a later one piling on', () => {
+    // The PR became the author's to merge at Alice's approval; Bob agreeing a
+    // week later did not move the ball anywhere.
     const pr = makePullRequest({
-      authorLogin: 'carol',
+      ...authored,
       reviews: [
-        makeReview('alice', '2026-08-01T10:00:00Z', { state: 'CHANGES_REQUESTED' }),
-        makeReview('bob', '2026-08-05T10:00:00Z', { state: 'CHANGES_REQUESTED' }),
+        makeReview('alice', '2026-08-01T10:00:00Z', { state: 'APPROVED' }),
+        makeReview('bob', '2026-08-08T10:00:00Z', { state: 'APPROVED' }),
       ],
     })
-    expect(latestReviewAt(pr, 'CHANGES_REQUESTED')).toBe('2026-08-05T10:00:00Z')
+    expect(approvedSince(pr)).toBe('2026-08-01T10:00:00Z')
   })
 
-  it('ignores the other states', () => {
+  it('ignores approvals given before the last request for changes', () => {
+    // That earlier approval was overtaken; the ball only came back on the
+    // approval that followed the block.
     const pr = makePullRequest({
-      authorLogin: 'carol',
+      ...authored,
       reviews: [
-        makeReview('alice', '2026-08-01T10:00:00Z', { state: 'CHANGES_REQUESTED' }),
-        makeReview('bob', '2026-08-09T10:00:00Z', { state: 'COMMENTED' }),
+        makeReview('alice', '2026-08-01T10:00:00Z', { state: 'APPROVED' }),
+        makeReview('bob', '2026-08-03T10:00:00Z', { state: 'CHANGES_REQUESTED' }),
+        makeReview('bob', '2026-08-05T10:00:00Z', { state: 'APPROVED' }),
       ],
     })
-    expect(latestReviewAt(pr, 'CHANGES_REQUESTED')).toBe('2026-08-01T10:00:00Z')
+    expect(approvedSince(pr)).toBe('2026-08-05T10:00:00Z')
   })
 
-  it('ignores the author reviewing their own pull request', () => {
+  it('ignores the author approving their own pull request', () => {
     const pr = makePullRequest({
       authorLogin: 'alice',
       reviews: [makeReview('alice', '2026-08-05T10:00:00Z', { state: 'APPROVED' })],
     })
-    expect(latestReviewAt(pr, 'APPROVED')).toBeNull()
+    expect(approvedSince(pr)).toBeNull()
   })
 
-  it('is null when no review is in that state', () => {
-    expect(latestReviewAt(makePullRequest(), 'APPROVED')).toBeNull()
+  it('is null when nobody has approved', () => {
+    expect(approvedSince(makePullRequest(authored))).toBeNull()
   })
 })
