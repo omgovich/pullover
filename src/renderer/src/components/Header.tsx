@@ -60,7 +60,7 @@ export default function Header({
       paddingStart={4}
       paddingEnd={2.5}
       backgroundColor="elevation-raised"
-      borderColor="neutral-faded"
+      borderColor="neutral"
       borderBottom
     >
       <View direction="row" align="center" gap={2.5} minWidth={0}>

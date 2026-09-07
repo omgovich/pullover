@@ -1,9 +1,9 @@
-import type { InboxSnapshot } from '@shared/ipc'
-import { DEFAULT_SETTINGS, type Layout } from '@shared/types'
+import type { Layout } from '@shared/types'
 import { Reshaped } from 'reshaped/bundle'
 import { expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import App from './App'
+import { stubApi } from './test/app-api'
 import { DEMO_AVATAR_URLS, demoSnapshot } from './test/demo-inbox'
 import DesktopFrame from './test/desktop'
 import type { ColorMode } from './useColorMode'
@@ -19,22 +19,6 @@ import type { ColorMode } from './useColorMode'
  * The one thing they can't cover is anything reached by clicking: the app
  * gets no menus, no settings panel and no hover here.
  */
-
-/**
- * `App` pulls three things off the IPC bridge on mount and subscribes to each
- * of them. Nothing else is reachable without a click, so the rest of the
- * bridge stays absent.
- */
-function stubApi(snapshot: InboxSnapshot, layout: Layout): void {
-  window.api = {
-    getSnapshot: () => Promise.resolve(snapshot),
-    onSnapshot: () => () => {},
-    getSettings: () => Promise.resolve({ ...DEFAULT_SETTINGS, layout }),
-    onSettings: () => () => {},
-    getUpdate: () => Promise.resolve({ status: 'idle', version: null }),
-    onUpdate: () => () => {},
-  } as unknown as typeof window.api
-}
 
 /**
  * Puts the avatars in the browser's cache before anything renders. They are

@@ -109,11 +109,11 @@ const ROWS: DemoRow[] = [
     waitingMinutes: 9 * 60,
     stack: null,
   },
-  // One feature split into a chain of four, two of which need the user — so
-  // the run draws a dotted segment where the two in between are missing, and
-  // the badges read 1/4 then 4/4. Their waiting times climb down the list
-  // rather than up, which is the one place the inbox's order gives way:
-  // inside a stack the chain wins.
+  // One feature split into a chain of four, three of which need the user — so
+  // the run draws a solid segment between the first two and then a dotted one
+  // where the third is missing, and the badges read 1/4, 2/4, 4/4. Their
+  // waiting times climb down the list rather than up, which is the one place
+  // the inbox's order gives way: inside a stack the chain wins.
   //
   // Three different authors, because a chain is grouped by its branches and
   // never by who wrote them, and one face three rows running reads as a
@@ -130,6 +130,19 @@ const ROWS: DemoRow[] = [
     reason: 'Re-review requested',
     waitingMinutes: 5 * 60,
     stack: ['stack-checkout', 1, 4],
+  },
+  {
+    repository: 'acme/billing',
+    number: 478,
+    title: 'Checkout: line items',
+    author: 'tpark',
+    additions: 96,
+    deletions: 18,
+    ci: 'success',
+    category: 're-review',
+    reason: 'New commits',
+    waitingMinutes: 7 * 60,
+    stack: ['stack-checkout', 2, 4],
   },
   {
     repository: 'acme/billing',
@@ -172,19 +185,9 @@ const ROWS: DemoRow[] = [
     waitingMinutes: 3 * 60,
     stack: null,
   },
-  {
-    repository: 'acme/mobile',
-    number: 315,
-    title: 'Push permissions prompt',
-    author: 'tpark',
-    additions: 64,
-    deletions: 28,
-    ci: 'failure',
-    category: 'mentioned',
-    reason: 'Mentioned',
-    waitingMinutes: 12 * 60,
-    stack: null,
-  },
+  // One row, because the list has to end with the collapsed `waiting` section
+  // on screen: the compact layout fits the whole demo into the popup, and a
+  // second mention here is what pushed that section past the bottom edge.
   {
     repository: 'acme/billing',
     number: 479,
@@ -199,19 +202,6 @@ const ROWS: DemoRow[] = [
     category: 'mentioned',
     reason: 'Mentioned',
     waitingMinutes: 7 * 60,
-    stack: null,
-  },
-  {
-    repository: 'acme/dashboard',
-    number: 2190,
-    title: 'Release notes for 4.2',
-    author: 'mira',
-    additions: 33,
-    deletions: 4,
-    ci: 'pending',
-    category: 'mentioned',
-    reason: 'Mentioned',
-    waitingMinutes: 4 * 60,
     stack: null,
   },
   // Nothing is waiting on the user here, so these two are ordered by their
