@@ -19,12 +19,16 @@ const HOUR_MS = 60 * MINUTE_MS
 const ME = 'vlad'
 
 /**
- * A face per person, from DiceBear's `critters` — CC0, so nothing here owes
+ * A face per person, from DiceBear's `line-face` — CC0, so nothing here owes
  * an attribution line. The login is the seed, so everyone gets their own
- * creature; `background` is pinned rather than left to the seed, because two
- * of them otherwise land on the same purple two rows apart.
+ * face; the background is pinned rather than left to the seed, whose whole
+ * palette is a muted beige that reads as five copies of one avatar.
+ *
+ * The style also survives both colour modes without a second set of URLs:
+ * the strokes are dark, but they sit on a light disc rather than on
+ * transparency, so nothing disappears into the dark theme.
  */
-const AVATAR_STYLE = 'critters'
+const AVATAR_STYLE = 'line-face'
 
 const CAST = {
   vlad: 'c0aede',
@@ -93,32 +97,51 @@ const ROWS: DemoRow[] = [
     waitingMinutes: 2 * 60,
     stack: null,
   },
+  // A stack of four, three of which need the user — so the run draws solid
+  // between 1 and 2 and dotted where 3 is missing. Three different authors,
+  // because a chain is grouped by its branches and not by who wrote them, and
+  // one person's avatar three rows running looks like a rendering fault.
   {
-    repository: 'acme/api',
-    number: 2177,
-    title: 'Retry policy for webhooks',
+    repository: 'acme/infra',
+    number: 310,
+    title: 'Deploy: extract build',
     author: 'rojas',
-    additions: 96,
-    deletions: 41,
-    ci: 'success',
-    category: 'needs-review',
-    reason: 'Review requested',
-    waitingMinutes: 6 * 60,
-    stack: null,
-  },
-  {
-    repository: 'acme/web-app',
-    number: 2168,
-    title: 'Form fields: tab order',
-    author: 'tpark',
-    additions: 64,
-    deletions: 28,
+    additions: 218,
+    deletions: 140,
     ci: 'success',
     category: 're-review',
     reason: 'Re-review requested',
-    waitingMinutes: 26 * 60,
-    stack: null,
+    waitingMinutes: 5 * 60,
+    stack: ['stack-infra', 1, 4],
   },
+  {
+    repository: 'acme/infra',
+    number: 311,
+    title: 'Deploy: sign in its own job',
+    author: 'tpark',
+    additions: 96,
+    deletions: 12,
+    ci: 'success',
+    category: 're-review',
+    reason: 'New commits',
+    waitingMinutes: 8 * 60,
+    stack: ['stack-infra', 2, 4],
+  },
+  {
+    repository: 'acme/infra',
+    number: 314,
+    title: 'Deploy: notarize dmg',
+    author: 'mchen',
+    additions: 41,
+    deletions: 9,
+    ci: 'success',
+    category: 're-review',
+    reason: 'Re-review requested',
+    waitingMinutes: 9 * 60,
+    stack: ['stack-infra', 4, 4],
+  },
+  // Two rows only: they are all the user's own, so a third would just repeat
+  // the same avatar again.
   {
     repository: 'acme/api',
     number: 2182,
@@ -132,46 +155,18 @@ const ROWS: DemoRow[] = [
     waitingMinutes: 3 * 60,
     stack: null,
   },
-  // A stack of four, three of which need the user — so the run draws solid
-  // between 1 and 2 and dotted where 3 is missing.
   {
-    repository: 'acme/infra',
-    number: 310,
-    title: 'Deploy: extract build',
+    repository: 'acme/web-app',
+    number: 2179,
+    title: 'Search options at runtime',
     author: 'vlad',
-    additions: 218,
-    deletions: 140,
-    ci: 'success',
-    category: 'my-pr-action',
-    reason: 'Changes requested',
-    waitingMinutes: 5 * 60,
-    stack: ['stack-infra', 1, 4],
-  },
-  {
-    repository: 'acme/infra',
-    number: 311,
-    title: 'Deploy: sign in its own job',
-    author: 'vlad',
-    additions: 96,
-    deletions: 12,
-    ci: 'success',
-    category: 'my-pr-action',
-    reason: '2 open threads',
-    waitingMinutes: 8 * 60,
-    stack: ['stack-infra', 2, 4],
-  },
-  {
-    repository: 'acme/infra',
-    number: 314,
-    title: 'Deploy: notarize the dmg',
-    author: 'vlad',
-    additions: 41,
-    deletions: 9,
+    additions: 234,
+    deletions: 4,
     ci: 'success',
     category: 'my-pr-action',
     reason: 'Ready to merge',
-    waitingMinutes: 9 * 60,
-    stack: ['stack-infra', 4, 4],
+    waitingMinutes: 6 * 60,
+    stack: null,
   },
   {
     repository: 'acme/web-app',
@@ -210,6 +205,19 @@ const ROWS: DemoRow[] = [
     category: 'mentioned',
     reason: 'Mentioned',
     waitingMinutes: 7 * 60,
+    stack: null,
+  },
+  {
+    repository: 'acme/web-app',
+    number: 2171,
+    title: 'Form fields: tab order',
+    author: 'tpark',
+    additions: 64,
+    deletions: 28,
+    ci: 'success',
+    category: 'mentioned',
+    reason: 'Mentioned',
+    waitingMinutes: 12 * 60,
     stack: null,
   },
   {
