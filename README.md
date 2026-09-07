@@ -26,7 +26,7 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 
 ## ✨ Features
 
-- 🎯 **Only what needs you.** A review you were asked for, a reply you haven't answered, a re-review after new commits or a second request, a mention — each PR sits under the reason it's there, longest wait first. The ones where the ball is in someone else's court collapse into a “Waiting on others” section you can leave shut.
+- 🎯 **Only what needs you.** Review requests, re-reviews, replies you owe, mentions — each PR sits under the reason it's there, longest wait first. The ones waiting on somebody else collapse into their own section.
 - 🧑‍💻 **Your own PRs, too.** They surface only when there's something for you to do: changes requested, a comment you haven't answered, red CI, merge conflicts, or approved and ready to merge.
 - 🧬 **Stacks stay together.** A stacked PR shows its place in the chain (`4/8`), and the stack is drawn as one connected run — with a dotted break standing in for the parts that don't need you, so you can see the shape of it without the noise.
 - 💤 **Snooze that un-snoozes itself.** Park a PR for a while — it wakes up on its own when something actually happens: new commits or a new reply.
