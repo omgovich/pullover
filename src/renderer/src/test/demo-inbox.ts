@@ -96,10 +96,24 @@ const ROWS: DemoRow[] = [
     waitingMinutes: 40,
     stack: null,
   },
-  // One feature split into a chain of four, three of which need the user — so
-  // the run draws solid between 1 and 2 and dotted where 3 is missing. Their
-  // waiting times climb down the list rather than up, which is the one place
-  // the inbox's order gives way: inside a stack the chain wins.
+  {
+    repository: 'acme/dashboard',
+    number: 2188,
+    title: 'Filter chips wrap oddly',
+    author: 'mira',
+    additions: 87,
+    deletions: 31,
+    ci: 'success',
+    category: 'new-replies',
+    reason: '3 new replies',
+    waitingMinutes: 9 * 60,
+    stack: null,
+  },
+  // One feature split into a chain of four, two of which need the user — so
+  // the run draws a dotted segment where the two in between are missing, and
+  // the badges read 1/4 then 4/4. Their waiting times climb down the list
+  // rather than up, which is the one place the inbox's order gives way:
+  // inside a stack the chain wins.
   //
   // Three different authors, because a chain is grouped by its branches and
   // never by who wrote them, and one face three rows running reads as a
@@ -119,19 +133,6 @@ const ROWS: DemoRow[] = [
   },
   {
     repository: 'acme/billing',
-    number: 477,
-    title: 'Checkout: promo API',
-    author: 'tpark',
-    additions: 96,
-    deletions: 12,
-    ci: 'success',
-    category: 're-review',
-    reason: 'New commits',
-    waitingMinutes: 8 * 60,
-    stack: ['stack-checkout', 2, 4],
-  },
-  {
-    repository: 'acme/billing',
     number: 480,
     title: 'Checkout: promo field',
     author: 'kirill',
@@ -139,7 +140,7 @@ const ROWS: DemoRow[] = [
     deletions: 9,
     ci: 'success',
     category: 're-review',
-    reason: 'Re-review requested',
+    reason: 'New commits',
     waitingMinutes: 9 * 60,
     stack: ['stack-checkout', 4, 4],
   },
@@ -154,8 +155,8 @@ const ROWS: DemoRow[] = [
     deletions: 4,
     ci: 'success',
     category: 'my-pr-action',
-    reason: 'Ready to merge',
-    waitingMinutes: 6 * 60,
+    reason: '2 open threads',
+    waitingMinutes: 10 * 60,
     stack: null,
   },
   {
@@ -178,7 +179,7 @@ const ROWS: DemoRow[] = [
     author: 'tpark',
     additions: 64,
     deletions: 28,
-    ci: 'success',
+    ci: 'failure',
     category: 'mentioned',
     reason: 'Mentioned',
     waitingMinutes: 12 * 60,
@@ -191,7 +192,10 @@ const ROWS: DemoRow[] = [
     author: 'sdiaz',
     additions: 6,
     deletions: 6,
-    ci: 'success',
+    // No checks on this one at all, which draws no chip — a state the list
+    // has to look right in, and the only way the four badges here cover
+    // every value `ciStatus` takes.
+    ci: 'none',
     category: 'mentioned',
     reason: 'Mentioned',
     waitingMinutes: 7 * 60,
@@ -204,23 +208,10 @@ const ROWS: DemoRow[] = [
     author: 'mira',
     additions: 33,
     deletions: 4,
-    ci: 'success',
+    ci: 'pending',
     category: 'mentioned',
     reason: 'Mentioned',
     waitingMinutes: 4 * 60,
-    stack: null,
-  },
-  {
-    repository: 'acme/dashboard',
-    number: 2176,
-    title: 'Keyboard shortcuts',
-    author: 'kirill',
-    additions: 128,
-    deletions: 37,
-    ci: 'success',
-    category: 'mentioned',
-    reason: 'Mentioned',
-    waitingMinutes: 45,
     stack: null,
   },
   // Nothing is waiting on the user here, so these two are ordered by their
