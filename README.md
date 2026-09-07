@@ -28,16 +28,15 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 
 - 🎯 **Only what needs you.** Review requests, re-reviews, replies you owe, mentions — each PR sits under the reason it's there, longest wait first. The ones waiting on somebody else collapse into their own section.
 - 🧑‍💻 **Your own PRs, too.** They surface only when there's something for you to do: changes requested, a comment you haven't answered, red CI, merge conflicts, or approved and ready to merge.
+- 🔒 **Private repos and team requests.** Both land in the inbox like anything else — nothing to configure.
 - 🧬 **Stacks stay together.** A stacked PR shows its place in the chain (`4/8`), and the stack is drawn as one connected run.
 - 💤 **Snooze until new activity.** Park a PR and it comes back on its own — a new push, or a reply in a thread you're in.
 - 📌 **Lives in the menu bar.** A quiet count of PRs waiting on you; no Dock icon, no window to manage.
 - ⚡ **Open it from anywhere.** One keystroke — `⌃⌥P` — and the inbox is in front of you, whatever app you're in.
 - ⌨️ **Drive it from the keyboard.** Get through the list without reaching for the mouse.
-- 🌗 **Light and dark themes.** Follows your macOS appearance out of the box, or pick one in Settings.
-- 📐 **Two layouts.** Comfortable by default. If you have a lot of pull requests, turn on compact in Settings and each one takes a single row.
+- 🌗 **Light, dark, roomy or dense.** Follows your macOS appearance out of the box, and can pack down to one row per PR when your list gets long.
 - ⬇️ **Updates itself quietly.** New versions download in the background; Pullover then offers a restart and waits for you to take it.
 - 👀 **Read-only by design.** Pullover never comments, approves, or merges. Clicking a PR opens it on github.com — you act where you always did.
-- 🔒 **Works where you actually review.** Private repositories, and review requests that reached you through a team rather than by name, show up like anything else.
 
 ## 📦 Install
 
