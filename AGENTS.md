@@ -41,6 +41,8 @@ A case must not depend on the clock (pass the harness's `NOW`, never `new Date()
 
 `docs/screenshot-light.png` and `docs/screenshot-dark.png` are recorded the same way, by the separate `docs` project: `src/renderer/src/app.docs.test.tsx` renders the whole `App` over a drawn-on macOS menu bar (`test/desktop.tsx`) with an invented inbox behind it (`test/demo-inbox.ts`). Those PNGs *are* the baselines, so `npm test` reports documentation that has fallen behind the interface as a failing screenshot; `npm run docs:shots` brings it back in step, and the update lands in the pull request as an image diff.
 
+The faces come from DiceBear's CDN, which makes these two the one place in the suite that reaches the network — the component tests keep their inline `AVATAR_SRC`. The trade is deliberate: it is what the app itself does with a real GitHub avatar, and the cost is a red run while DiceBear is down. The test warms the images before it captures, because a missing avatar is a state the app draws rather than an error, and an unwarmed capture records empty circles without complaining. Keep to `critters` or another CC0 style unless you also add the attribution a CC BY one owes.
+
 The two differ only in colour mode and layout — light comfortable, dark compact — so the pair says what the compact setting buys. Everything the fixture shows must be something `classify` could really produce; a demo that invents its own reasons advertises an app that doesn't exist.
 
 ## Releases

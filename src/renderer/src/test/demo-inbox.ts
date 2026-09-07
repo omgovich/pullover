@@ -16,30 +16,44 @@ import { ATTENTION_CATEGORIES, type Category, type ClassifiedPullRequest } from 
 const MINUTE_MS = 60_000
 const HOUR_MS = 60 * MINUTE_MS
 
-/**
- * A flat colour square, inline rather than fetched — the same reasoning as
- * `AVATAR_SRC` in visual.tsx — with a hue per author, so the list doesn't
- * read as one person talking to themselves.
- */
-function avatar(hex: string): string {
-  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23${hex}'/%3E%3C/svg%3E`
-}
-
 const ME = 'vlad'
 
-const AUTHORS: Record<string, string> = {
-  vlad: avatar('6e56cf'),
-  mchen: avatar('0f9d8b'),
-  sdiaz: avatar('d6409f'),
-  rojas: avatar('e0842a'),
-  tpark: avatar('3a7bd5'),
+/**
+ * A face per person, from DiceBear's `critters` — CC0, so nothing here owes
+ * an attribution line. The login is the seed, so everyone gets their own
+ * creature; `background` is pinned rather than left to the seed, because two
+ * of them otherwise land on the same purple two rows apart.
+ */
+const AVATAR_STYLE = 'critters'
+
+const CAST = {
+  vlad: 'c0aede',
+  mchen: 'ffdfbf',
+  sdiaz: 'd1d4f9',
+  rojas: 'ffd5dc',
+  tpark: 'a7e0a0',
 }
+
+function avatarUrl(login: keyof typeof CAST): string {
+  return `https://api.dicebear.com/10.x/${AVATAR_STYLE}/svg?seed=${login}&backgroundColor=${CAST[login]}`
+}
+
+/**
+ * Every avatar the demo draws, for the screenshot to warm before it captures.
+ *
+ * These are the one thing in the whole screenshot suite that comes over the
+ * network — a deliberate exception, taken because the app fetches a real
+ * GitHub avatar the same way. The cost is a red run when DiceBear is down.
+ */
+export const DEMO_AVATAR_URLS: string[] = Object.keys(CAST).map((login) =>
+  avatarUrl(login as keyof typeof CAST),
+)
 
 interface DemoRow {
   repository: string
   number: number
   title: string
-  author: keyof typeof AUTHORS
+  author: keyof typeof CAST
   additions: number
   deletions: number
   ci: 'success' | 'failure' | 'pending' | 'none'
@@ -186,6 +200,19 @@ const ROWS: DemoRow[] = [
     stack: null,
   },
   {
+    repository: 'acme/infra',
+    number: 308,
+    title: 'Pin the runner image',
+    author: 'sdiaz',
+    additions: 6,
+    deletions: 6,
+    ci: 'success',
+    category: 'mentioned',
+    reason: 'Mentioned',
+    waitingMinutes: 7 * 60,
+    stack: null,
+  },
+  {
     repository: 'acme/web-app',
     number: 2150,
     title: 'Drop the print stylesheet',
@@ -226,7 +253,7 @@ function classified(row: DemoRow, now: number): ClassifiedPullRequest {
       url: `https://github.com/${row.repository}/pull/${row.number}`,
       repository: row.repository,
       authorLogin: row.author,
-      authorAvatarUrl: AUTHORS[row.author],
+      authorAvatarUrl: avatarUrl(row.author),
       additions: row.additions,
       deletions: row.deletions,
       ciStatus: row.ci,

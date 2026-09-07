@@ -4,7 +4,7 @@ import { Reshaped } from 'reshaped/bundle'
 import { expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import App from './App'
-import { demoSnapshot } from './test/demo-inbox'
+import { DEMO_AVATAR_URLS, demoSnapshot } from './test/demo-inbox'
 import DesktopFrame from './test/desktop'
 import type { ColorMode } from './useColorMode'
 
@@ -36,8 +36,30 @@ function stubApi(snapshot: InboxSnapshot, layout: Layout): void {
   } as unknown as typeof window.api
 }
 
+/**
+ * Puts the avatars in the browser's cache before anything renders. They are
+ * the one thing here that comes over the network, and a capture that beats
+ * them to it records empty circles — silently, since a missing avatar is a
+ * state the app draws rather than an error.
+ */
+async function warmAvatars(): Promise<void> {
+  await Promise.all(
+    DEMO_AVATAR_URLS.map(
+      (src) =>
+        new Promise<void>((resolve) => {
+          const image = new Image()
+          image.onload = () => resolve()
+          image.onerror = () => resolve()
+          image.src = src
+        }),
+    ),
+  )
+}
+
 function documentationShot(name: string, mode: ColorMode, layout: Layout): void {
   test(name, async () => {
+    await warmAvatars()
+
     // Written onto `<html>` as well as passed to the provider, for the reason
     // spelled out in visual.tsx.
     document.documentElement.setAttribute('data-rs-color-mode', mode)
@@ -56,6 +78,7 @@ function documentationShot(name: string, mode: ColorMode, layout: Layout): void 
     // The list arrives a microtask after mount, and until it does `App` holds
     // a spinner. Without this the capture can land on that frame.
     await expect.element(screen.getByText('Needs your review')).toBeVisible()
+    await expect.poll(() => [...document.images].every((image) => image.complete)).toBe(true)
 
     await expect.element(screen.getByTestId('desktop')).toMatchScreenshot(name)
   })
