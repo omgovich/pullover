@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react'
+import { Check, CloudOff } from 'lucide-react'
 import { Icon, Text, View } from 'reshaped/bundle'
 
 interface Props {
@@ -9,7 +9,11 @@ interface Props {
 export default function EmptyState({ isError }: Props): React.JSX.Element {
   return (
     <View align="center" textAlign="center" paddingTop={16} paddingBottom={15} paddingInline={6}>
-      <Icon svg={Check} size="28px" color="positive" />
+      <Icon
+        svg={isError ? CloudOff : Check}
+        size="28px"
+        color={isError ? 'critical' : 'positive'}
+      />
 
       <View.Item gapBefore={3.5}>
         <Text as="div" variant="body-2" weight="semibold" color="neutral">
