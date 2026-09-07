@@ -32,7 +32,7 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 - 💤 **Snooze until new activity.** Park a PR and it comes back on its own — a new push, or a reply in a thread you're in.
 - 📌 **Lives in the menu bar.** A quiet count of PRs waiting on you; no Dock icon, no window to manage.
 - ⚡ **Open it from anywhere.** `⌃⌥P` toggles the window over whatever you are in, so you never have to aim for the menu bar. Pick a different combination in Settings, or turn it off.
-- ⌨️ **Drive it from the keyboard.** `↑` `↓` move, `⏎` opens the pull request, `S` snoozes, `R` refreshes and `esc` closes the window — all of it printed along the window's bottom edge, so there is nothing to memorise. `M` opens the actions menu on the row you are on.
+- ⌨️ **Drive it from the keyboard.** Move, open, snooze and refresh without the mouse — the keys are printed along the bottom edge of the window.
 - 🌗 **Light and dark themes.** Follows your macOS appearance out of the box, or pick one in Settings.
 - 📐 **Two layouts.** Comfortable by default. If you have a lot of pull requests, turn on compact in Settings and each one takes a single row.
 - ⬇️ **Updates itself quietly.** New versions download in the background; Pullover then offers a restart and waits for you to take it.
