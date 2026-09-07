@@ -25,11 +25,20 @@ export const NOW = '2026-08-01T12:00:00Z'
 export const AVATAR_SRC =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%236e56cf'/%3E%3C/svg%3E"
 
+/** Two hours before `NOW`, matching the fixture PR's own `updatedAt`. */
+const WAITING_SINCE = '2026-08-01T10:00:00Z'
+
 export function makeItem(overrides: Partial<ClassifiedPullRequest> = {}): ClassifiedPullRequest {
+  const category = overrides.category ?? 'needs-review'
   return {
     pr: makePullRequest({ authorAvatarUrl: AVATAR_SRC }),
-    category: 'needs-review',
+    category,
     reason: 'Waiting on you',
+    // Derived, not a constant: `classify` leaves this null exactly where
+    // nothing is waiting on the user, and the card reads the null to fall
+    // back to the last activity. A fixture that hard-coded a timestamp would
+    // let a `waiting` case lock in a card the app never draws.
+    waitingSince: category === 'waiting' ? null : WAITING_SINCE,
     isSnoozed: false,
     stack: null,
     ...overrides,
