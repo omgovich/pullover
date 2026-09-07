@@ -22,6 +22,11 @@ export default defineConfig({
       {
         plugins: [react()],
         resolve: { alias },
+        // `SettingsPanel` prints this, and electron.vite.config.ts inlines the
+        // real version at build time. A placeholder rather than that version
+        // on purpose: the real one would put every release commit in the
+        // business of re-recording the settings baselines.
+        define: { __APP_VERSION__: JSON.stringify('0.0.0-test') },
         test: {
           name: 'visual',
           include: ['src/renderer/**/*.screenshot.test.tsx'],

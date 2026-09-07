@@ -36,18 +36,26 @@ visualCase(
   card(makeRow({ ciStatus: 'failure' }, { reason: 'CI is red', category: 'my-pr-action' })),
 )
 
-visualCase(
-  'stack',
-  <>
-    {makeStackRows(3).map((row) => (
-      <CompactPullRequestCard
-        key={row.item.pr.id}
-        row={row}
-        isActive={false}
-        onHover={noop}
-        onSelect={noop}
-        onSnoozed={noop}
-      />
-    ))}
-  </>,
-)
+function stack(rows: ReturnType<typeof makeStackRows>): React.JSX.Element {
+  return (
+    <>
+      {rows.map((row) => (
+        <CompactPullRequestCard
+          key={row.item.pr.id}
+          row={row}
+          isActive={false}
+          onHover={noop}
+          onSelect={noop}
+          onSnoozed={noop}
+        />
+      ))}
+    </>
+  )
+}
+
+// Repeated here rather than left to the comfortable layout: the connector
+// takes a `compact` flag and draws from its own set of CSS rules, sized to
+// the 30px row.
+visualCase('stack', stack(makeStackRows(3)))
+visualCase('stack-dotted', stack(makeStackRows(4, [1, 3])))
+visualCase('stack-open', stack(makeStackRows(3, [2])))

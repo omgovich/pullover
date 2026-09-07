@@ -59,21 +59,42 @@ visualCase(
 
 visualCase('no-avatar', card(makeRow({ authorAvatarUrl: '', authorLogin: 'octocat' })))
 
-// Three rows of one chain: the badge counts, and the connector segments each
-// row draws between the avatars.
-visualCase(
-  'stack',
-  <>
-    {makeStackRows(3).map((row) => (
-      <PullRequestCard
-        key={row.item.pr.id}
-        row={row}
-        now={NOW}
-        isActive={false}
-        onHover={noop}
-        onSelect={noop}
-        onSnoozed={noop}
-      />
-    ))}
-  </>,
-)
+// The two states that empty the title line's right-hand group, which is what
+// decides how much width the title gets and so whether the marquee engages at
+// all. `classify` produces an empty reason for the waiting category.
+visualCase('no-reason', card(makeRow({}, { reason: '', category: 'waiting' })))
+
+visualCase('no-ci', card(makeRow({ ciStatus: 'none' })))
+
+function stack(rows: ReturnType<typeof makeStackRows>): React.JSX.Element {
+  return (
+    <>
+      {rows.map((row) => (
+        <PullRequestCard
+          key={row.item.pr.id}
+          row={row}
+          now={NOW}
+          isActive={false}
+          onHover={noop}
+          onSelect={noop}
+          onSnoozed={noop}
+        />
+      ))}
+    </>
+  )
+}
+
+// `StackConnector` draws the line in three variants, and all three are worth
+// holding: it is the only graphic in the app assembled from arithmetic rather
+// than from a Reshaped component.
+
+/** A whole chain, every position shown — solid segments throughout. */
+visualCase('stack', stack(makeStackRows(3)))
+
+/** Positions 1 and 3 of four: dotted where position 2 is missing between two
+    shown rows, then fading below position 3 where the chain runs on. */
+visualCase('stack-dotted', stack(makeStackRows(4, [1, 3])))
+
+/** A lone middle member: the chain carries on past the list in both
+    directions, with nothing for either segment to meet. */
+visualCase('stack-open', stack(makeStackRows(3, [2])))

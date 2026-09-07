@@ -1,4 +1,4 @@
-import { type StackCardRow, sectionRows } from '@core/stack'
+import { orderSection, type StackCardRow, sectionRows } from '@core/stack'
 import { makePullRequest } from '@core/test-factory'
 import type { ClassifiedPullRequest, PullRequest, StackPosition } from '@shared/types'
 import { Reshaped } from 'reshaped/bundle'
@@ -49,23 +49,36 @@ export function makeRow(
 }
 
 /**
- * A whole stack's rows, built through `sectionRows` rather than by hand —
- * which segments each row draws is exactly the logic the connectors are
- * being screenshotted to protect.
+ * A stack's rows, put through the same two steps the app uses —
+ * `orderSection` then `sectionRows`. Which segments each row draws is the
+ * logic these screenshots exist to protect, so the fixture must not be the
+ * thing that decides it: an earlier version handed `sectionRows` a
+ * descending list and locked in a baseline of an arrangement the app never
+ * draws.
+ *
+ * `shown` are the positions of the chain the list actually holds, out of
+ * `total`. Holding every position draws solid segments; leaving a middle
+ * position out is what draws a dotted break; leaving an end out is what
+ * makes the line fade past the list.
  */
-export function makeStackRows(count: number): StackCardRow[] {
-  const stack = (index: number): StackPosition => ({ id: 'PR_1', index, total: count })
+export function makeStackRows(
+  total: number,
+  shown: number[] = Array.from({ length: total }, (_, i) => i + 1),
+): StackCardRow[] {
+  const stack = (index: number): StackPosition => ({ id: 'PR_1', index, total })
   return sectionRows(
-    Array.from({ length: count }, (_, i) =>
-      makeItem({
-        pr: makePullRequest({
-          id: `PR_${i + 1}`,
-          number: i + 1,
-          title: `Stack member ${i + 1}`,
-          authorAvatarUrl: AVATAR_SRC,
+    orderSection(
+      shown.map((index) =>
+        makeItem({
+          pr: makePullRequest({
+            id: `PR_${index}`,
+            number: index,
+            title: `Stack member ${index}`,
+            authorAvatarUrl: AVATAR_SRC,
+          }),
+          stack: stack(index),
         }),
-        stack: stack(count - i),
-      }),
+      ),
     ),
   )
 }
