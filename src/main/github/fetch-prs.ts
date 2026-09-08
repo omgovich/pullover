@@ -3,6 +3,7 @@ import { buildSearchQuery, chunk } from '@core/search-query'
 import { graphql } from '@octokit/graphql'
 import { type PullRequest, SEARCH_BUCKETS, type SearchBucket } from '@shared/types'
 import { DETAILS_QUERY, SEARCH_QUERY, VIEWER_QUERY } from './queries'
+import { isTransientError } from './transient-error'
 
 export type GraphQLClient = (query: string, variables: Record<string, unknown>) => Promise<unknown>
 
@@ -63,6 +64,52 @@ export async function fetchViewerLogin(client: GraphQLClient): Promise<string> {
 }
 
 /**
+ * One more attempt at a request that failed on GitHub's side. No backoff:
+ * what `isTransientError` admits is GitHub failing of its own accord, not it
+ * asking us to slow down — throttling arrives as a 403 or a 429, which
+ * `Inbox` holds back on its own schedule.
+ */
+async function retryTransient<T>(attempt: () => Promise<T>): Promise<T> {
+  try {
+    return await attempt()
+  } catch (error) {
+    if (!isTransientError(error)) throw error
+    return attempt()
+  }
+}
+
+/**
+ * Asks for these pull requests, and on a transient failure asks for each
+ * half separately rather than repeating the same request.
+ *
+ * GitHub terminates a query it spends more than ten seconds on, and a batch
+ * that crossed that line will cross it again, so a plain retry would only
+ * fail more slowly. Two half-size requests are each comfortably under the
+ * limit — measured at 2.8s for five ids against 7.4s for twenty-five — which
+ * is what turns this failure into two requests that succeed. A single id has
+ * nothing left to split, so its failure is the caller's.
+ */
+async function fetchDetails(
+  client: GraphQLClient,
+  ids: string[],
+): Promise<Array<PullRequestNode | null>> {
+  try {
+    const data = (await client(DETAILS_QUERY, { ids })) as {
+      nodes: Array<PullRequestNode | null>
+    }
+    return data.nodes
+  } catch (error) {
+    if (!isTransientError(error) || ids.length === 1) throw error
+    const half = Math.ceil(ids.length / 2)
+    const halves = await Promise.all([
+      fetchDetails(client, ids.slice(0, half)),
+      fetchDetails(client, ids.slice(half)),
+    ])
+    return halves.flat()
+  }
+}
+
+/**
  * PR id → the set of search buckets it turned up in.
  *
  * The four bucket searches run concurrently (`Promise.all`), each resolving
@@ -77,7 +124,7 @@ async function collectIds(client: GraphQLClient): Promise<Map<string, Set<Search
   const results = await Promise.all(
     SEARCH_BUCKETS.map(async (bucket) => {
       const q = buildSearchQuery(bucket)
-      const data = (await client(SEARCH_QUERY, { q })) as {
+      const data = (await retryTransient(() => client(SEARCH_QUERY, { q }))) as {
         search: { nodes: Array<{ id?: string } | null> }
       }
       const ids = data.search.nodes
@@ -113,14 +160,7 @@ export async function fetchPullRequests(
   // rebuilding `prs` by walking `batches` in order keeps the output stable
   // even when a later batch answers before an earlier one.
   const batches = chunk([...bucketsById.keys()], DETAIL_BATCH_SIZE)
-  const batchResults = await Promise.all(
-    batches.map(async (ids) => {
-      const data = (await metered.client(DETAILS_QUERY, { ids })) as {
-        nodes: Array<PullRequestNode | null>
-      }
-      return data.nodes
-    }),
-  )
+  const batchResults = await Promise.all(batches.map((ids) => fetchDetails(metered.client, ids)))
 
   const prs: PullRequest[] = []
   for (const nodes of batchResults) {

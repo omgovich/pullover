@@ -58,6 +58,11 @@ function fakeClient(
   })
 }
 
+/** What `@octokit/request` throws for a non-2xx response. */
+function httpError(status: number): Error {
+  return Object.assign(new Error(`HTTP ${status}`), { status })
+}
+
 describe('fetchViewerLogin', () => {
   it('returns the authenticated login', async () => {
     const client = fakeClient({}, [])
@@ -119,6 +124,77 @@ describe('fetchPullRequests', () => {
     }
     expect(idsPerCall.flat().sort()).toEqual([...ids].sort())
     expect(prs.map((pr) => pr.id).sort()).toEqual([...ids].sort())
+  })
+
+  it('asks a second time for a search that GitHub failed to answer', async () => {
+    const inner = fakeClient({ 'author:@me': ['PR_1'] }, [detailNode('PR_1')])
+    let failuresLeft = 1
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === SEARCH_QUERY && failuresLeft > 0) {
+        failuresLeft -= 1
+        throw httpError(502)
+      }
+      return inner(query, variables)
+    })
+
+    const prs = await fetchPullRequests(client, 'vlad')
+
+    expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
+    // The four buckets plus the one that had to be asked again.
+    expect(client.mock.calls.filter(([q]) => q === SEARCH_QUERY)).toHaveLength(5)
+  })
+
+  it('splits a failed detail batch in half rather than asking for the same ids again', async () => {
+    const ids = Array.from({ length: 10 }, (_, i) => `PR_${i}`)
+    const inner = fakeClient(
+      { 'author:@me': ids },
+      ids.map((id) => detailNode(id)),
+    )
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === DETAILS_QUERY && (variables.ids as string[]).length === 10) {
+        throw httpError(502)
+      }
+      return inner(query, variables)
+    })
+
+    const prs = await fetchPullRequests(client, 'vlad')
+
+    expect(prs.map((pr) => pr.id)).toEqual(ids)
+    const asked = client.mock.calls
+      .filter(([q]) => q === DETAILS_QUERY)
+      .map(([, variables]) => (variables as { ids: string[] }).ids)
+    expect(asked).toEqual([ids, ids.slice(0, 5), ids.slice(5)])
+  })
+
+  it('gives up once a failing batch is down to one id', async () => {
+    const ids = ['PR_0', 'PR_1', 'PR_2']
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === SEARCH_QUERY) {
+        const q = variables.q as string
+        return { search: { nodes: q.includes('author:@me') ? ids.map((id) => ({ id })) : [] } }
+      }
+      throw httpError(502)
+    })
+
+    await expect(fetchPullRequests(client, 'vlad')).rejects.toThrow('HTTP 502')
+
+    // 3 ids, then 2 and 1, then 1 and 1: every split tried before giving up.
+    const asked = client.mock.calls.filter(([q]) => q === DETAILS_QUERY)
+    expect(asked).toHaveLength(5)
+  })
+
+  it('never asks again for a rate limit or a dead token, whatever the request', async () => {
+    for (const status of [401, 403, 429]) {
+      const client = vi.fn(async () => {
+        throw httpError(status)
+      })
+
+      await expect(fetchPullRequests(client, 'vlad')).rejects.toThrow(`HTTP ${status}`)
+
+      // One attempt per bucket, and not one more: `Inbox` decides what a
+      // rate limit means, and it can only do that if the error reaches it.
+      expect(client).toHaveBeenCalledTimes(4)
+    }
   })
 
   it('adds up the rate-limit cost of every request and reports it once', async () => {
