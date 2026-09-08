@@ -2,9 +2,7 @@ import type { BrowserWindow, Rectangle } from 'electron'
 import { describe, expect, it, vi } from 'vitest'
 import { togglePopup } from './window'
 
-// A real `BrowserWindow` needs a running Electron, so `togglePopup` is
-// exercised against a fake — it takes the window as an argument for that
-// reason. Only `screen` has to be faked at the module level.
+// A real BrowserWindow needs a running Electron, so togglePopup gets a fake.
 vi.mock('electron', () => ({
   BrowserWindow: class {},
   screen: {
@@ -31,9 +29,6 @@ function fakeWindow(visible: boolean) {
 }
 
 describe('togglePopup', () => {
-  // The whole mechanism is this order: on before the window is ordered in, so
-  // it lands on the current Space, and off again straight after, so it belongs
-  // to that Space and leaves with it instead of floating over the switch.
   it('turns the all-Spaces flag on for the show and off again after', () => {
     const OPTIONS = { visibleOnFullScreen: true, skipTransformProcessType: true }
     const { win, calls } = fakeWindow(false)
