@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DETAILS_QUERY } from './queries'
+import { DETAILS_QUERY, SEARCH_QUERY } from './queries'
 
 describe('DETAILS_QUERY', () => {
   it('fetches review bodies, needed to scan reviews for mentions', () => {
@@ -61,5 +61,11 @@ describe('DETAILS_QUERY', () => {
     // Once nested inside reviewThreads, once at the PR level.
     const occurrences = DETAILS_QUERY.split('comments(last: 50)').length - 1
     expect(occurrences).toBe(2)
+  })
+
+  // Both queries, or the reported total covers only part of a refresh.
+  it('asks what the request cost, since the documented formula only bounds it', () => {
+    expect(DETAILS_QUERY).toContain('rateLimit { cost remaining resetAt }')
+    expect(SEARCH_QUERY).toContain('rateLimit { cost remaining resetAt }')
   })
 })

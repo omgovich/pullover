@@ -121,6 +121,39 @@ describe('fetchPullRequests', () => {
     expect(prs.map((pr) => pr.id).sort()).toEqual([...ids].sort())
   })
 
+  it('adds up the rate-limit cost of every request and reports it once', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const ids = ['PR_1', 'PR_2']
+    const inner = fakeClient(
+      { 'author:@me': ids },
+      ids.map((id) => detailNode(id)),
+    )
+    // Every response carries its own cost: four bucket searches and one
+    // detail batch, so five requests at 3 points each.
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => ({
+      ...((await inner(query, variables)) as object),
+      rateLimit: { cost: 3, remaining: 4985, resetAt: '2026-09-08T13:00:00Z' },
+    }))
+
+    await fetchPullRequests(client, 'vlad')
+
+    expect(info).toHaveBeenCalledTimes(1)
+    expect(info.mock.calls[0]![0]).toBe(
+      '[github] refresh cost 15 points, 4985 left until 2026-09-08T13:00:00Z',
+    )
+    info.mockRestore()
+  })
+
+  it('says nothing when the responses carry no rate limit at all', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const client = fakeClient({ 'author:@me': ['PR_1'] }, [detailNode('PR_1')])
+
+    await fetchPullRequests(client, 'vlad')
+
+    expect(info).not.toHaveBeenCalled()
+    info.mockRestore()
+  })
+
   it('maps the detail node into a domain pull request', async () => {
     const client = fakeClient({ 'author:@me': ['PR_1'] }, [detailNode('PR_1')])
     const prs = await fetchPullRequests(client, 'vlad')

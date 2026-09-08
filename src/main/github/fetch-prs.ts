@@ -22,6 +22,41 @@ export function createGraphQLClient(token: string): GraphQLClient {
   return (query, variables) => authed(query, variables)
 }
 
+/** `rateLimit`, as GraphQL returns it beside the data a query asked for. */
+interface RateLimitFields {
+  rateLimit?: { cost: number; remaining: number; resetAt: string }
+}
+
+/**
+ * Wraps a client so the `rateLimit` of every response is added up, and
+ * reports the total for one fetch. Worth measuring rather than deriving:
+ * GitHub's documented formula assumes every connection returns a full page,
+ * which for `DETAILS_QUERY` overstates the cost by orders of magnitude on
+ * pull requests that don't have fifty threads of fifty comments each.
+ */
+function meterRateLimit(client: GraphQLClient): { client: GraphQLClient; report: () => void } {
+  let cost = 0
+  let latest: { remaining: number; resetAt: string } | null = null
+
+  return {
+    client: async (query, variables) => {
+      const data = await client(query, variables)
+      const limit = (data as RateLimitFields).rateLimit
+      if (limit !== undefined) {
+        cost += limit.cost
+        latest = { remaining: limit.remaining, resetAt: limit.resetAt }
+      }
+      return data
+    },
+    report: () => {
+      if (latest === null) return
+      console.info(
+        `[github] refresh cost ${cost} points, ${latest.remaining} left until ${latest.resetAt}`,
+      )
+    },
+  }
+}
+
 export async function fetchViewerLogin(client: GraphQLClient): Promise<string> {
   const data = (await client(VIEWER_QUERY, {})) as { viewer: { login: string } }
   return data.viewer.login
@@ -68,7 +103,8 @@ export async function fetchPullRequests(
   client: GraphQLClient,
   myLogin: string,
 ): Promise<PullRequest[]> {
-  const bucketsById = await collectIds(client)
+  const metered = meterRateLimit(client)
+  const bucketsById = await collectIds(metered.client)
 
   // The detail batches also run concurrently. `Promise.all` returns results
   // in the same order as the promises it was given — i.e. the order the
@@ -79,7 +115,7 @@ export async function fetchPullRequests(
   const batches = chunk([...bucketsById.keys()], DETAIL_BATCH_SIZE)
   const batchResults = await Promise.all(
     batches.map(async (ids) => {
-      const data = (await client(DETAILS_QUERY, { ids })) as {
+      const data = (await metered.client(DETAILS_QUERY, { ids })) as {
         nodes: Array<PullRequestNode | null>
       }
       return data.nodes
@@ -93,6 +129,9 @@ export async function fetchPullRequests(
       prs.push(mapPullRequest(node, [...(bucketsById.get(node.id) ?? [])], myLogin))
     }
   }
+
+  // Only on the way out: a fetch that threw has no complete number to report.
+  metered.report()
 
   return prs
 }

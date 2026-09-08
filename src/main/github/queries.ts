@@ -6,6 +6,7 @@ export const VIEWER_QUERY = `
 
 export const SEARCH_QUERY = `
   query SearchPullRequests($q: String!) {
+    rateLimit { cost remaining resetAt }
     search(query: $q, type: ISSUE, first: 50) {
       nodes {
         ... on PullRequest { id }
@@ -16,6 +17,7 @@ export const SEARCH_QUERY = `
 
 export const DETAILS_QUERY = `
   query PullRequestDetails($ids: [ID!]!) {
+    rateLimit { cost remaining resetAt }
     nodes(ids: $ids) {
       ... on PullRequest {
         id
