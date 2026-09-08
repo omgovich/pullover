@@ -166,7 +166,7 @@ describe('fetchPullRequests', () => {
     expect(asked).toEqual([ids, ids.slice(0, 5), ids.slice(5)])
   })
 
-  it('gives up once a failing batch is down to one id', async () => {
+  it('gives up after one split rather than dividing all the way down', async () => {
     const ids = ['PR_0', 'PR_1', 'PR_2']
     const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
       if (query === SEARCH_QUERY) {
@@ -178,9 +178,12 @@ describe('fetchPullRequests', () => {
 
     await expect(fetchPullRequests(client, 'vlad')).rejects.toThrow('HTTP 502')
 
-    // 3 ids, then 2 and 1, then 1 and 1: every split tried before giving up.
-    const asked = client.mock.calls.filter(([q]) => q === DETAILS_QUERY)
-    expect(asked).toHaveLength(5)
+    // The batch, then its two halves, and that is the end of it: an outage
+    // fails every request, and dividing further only multiplies them.
+    const asked = client.mock.calls
+      .filter(([q]) => q === DETAILS_QUERY)
+      .map(([, variables]) => (variables as { ids: string[] }).ids)
+    expect(asked).toEqual([ids, ['PR_0', 'PR_1'], ['PR_2']])
   })
 
   it('never asks again for a rate limit or a dead token, whatever the request', async () => {
@@ -216,6 +219,27 @@ describe('fetchPullRequests', () => {
     expect(info).toHaveBeenCalledTimes(1)
     expect(info.mock.calls[0]![0]).toBe(
       '[github] refresh cost 15 points, 4985 left until 2026-09-08T13:00:00Z',
+    )
+    info.mockRestore()
+  })
+
+  it('reports the lowest remaining it saw, not the one that came back last', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const inner = fakeClient({ 'author:@me': ['PR_1'] }, [detailNode('PR_1')])
+    // The detail batch answers after the searches and reports MORE left than
+    // they did, which is what a concurrent charge looks like from here.
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      const remaining = query === DETAILS_QUERY ? 4995 : 4990
+      return {
+        ...((await inner(query, variables)) as object),
+        rateLimit: { cost: 1, remaining, resetAt: '2026-09-08T13:00:00Z' },
+      }
+    })
+
+    await fetchPullRequests(client, 'vlad')
+
+    expect(info.mock.calls[0]![0]).toBe(
+      '[github] refresh cost 5 points, 4990 left until 2026-09-08T13:00:00Z',
     )
     info.mockRestore()
   })

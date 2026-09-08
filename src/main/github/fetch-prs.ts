@@ -37,7 +37,7 @@ interface RateLimitFields {
  */
 function meterRateLimit(client: GraphQLClient): { client: GraphQLClient; report: () => void } {
   let cost = 0
-  let latest: { remaining: number; resetAt: string } | null = null
+  let lowest: { remaining: number; resetAt: string } | null = null
 
   return {
     client: async (query, variables) => {
@@ -45,14 +45,19 @@ function meterRateLimit(client: GraphQLClient): { client: GraphQLClient; report:
       const limit = (data as RateLimitFields).rateLimit
       if (limit !== undefined) {
         cost += limit.cost
-        latest = { remaining: limit.remaining, resetAt: limit.resetAt }
+        // The lowest `remaining` seen rather than the last to arrive: these
+        // requests run concurrently, so the response that comes back last
+        // isn't necessarily the one GitHub charged last.
+        if (lowest === null || limit.remaining < lowest.remaining) {
+          lowest = { remaining: limit.remaining, resetAt: limit.resetAt }
+        }
       }
       return data
     },
     report: () => {
-      if (latest === null) return
+      if (lowest === null) return
       console.info(
-        `[github] refresh cost ${cost} points, ${latest.remaining} left until ${latest.resetAt}`,
+        `[github] refresh cost ${cost} points, ${lowest.remaining} left until ${lowest.resetAt}`,
       )
     },
   }
@@ -86,12 +91,18 @@ async function retryTransient<T>(attempt: () => Promise<T>): Promise<T> {
  * that crossed that line will cross it again, so a plain retry would only
  * fail more slowly. Two half-size requests are each comfortably under the
  * limit — measured at 2.8s for five ids against 7.4s for twenty-five — which
- * is what turns this failure into two requests that succeed. A single id has
- * nothing left to split, so its failure is the caller's.
+ * is what turns this failure into two requests that succeed.
+ *
+ * One split and no more (`maySplit`), so three attempts per batch at worst.
+ * Dividing all the way down would answer an outage — where every request
+ * fails, not just the oversized one — with nineteen attempts per batch and a
+ * couple of hundred requests in flight at the leaves. What a split cannot
+ * rescue, the next poll can.
  */
 async function fetchDetails(
   client: GraphQLClient,
   ids: string[],
+  maySplit = true,
 ): Promise<Array<PullRequestNode | null>> {
   try {
     const data = (await client(DETAILS_QUERY, { ids })) as {
@@ -99,11 +110,11 @@ async function fetchDetails(
     }
     return data.nodes
   } catch (error) {
-    if (!isTransientError(error) || ids.length === 1) throw error
+    if (!isTransientError(error) || !maySplit || ids.length === 1) throw error
     const half = Math.ceil(ids.length / 2)
     const halves = await Promise.all([
-      fetchDetails(client, ids.slice(0, half)),
-      fetchDetails(client, ids.slice(half)),
+      fetchDetails(client, ids.slice(0, half), false),
+      fetchDetails(client, ids.slice(half), false),
     ])
     return halves.flat()
   }

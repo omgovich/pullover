@@ -16,5 +16,5 @@
 export function isTransientError(error: unknown): boolean {
   if (!(error instanceof Error) || !('status' in error)) return false
   const status = (error as { status: unknown }).status
-  return typeof status === 'number' && status >= 500
+  return typeof status === 'number' && status >= 500 && status < 600
 }

@@ -38,6 +38,11 @@ describe('isTransientError', () => {
     expect(isTransientError(error)).toBe(false)
   })
 
+  it('does not match a status outside the 5xx range at all', () => {
+    expect(isTransientError(requestError(600))).toBe(false)
+    expect(isTransientError(requestError(0))).toBe(false)
+  })
+
   it('does not match a plain error or a non-Error value', () => {
     expect(isTransientError(new Error('network down'))).toBe(false)
     expect(isTransientError('boom')).toBe(false)
