@@ -89,33 +89,41 @@ async function retryTransient<T>(attempt: () => Promise<T>): Promise<T> {
 }
 
 /**
- * Asks for these pull requests, and on a transient failure asks for each
- * half separately rather than repeating the same request.
+ * Asks for these pull requests, with one second chance: two half-size
+ * requests where there is something to split, a plain repeat where there
+ * isn't.
  *
  * GitHub terminates a query it spends more than ten seconds on, and a batch
- * that crossed that line will cross it again, so a plain retry would only
- * fail more slowly. Two half-size requests are each comfortably under the
- * limit — measured at 2.8s for five ids against 7.4s for twenty-five — which
- * is what turns this failure into two requests that succeed.
+ * that crossed that line will cross it again, so repeating it would only
+ * fail more slowly. Halves are comfortably under the limit — measured at
+ * 2.8s for five ids against 7.4s for twenty-five — which is what turns that
+ * failure into two requests that succeed. A lone id has no such story: it
+ * cannot have been the size that broke, so its failure is a blip and a
+ * repeat is the right answer, as it is for a search.
  *
- * One split and no more (`maySplit`), so three attempts per batch at worst.
+ * `maySplit` is what stops there (three attempts per batch at worst).
  * Dividing all the way down would answer an outage — where every request
  * fails, not just the oversized one — with nineteen attempts per batch and a
- * couple of hundred requests in flight at the leaves. What a split cannot
- * rescue, the next poll can.
+ * couple of hundred requests in flight at the leaves. What one more ask
+ * cannot rescue, the next poll can.
  */
 async function fetchDetails(
   client: GraphQLClient,
   ids: string[],
   maySplit = true,
 ): Promise<Array<PullRequestNode | null>> {
-  try {
+  const request = async (): Promise<Array<PullRequestNode | null>> => {
     const data = (await client(DETAILS_QUERY, { ids })) as {
       nodes: Array<PullRequestNode | null>
     }
     return data.nodes
+  }
+
+  try {
+    return await request()
   } catch (error) {
-    if (!isTransientError(error) || !maySplit || ids.length === 1) throw error
+    if (!isTransientError(error) || !maySplit) throw error
+    if (ids.length === 1) return request()
     const half = Math.ceil(ids.length / 2)
     const halves = await Promise.all([
       fetchDetails(client, ids.slice(0, half), false),

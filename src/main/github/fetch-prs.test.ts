@@ -166,6 +166,23 @@ describe('fetchPullRequests', () => {
     expect(asked).toEqual([ids, ids.slice(0, 5), ids.slice(5)])
   })
 
+  it('asks a second time for a lone id, which cannot have been the size that broke', async () => {
+    const inner = fakeClient({ 'author:@me': ['PR_1'] }, [detailNode('PR_1')])
+    let failuresLeft = 1
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === DETAILS_QUERY && failuresLeft > 0) {
+        failuresLeft -= 1
+        throw httpError(502)
+      }
+      return inner(query, variables)
+    })
+
+    const prs = await fetchPullRequests(client, 'vlad')
+
+    expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
+    expect(client.mock.calls.filter(([q]) => q === DETAILS_QUERY)).toHaveLength(2)
+  })
+
   it('gives up after one split rather than dividing all the way down', async () => {
     const ids = ['PR_0', 'PR_1', 'PR_2']
     const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
