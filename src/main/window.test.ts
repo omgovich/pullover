@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { togglePopup } from './window'
 
 // A real `BrowserWindow` needs a running Electron, so `togglePopup` is
-// exercised against a fake — it takes the window as an argument for exactly
-// that reason. Only `screen` has to be faked out at the module level.
+// exercised against a fake — it takes the window as an argument for that
+// reason. Only `screen` has to be faked at the module level.
 vi.mock('electron', () => ({
   BrowserWindow: class {},
   screen: {
@@ -15,41 +15,34 @@ vi.mock('electron', () => ({
 
 const TRAY_BOUNDS: Rectangle = { x: 1600, y: 0, width: 24, height: 24 }
 
+/** Records calls in order, since the order is the part that matters here. */
 function fakeWindow(visible: boolean) {
-  const calls: { workspaces: unknown[]; shown: number; hidden: number } = {
-    workspaces: [],
-    shown: 0,
-    hidden: 0,
-  }
+  const calls: unknown[] = []
   const win = {
     isVisible: () => visible,
-    hide: () => {
-      calls.hidden += 1
-    },
+    hide: () => calls.push('hide'),
     setPosition: () => {},
-    setVisibleOnAllWorkspaces: (_visible: boolean, options?: unknown) => {
-      calls.workspaces.push(options)
-    },
-    show: () => {
-      calls.shown += 1
-    },
-    focus: () => {},
+    setVisibleOnAllWorkspaces: (_visible: boolean, options?: unknown) =>
+      calls.push(['workspaces', options]),
+    show: () => calls.push('show'),
+    focus: () => calls.push('focus'),
   }
   return { win: win as unknown as BrowserWindow, calls }
 }
 
 describe('togglePopup', () => {
-  // Without the flag Electron transforms the process type on every call, which
-  // hides the app for a moment — long enough for macOS to swing the user over
-  // to another Space and for the popup to lose focus and hide itself again.
-  it('skips the process-type transform, the app already being an accessory', () => {
+  // The flags have to be in place before the window is ordered in, or the
+  // first show still lands on the Space the popup was last shown on. Skipping
+  // the process-type transform keeps that call from re-hiding the whole app.
+  it('sets the Space flags, transform skipped, before showing', () => {
     const { win, calls } = fakeWindow(false)
 
     togglePopup(win, TRAY_BOUNDS)
 
-    expect(calls.shown).toBe(1)
-    expect(calls.workspaces).toEqual([
-      { visibleOnFullScreen: true, skipTransformProcessType: true },
+    expect(calls).toEqual([
+      ['workspaces', { visibleOnFullScreen: true, skipTransformProcessType: true }],
+      'show',
+      'focus',
     ])
   })
 
@@ -58,7 +51,6 @@ describe('togglePopup', () => {
 
     togglePopup(win, TRAY_BOUNDS)
 
-    expect(calls.hidden).toBe(1)
-    expect(calls.workspaces).toEqual([])
+    expect(calls).toEqual(['hide'])
   })
 })
