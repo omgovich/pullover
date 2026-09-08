@@ -22,8 +22,8 @@ function fakeWindow(visible: boolean) {
     isVisible: () => visible,
     hide: () => calls.push('hide'),
     setPosition: () => {},
-    setVisibleOnAllWorkspaces: (_visible: boolean, options?: unknown) =>
-      calls.push(['workspaces', options]),
+    setVisibleOnAllWorkspaces: (visible: boolean, options?: unknown) =>
+      calls.push(['workspaces', visible, options]),
     show: () => calls.push('show'),
     focus: () => calls.push('focus'),
   }
@@ -31,18 +31,20 @@ function fakeWindow(visible: boolean) {
 }
 
 describe('togglePopup', () => {
-  // The flags have to be in place before the window is ordered in, or the
-  // first show still lands on the Space the popup was last shown on. Skipping
-  // the process-type transform keeps that call from re-hiding the whole app.
-  it('sets the Space flags, transform skipped, before showing', () => {
+  // The whole mechanism is this order: on before the window is ordered in, so
+  // it lands on the current Space, and off again straight after, so it belongs
+  // to that Space and leaves with it instead of floating over the switch.
+  it('turns the all-Spaces flag on for the show and off again after', () => {
+    const OPTIONS = { visibleOnFullScreen: true, skipTransformProcessType: true }
     const { win, calls } = fakeWindow(false)
 
     togglePopup(win, TRAY_BOUNDS)
 
     expect(calls).toEqual([
-      ['workspaces', { visibleOnFullScreen: true, skipTransformProcessType: true }],
+      ['workspaces', true, OPTIONS],
       'show',
       'focus',
+      ['workspaces', false, OPTIONS],
     ])
   })
 

@@ -75,9 +75,11 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
 
   win.setPosition(x, y, false)
 
-  // Skipping the process-type transform is what makes this safe to call on
-  // every show: the app is already an accessory, and the transform re-hides it
-  // each time, blurring the popup into hiding itself — electron/electron#37875.
+  // On just long enough to place the window on the Space the user is actually
+  // on, rather than the one it last appeared on. Skipping the process-type
+  // transform keeps that cheap — the app is already an accessory, and the
+  // transform re-hides it on every call, blurring the popup into hiding
+  // itself (electron/electron#37875).
   win.setVisibleOnAllWorkspaces(true, {
     visibleOnFullScreen: true,
     skipTransformProcessType: true,
@@ -85,4 +87,13 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
 
   win.show()
   win.focus()
+
+  // Dropped immediately, making the popup a resident of the Space it just
+  // appeared on: held any longer, the flag keeps it above the whole
+  // Space-switch animation only to hide it at the very end, which reads as a
+  // glitch. Only the all-Spaces bit is undone — `visibleOnFullScreen` stays.
+  win.setVisibleOnAllWorkspaces(false, {
+    visibleOnFullScreen: true,
+    skipTransformProcessType: true,
+  })
 }
