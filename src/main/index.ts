@@ -1,3 +1,4 @@
+import { shouldRefreshOnOpen } from '@core/staleness'
 import { IPC } from '@shared/ipc'
 import { app, type BrowserWindow, clipboard, type Rectangle, shell, type Tray } from 'electron'
 import { pollForToken, requestDeviceCode } from './auth/device-flow'
@@ -18,9 +19,6 @@ import { createPopupWindow, togglePopup } from './window'
 if (!app.isPackaged) app.setName(`${app.getName()} Dev`)
 
 const CLIENT_ID = import.meta.env.MAIN_VITE_GITHUB_CLIENT_ID as string | undefined
-
-/** Opening the popup refetches when the data on screen is older than this. */
-const STALE_AFTER_MS = 60_000
 
 let window: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -46,9 +44,9 @@ function loadClientFromDisk(): void {
   client = token === null ? null : createGraphQLClient(token)
 }
 
-function isStale(): boolean {
-  const last = inbox.getSnapshot().lastUpdatedAt
-  return last === null || Date.now() - Date.parse(last) > STALE_AFTER_MS
+function shouldFetchOnOpen(): boolean {
+  if (client === null) return false
+  return shouldRefreshOnOpen(inbox.getSnapshot(), new Date().toISOString())
 }
 
 let signInInFlight: Promise<void> | null = null
@@ -132,7 +130,7 @@ function toggle(bounds: Rectangle): void {
   const opening = !window.isVisible()
   togglePopup(window, bounds)
   // Opening onto a stale list is the one moment worth spending a fetch on.
-  if (opening && client !== null && isStale()) void inbox.refresh()
+  if (opening && shouldFetchOnOpen()) void inbox.refresh()
 }
 
 const shortcut = new Shortcut(() => {
