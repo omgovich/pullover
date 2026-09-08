@@ -73,6 +73,11 @@ export async function fetchViewerLogin(client: GraphQLClient): Promise<string> {
  * what `isTransientError` admits is GitHub failing of its own accord, not it
  * asking us to slow down — throttling arrives as a 403 or a 429, which
  * `Inbox` holds back on its own schedule.
+ *
+ * Asked again unchanged, unlike a detail batch (see `fetchDetails`), because
+ * a search has nothing to split and answers in about two seconds of the ten
+ * GitHub allows — so its failure is far likelier a blip than a query that ran
+ * long, and being wrong about that costs one point and one second.
  */
 async function retryTransient<T>(attempt: () => Promise<T>): Promise<T> {
   try {
