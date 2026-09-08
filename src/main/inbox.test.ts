@@ -696,6 +696,19 @@ describe('Inbox rate limiting', () => {
     // Not treated as a rate limit, so nothing should have been held back.
     expect(fetchPrs).toHaveBeenCalledTimes(2)
   })
+
+  it('reports a gateway error as its status, not as the HTML page a proxy answered with', async () => {
+    const badGateway = Object.assign(
+      new Error('<html>\n<head><title>502 Bad Gateway</title></head>\n<body></body>\n</html>'),
+      { status: 502 },
+    )
+    const fetchPrs = vi.fn().mockRejectedValue(badGateway)
+    const inbox = build([], { fetchPrs })
+
+    await inbox.refresh()
+
+    expect(inbox.getSnapshot().errorMessage).toBe("Couldn't reach GitHub — HTTP 502")
+  })
 })
 
 describe('Inbox.start / stop', () => {
