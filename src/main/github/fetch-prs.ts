@@ -6,7 +6,14 @@ import { DETAILS_QUERY, SEARCH_QUERY, VIEWER_QUERY } from './queries'
 
 export type GraphQLClient = (query: string, variables: Record<string, unknown>) => Promise<unknown>
 
-const DETAIL_BATCH_SIZE = 25
+/**
+ * Ids per details request. GitHub terminates any GraphQL request it spends
+ * more than 10 seconds on, and `DETAILS_QUERY` asks for up to 2,500 thread
+ * comments per pull request, so 25 at a time timed out on a real inbox and
+ * came back as a 502. The rate limit counts nodes rather than requests, so
+ * splitting the same work into more batches costs no meaningful extra quota.
+ */
+const DETAIL_BATCH_SIZE = 10
 
 export function createGraphQLClient(token: string): GraphQLClient {
   const authed = graphql.defaults({

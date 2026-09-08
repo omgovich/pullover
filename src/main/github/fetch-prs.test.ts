@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fetchPullRequests, fetchViewerLogin } from './fetch-prs'
 import { DETAILS_QUERY, SEARCH_QUERY, VIEWER_QUERY } from './queries'
 
-const DETAIL_BATCH_SIZE = 25
+const DETAIL_BATCH_SIZE = 10
 
 /** A promise plus its resolver, pulled out so a test can settle it on its own schedule. */
 function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
@@ -111,7 +111,7 @@ describe('fetchPullRequests', () => {
     const prs = await fetchPullRequests(client, 'vlad')
 
     const detailCalls = client.mock.calls.filter(([q]) => q === DETAILS_QUERY)
-    expect(detailCalls).toHaveLength(3)
+    expect(detailCalls).toHaveLength(6)
 
     const idsPerCall = detailCalls.map(([, variables]) => (variables as { ids: string[] }).ids)
     for (const batch of idsPerCall) {
@@ -221,11 +221,11 @@ describe('fetchPullRequests', () => {
       await Promise.resolve()
     }
 
-    // 60 ids over a batch size of 25 is 3 batches — a sequential
+    // 60 ids over a batch size of 10 is 6 batches — a sequential
     // implementation would only have the first one in flight here.
     const detailCalls = client.mock.calls.filter(([q]) => q === DETAILS_QUERY)
-    expect(detailCalls).toHaveLength(3)
-    expect(pending).toHaveLength(3)
+    expect(detailCalls).toHaveLength(6)
+    expect(pending).toHaveLength(6)
 
     for (const d of pending) d.resolve({ nodes: [] })
     await expect(result).resolves.toEqual([])
@@ -235,8 +235,8 @@ describe('fetchPullRequests', () => {
     // Two batches of ids collected in a fixed order; resolve the SECOND
     // batch first to prove the output order follows collection order, not
     // arrival order.
-    const batchA = Array.from({ length: 25 }, (_, i) => `A_${i}`)
-    const batchB = Array.from({ length: 10 }, (_, i) => `B_${i}`)
+    const batchA = Array.from({ length: DETAIL_BATCH_SIZE }, (_, i) => `A_${i}`)
+    const batchB = Array.from({ length: 5 }, (_, i) => `B_${i}`)
     const allIds = [...batchA, ...batchB]
     const pending: Array<{
       ids: string[]
