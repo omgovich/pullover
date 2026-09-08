@@ -5,6 +5,7 @@ import { computeStackPositions } from '@core/stack'
 import type { InboxSnapshot } from '@shared/ipc'
 import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
 import { isAuthError } from './github/auth-error'
+import { describeError } from './github/error-message'
 import { fetchPullRequests, fetchViewerLogin, type GraphQLClient } from './github/fetch-prs'
 import { rateLimitResetAt } from './github/rate-limit'
 import type { AppStore } from './store'
@@ -223,9 +224,7 @@ export class Inbox {
         status: 'error',
         errorMessage:
           resetAt === null
-            ? error instanceof Error
-              ? error.message
-              : String(error)
+            ? describeError(error)
             : `GitHub's rate limit is reached — try again in ${formatWait(resetAt, this.now())}`,
       })
       // A dead token fails every refresh the same way forever, so recognise

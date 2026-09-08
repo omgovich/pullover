@@ -63,7 +63,12 @@ export default function Header({
       borderColor="neutral"
       borderBottom
     >
-      <View direction="row" align="center" gap={2.5} minWidth={0}>
+      {/* `grow` does two things here, and both are needed: a row `View` wraps
+          by default, and a growing child switches its parent to nowrap — so
+          the buttons stay in this row — while the child itself gets
+          `flex-basis: 0` and `min-width: 0`, which is what lets a long status
+          line clamp instead of pushing anything aside. */}
+      <View direction="row" align="center" gap={2.5} grow minWidth={0}>
         {snapshot.attentionCount > 0 && (
           // A plain View instead of `Badge`: `Badge`'s own `Text` is fixed at
           // weight="medium" with no tabular-nums, but this count needs bold
@@ -82,7 +87,7 @@ export default function Header({
             </Text>
           </View>
         )}
-        <View direction="column" minWidth={0}>
+        <View direction="column" grow minWidth={0}>
           <Text as="span" variant="body-2" weight="semibold" color="neutral" maxLines={1}>
             {snapshot.attentionCount > 0 ? 'waiting on you' : 'All clear'}
           </Text>

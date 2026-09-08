@@ -42,4 +42,19 @@ visualCase('inbox-zero', header(snapshot({ attentionCount: 0 })))
 // can still tell how old the list on screen is.
 visualCase('error', header(snapshot({ status: 'error', errorMessage: 'Rate limit exceeded' })))
 
+// A message long enough to fill the row must clip, not push the buttons out
+// of it. `View direction="row"` wraps by default, and a wrapped header puts
+// refresh and settings on a second line and grows the bar to fit them.
+visualCase(
+  'error-long',
+  header(
+    snapshot({
+      status: 'error',
+      lastUpdatedAt: null,
+      errorMessage:
+        "We couldn't respond to your request in time. Sorry about that. Please try resubmitting your request and contact us if…",
+    }),
+  ),
+)
+
 visualCase('update-ready', header(snapshot(), { status: 'ready', version: '0.9.0' }))

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fetchPullRequests, fetchViewerLogin } from './fetch-prs'
 import { DETAILS_QUERY, SEARCH_QUERY, VIEWER_QUERY } from './queries'
 
-const DETAIL_BATCH_SIZE = 25
+const DETAIL_BATCH_SIZE = 10
 
 /** A promise plus its resolver, pulled out so a test can settle it on its own schedule. */
 function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
@@ -58,6 +58,11 @@ function fakeClient(
   })
 }
 
+/** What `@octokit/request` throws for a non-2xx response. */
+function httpError(status: number): Error {
+  return Object.assign(new Error(`HTTP ${status}`), { status })
+}
+
 describe('fetchViewerLogin', () => {
   it('returns the authenticated login', async () => {
     const client = fakeClient({}, [])
@@ -111,7 +116,7 @@ describe('fetchPullRequests', () => {
     const prs = await fetchPullRequests(client, 'vlad')
 
     const detailCalls = client.mock.calls.filter(([q]) => q === DETAILS_QUERY)
-    expect(detailCalls).toHaveLength(3)
+    expect(detailCalls).toHaveLength(6)
 
     const idsPerCall = detailCalls.map(([, variables]) => (variables as { ids: string[] }).ids)
     for (const batch of idsPerCall) {
@@ -119,6 +124,151 @@ describe('fetchPullRequests', () => {
     }
     expect(idsPerCall.flat().sort()).toEqual([...ids].sort())
     expect(prs.map((pr) => pr.id).sort()).toEqual([...ids].sort())
+  })
+
+  it('asks a second time for a search that GitHub failed to answer', async () => {
+    const inner = fakeClient({ 'author:@me': ['PR_1'] }, [detailNode('PR_1')])
+    let failuresLeft = 1
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === SEARCH_QUERY && failuresLeft > 0) {
+        failuresLeft -= 1
+        throw httpError(502)
+      }
+      return inner(query, variables)
+    })
+
+    const prs = await fetchPullRequests(client, 'vlad')
+
+    expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
+    // The four buckets plus the one that had to be asked again.
+    expect(client.mock.calls.filter(([q]) => q === SEARCH_QUERY)).toHaveLength(5)
+  })
+
+  it('splits a failed detail batch in half rather than asking for the same ids again', async () => {
+    const ids = Array.from({ length: 10 }, (_, i) => `PR_${i}`)
+    const inner = fakeClient(
+      { 'author:@me': ids },
+      ids.map((id) => detailNode(id)),
+    )
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === DETAILS_QUERY && (variables.ids as string[]).length === 10) {
+        throw httpError(502)
+      }
+      return inner(query, variables)
+    })
+
+    const prs = await fetchPullRequests(client, 'vlad')
+
+    expect(prs.map((pr) => pr.id)).toEqual(ids)
+    const asked = client.mock.calls
+      .filter(([q]) => q === DETAILS_QUERY)
+      .map(([, variables]) => (variables as { ids: string[] }).ids)
+    expect(asked).toEqual([ids, ids.slice(0, 5), ids.slice(5)])
+  })
+
+  it('asks a second time for a lone id, which cannot have been the size that broke', async () => {
+    const inner = fakeClient({ 'author:@me': ['PR_1'] }, [detailNode('PR_1')])
+    let failuresLeft = 1
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === DETAILS_QUERY && failuresLeft > 0) {
+        failuresLeft -= 1
+        throw httpError(502)
+      }
+      return inner(query, variables)
+    })
+
+    const prs = await fetchPullRequests(client, 'vlad')
+
+    expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
+    expect(client.mock.calls.filter(([q]) => q === DETAILS_QUERY)).toHaveLength(2)
+  })
+
+  it('gives up after one split rather than dividing all the way down', async () => {
+    const ids = ['PR_0', 'PR_1', 'PR_2']
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === SEARCH_QUERY) {
+        const q = variables.q as string
+        return { search: { nodes: q.includes('author:@me') ? ids.map((id) => ({ id })) : [] } }
+      }
+      throw httpError(502)
+    })
+
+    await expect(fetchPullRequests(client, 'vlad')).rejects.toThrow('HTTP 502')
+
+    // The batch, then its two halves, and that is the end of it: an outage
+    // fails every request, and dividing further only multiplies them.
+    const asked = client.mock.calls
+      .filter(([q]) => q === DETAILS_QUERY)
+      .map(([, variables]) => (variables as { ids: string[] }).ids)
+    expect(asked).toEqual([ids, ['PR_0', 'PR_1'], ['PR_2']])
+  })
+
+  it('never asks again for a rate limit or a dead token, whatever the request', async () => {
+    for (const status of [401, 403, 429]) {
+      const client = vi.fn(async () => {
+        throw httpError(status)
+      })
+
+      await expect(fetchPullRequests(client, 'vlad')).rejects.toThrow(`HTTP ${status}`)
+
+      // One attempt per bucket, and not one more: `Inbox` decides what a
+      // rate limit means, and it can only do that if the error reaches it.
+      expect(client).toHaveBeenCalledTimes(4)
+    }
+  })
+
+  it('adds up the rate-limit cost of every request and reports it once', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const ids = ['PR_1', 'PR_2']
+    const inner = fakeClient(
+      { 'author:@me': ids },
+      ids.map((id) => detailNode(id)),
+    )
+    // Every response carries its own cost: four bucket searches and one
+    // detail batch, so five requests at 3 points each.
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => ({
+      ...((await inner(query, variables)) as object),
+      rateLimit: { cost: 3, remaining: 4985, resetAt: '2026-09-08T13:00:00Z' },
+    }))
+
+    await fetchPullRequests(client, 'vlad')
+
+    expect(info).toHaveBeenCalledTimes(1)
+    expect(info.mock.calls[0]![0]).toBe(
+      '[github] refresh cost 15 points, 4985 left until 2026-09-08T13:00:00Z',
+    )
+    info.mockRestore()
+  })
+
+  it('reports the lowest remaining it saw, not the one that came back last', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const inner = fakeClient({ 'author:@me': ['PR_1'] }, [detailNode('PR_1')])
+    // The detail batch answers after the searches and reports MORE left than
+    // they did, which is what a concurrent charge looks like from here.
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      const remaining = query === DETAILS_QUERY ? 4995 : 4990
+      return {
+        ...((await inner(query, variables)) as object),
+        rateLimit: { cost: 1, remaining, resetAt: '2026-09-08T13:00:00Z' },
+      }
+    })
+
+    await fetchPullRequests(client, 'vlad')
+
+    expect(info.mock.calls[0]![0]).toBe(
+      '[github] refresh cost 5 points, 4990 left until 2026-09-08T13:00:00Z',
+    )
+    info.mockRestore()
+  })
+
+  it('says nothing when the responses carry no rate limit at all', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const client = fakeClient({ 'author:@me': ['PR_1'] }, [detailNode('PR_1')])
+
+    await fetchPullRequests(client, 'vlad')
+
+    expect(info).not.toHaveBeenCalled()
+    info.mockRestore()
   })
 
   it('maps the detail node into a domain pull request', async () => {
@@ -221,11 +371,11 @@ describe('fetchPullRequests', () => {
       await Promise.resolve()
     }
 
-    // 60 ids over a batch size of 25 is 3 batches — a sequential
+    // 60 ids over a batch size of 10 is 6 batches — a sequential
     // implementation would only have the first one in flight here.
     const detailCalls = client.mock.calls.filter(([q]) => q === DETAILS_QUERY)
-    expect(detailCalls).toHaveLength(3)
-    expect(pending).toHaveLength(3)
+    expect(detailCalls).toHaveLength(6)
+    expect(pending).toHaveLength(6)
 
     for (const d of pending) d.resolve({ nodes: [] })
     await expect(result).resolves.toEqual([])
@@ -235,8 +385,8 @@ describe('fetchPullRequests', () => {
     // Two batches of ids collected in a fixed order; resolve the SECOND
     // batch first to prove the output order follows collection order, not
     // arrival order.
-    const batchA = Array.from({ length: 25 }, (_, i) => `A_${i}`)
-    const batchB = Array.from({ length: 10 }, (_, i) => `B_${i}`)
+    const batchA = Array.from({ length: DETAIL_BATCH_SIZE }, (_, i) => `A_${i}`)
+    const batchB = Array.from({ length: 5 }, (_, i) => `B_${i}`)
     const allIds = [...batchA, ...batchB]
     const pending: Array<{
       ids: string[]
