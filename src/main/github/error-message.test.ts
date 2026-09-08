@@ -25,9 +25,25 @@ describe('describeError', () => {
     expect(describeError(error)).toBe("Couldn't reach GitHub — HTTP 502")
   })
 
-  it('replaces a body too long to read in one line', () => {
-    const error = new RequestError('detail: '.repeat(40), 503, { request: REQUEST_OPTIONS })
+  it('replaces a body that opens like JSON rather than a sentence', () => {
+    const error = new RequestError('{"errors":[{"type":"SERVICE_UNAVAILABLE"}]}', 503, {
+      request: REQUEST_OPTIONS,
+    })
     expect(describeError(error)).toBe("Couldn't reach GitHub — HTTP 503")
+  })
+
+  // GitHub's own words for a query it gave up on, and the reason a long
+  // message is cut rather than swapped for its status: "HTTP 502" wouldn't
+  // tell the user their inbox timed out.
+  it('keeps a long sentence, cut to what the header can show', () => {
+    const timeout = new RequestError(
+      "We couldn't respond to your request in time. Sorry about that. Please try resubmitting your request and contact us if the problem persists.",
+      502,
+      { request: REQUEST_OPTIONS },
+    )
+    expect(describeError(timeout)).toBe(
+      "We couldn't respond to your request in time. Sorry about that. Please try resubmitting your request and contact us if…",
+    )
   })
 
   it("keeps GitHub's own message, which is short and written for a human", () => {
