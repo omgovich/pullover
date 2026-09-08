@@ -78,9 +78,15 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
   // Re-applied on every show, not once at creation: macOS resets a window's
   // collection behaviour when it is hidden, so a flag set at startup stops
   // applying after the first dismiss and the popup starts dragging the user
-  // back to the Space it was last shown on. Setting it here keeps the popup
-  // appearing wherever the user already is, including over a fullscreen app.
-  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  // back to the Space it was last shown on. Skipping the process-type
+  // transform is what makes calling it this often safe — the app is already an
+  // accessory, and the transform Electron runs by default hides it for a
+  // moment, long enough for macOS to swing over to another Space and for the
+  // popup to blur into hiding itself.
+  win.setVisibleOnAllWorkspaces(true, {
+    visibleOnFullScreen: true,
+    skipTransformProcessType: true,
+  })
 
   win.show()
   win.focus()
