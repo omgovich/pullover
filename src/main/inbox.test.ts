@@ -45,6 +45,21 @@ function build(prs: PullRequest[], overrides: Record<string, unknown> = {}) {
 }
 
 describe('Inbox.refresh', () => {
+  it('keeps the inbox ready when an org has not approved the OAuth app', async () => {
+    const fetchPrs = vi.fn(async () => ({
+      prs: [makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })],
+      restrictedOrgs: ['status-im'],
+    }))
+    const inbox = build([], { fetchPrs })
+
+    await inbox.refresh()
+    const snapshot = inbox.getSnapshot()
+
+    expect(snapshot.status).toBe('ready')
+    expect(snapshot.items.map((item) => item.pr.id)).toEqual(['PR_1'])
+    expect(snapshot.errorMessage).toBe("status-im hasn't approved Pullover")
+  })
+
   it('classifies fetched PRs and counts the ones needing attention', async () => {
     const inbox = build([
       makePullRequest({ id: 'PR_1', buckets: ['review-requested'] }),
