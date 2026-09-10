@@ -6,7 +6,13 @@ import type { InboxSnapshot } from '@shared/ipc'
 import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
 import { isAuthError } from './github/auth-error'
 import { describeError } from './github/error-message'
-import { fetchPullRequests, fetchViewerLogin, type GraphQLClient } from './github/fetch-prs'
+import {
+  type FetchedPullRequests,
+  fetchPullRequests,
+  fetchViewerLogin,
+  type GraphQLClient,
+} from './github/fetch-prs'
+import { formatRestrictedOrgs } from './github/org-restriction'
 import { rateLimitResetAt } from './github/rate-limit'
 import type { AppStore } from './store'
 
@@ -23,7 +29,10 @@ export interface InboxDeps {
    */
   onAuthError?: () => void
   now?: () => string
-  fetchPrs?: typeof fetchPullRequests
+  fetchPrs?: (
+    client: GraphQLClient,
+    myLogin: string,
+  ) => Promise<PullRequest[] | FetchedPullRequests>
   fetchLogin?: typeof fetchViewerLogin
 }
 
@@ -53,7 +62,7 @@ export class Inbox {
   /** When a hit rate limit lifts. Refreshes are skipped until then. */
   private rateLimitedUntil: string | null = null
   private readonly now: () => string
-  private readonly fetchPrs: typeof fetchPullRequests
+  private readonly fetchPrs: NonNullable<InboxDeps['fetchPrs']>
   private readonly fetchLogin: typeof fetchViewerLogin
 
   constructor(private readonly deps: InboxDeps) {
@@ -189,7 +198,11 @@ export class Inbox {
       // Always fetch unfiltered: the picker's options come from what shows
       // up in the inbox, so the search itself must never be narrowed by the
       // repository selection.
-      this.prs = await this.fetchPrs(client, myLogin)
+      const fetched = await this.fetchPrs(client, myLogin)
+      const { prs, restrictedOrgs } = Array.isArray(fetched)
+        ? { prs: fetched, restrictedOrgs: [] }
+        : fetched
+      this.prs = prs
 
       const settings = this.deps.store.getSettings()
       const filtered = filterByRepositories(
@@ -212,7 +225,7 @@ export class Inbox {
         items,
         attentionCount: countAttention(items),
         lastUpdatedAt: now,
-        errorMessage: null,
+        errorMessage: formatRestrictedOrgs(restrictedOrgs),
         myLogin: this.myLogin,
         knownRepositories: collectRepositories(this.prs),
       })

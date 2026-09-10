@@ -1,3 +1,4 @@
+import { GraphqlResponseError } from '@octokit/graphql'
 import { describe, expect, it, vi } from 'vitest'
 import { fetchPullRequests, fetchViewerLogin } from './fetch-prs'
 import { DETAILS_QUERY, SEARCH_QUERY, VIEWER_QUERY } from './queries'
@@ -73,7 +74,7 @@ describe('fetchViewerLogin', () => {
 describe('fetchPullRequests', () => {
   it('issues one unscoped search query per bucket and returns pull requests', async () => {
     const client = fakeClient({ 'review-requested:@me': ['PR_1'] }, [detailNode('PR_1')])
-    const prs = await fetchPullRequests(client, 'vlad')
+    const { prs } = await fetchPullRequests(client, 'vlad')
     expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
     const searchCalls = client.mock.calls.filter(([q]) => q === SEARCH_QUERY)
     expect(searchCalls).toHaveLength(4)
@@ -86,7 +87,7 @@ describe('fetchPullRequests', () => {
     const client = fakeClient({ 'review-requested:@me': ['PR_1'], 'mentions:@me': ['PR_1'] }, [
       detailNode('PR_1'),
     ])
-    const prs = await fetchPullRequests(client, 'vlad')
+    const { prs } = await fetchPullRequests(client, 'vlad')
     expect(prs).toHaveLength(1)
     expect(prs[0]!.buckets.sort()).toEqual(['mentions', 'review-requested'])
   })
@@ -113,7 +114,7 @@ describe('fetchPullRequests', () => {
       ids.map((id) => detailNode(id)),
     )
 
-    const prs = await fetchPullRequests(client, 'vlad')
+    const { prs } = await fetchPullRequests(client, 'vlad')
 
     const detailCalls = client.mock.calls.filter(([q]) => q === DETAILS_QUERY)
     expect(detailCalls).toHaveLength(6)
@@ -137,7 +138,7 @@ describe('fetchPullRequests', () => {
       return inner(query, variables)
     })
 
-    const prs = await fetchPullRequests(client, 'vlad')
+    const { prs } = await fetchPullRequests(client, 'vlad')
 
     expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
     // The four buckets plus the one that had to be asked again.
@@ -157,7 +158,7 @@ describe('fetchPullRequests', () => {
       return inner(query, variables)
     })
 
-    const prs = await fetchPullRequests(client, 'vlad')
+    const { prs } = await fetchPullRequests(client, 'vlad')
 
     expect(prs.map((pr) => pr.id)).toEqual(ids)
     const asked = client.mock.calls
@@ -177,7 +178,7 @@ describe('fetchPullRequests', () => {
       return inner(query, variables)
     })
 
-    const prs = await fetchPullRequests(client, 'vlad')
+    const { prs } = await fetchPullRequests(client, 'vlad')
 
     expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
     expect(client.mock.calls.filter(([q]) => q === DETAILS_QUERY)).toHaveLength(2)
@@ -273,14 +274,14 @@ describe('fetchPullRequests', () => {
 
   it('maps the detail node into a domain pull request', async () => {
     const client = fakeClient({ 'author:@me': ['PR_1'] }, [detailNode('PR_1')])
-    const prs = await fetchPullRequests(client, 'vlad')
+    const { prs } = await fetchPullRequests(client, 'vlad')
     expect(prs[0]!.repository).toBe('acme/web')
     expect(prs[0]!.authorLogin).toBe('alice')
   })
 
   it('skips ids the details query could not resolve', async () => {
     const client = fakeClient({ 'author:@me': ['PR_1', 'PR_missing'] }, [detailNode('PR_1')])
-    const prs = await fetchPullRequests(client, 'vlad')
+    const { prs } = await fetchPullRequests(client, 'vlad')
     expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
   })
 
@@ -299,7 +300,7 @@ describe('fetchPullRequests', () => {
       throw new Error(`unexpected query: ${query}`)
     })
 
-    const prs = await fetchPullRequests(client, 'vlad')
+    const { prs } = await fetchPullRequests(client, 'vlad')
 
     expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
   })
@@ -308,7 +309,7 @@ describe('fetchPullRequests', () => {
     const client = fakeClient({ 'mentions:@me': ['PR_1'] }, [
       detailNode('PR_1', { bodyText: 'Hey @vlad, take a look' }),
     ])
-    const prs = await fetchPullRequests(client, 'vlad')
+    const { prs } = await fetchPullRequests(client, 'vlad')
     expect(prs[0]!.mentionsAt).not.toHaveLength(0)
   })
 
@@ -344,7 +345,7 @@ describe('fetchPullRequests', () => {
     expect(pending).toHaveLength(4)
 
     for (const d of pending) d.resolve({ search: { nodes: [] } })
-    await expect(result).resolves.toEqual([])
+    await expect(result).resolves.toEqual({ prs: [], restrictedOrgs: [] })
   })
 
   it('issues detail batches concurrently rather than waiting for each to resolve', async () => {
@@ -378,7 +379,7 @@ describe('fetchPullRequests', () => {
     expect(pending).toHaveLength(6)
 
     for (const d of pending) d.resolve({ nodes: [] })
-    await expect(result).resolves.toEqual([])
+    await expect(result).resolves.toEqual({ prs: [], restrictedOrgs: [] })
   })
 
   it('rebuilds the result in the order ids were collected, not the order detail batches resolve', async () => {
@@ -418,7 +419,63 @@ describe('fetchPullRequests', () => {
     await Promise.resolve()
     first.resolve({ nodes: batchA.map((id) => detailNode(id)) })
 
-    const prs = await result
+    const { prs } = await result
     expect(prs.map((pr) => pr.id)).toEqual(allIds)
+  })
+
+  it('retries the search excluding an org that blocks the OAuth app', async () => {
+    const restriction = new GraphqlResponseError(
+      { method: 'POST', url: 'https://api.github.com/graphql' },
+      {},
+      {
+        data: null,
+        errors: [
+          {
+            message:
+              'Although you appear to have the correct authorization credentials, the `status-im` organization has enabled OAuth App access restrictions, meaning that data access to third-parties is limited.',
+          },
+        ],
+      } as never,
+    )
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === SEARCH_QUERY) {
+        const q = variables.q as string
+        if (!q.includes('-org:status-im')) throw restriction
+        return { search: { nodes: [{ id: 'PR_1' }] } }
+      }
+      if (query === DETAILS_QUERY) return { nodes: [detailNode('PR_1')] }
+      throw new Error(`unexpected query: ${query}`)
+    })
+
+    const result = await fetchPullRequests(client, 'vlad')
+    expect(result.prs.map((pr) => pr.id)).toEqual(['PR_1'])
+    expect(result.restrictedOrgs).toEqual(['status-im'])
+  })
+
+  it('keeps other PRs when a detail batch names a restricted org', async () => {
+    const restriction = new GraphqlResponseError(
+      { method: 'POST', url: 'https://api.github.com/graphql' },
+      {},
+      {
+        data: { nodes: [detailNode('PR_1'), null] },
+        errors: [
+          {
+            message:
+              'Although you appear to have the correct authorization credentials, the `status-im` organization has enabled OAuth App access restrictions, meaning that data access to third-parties is limited.',
+          },
+        ],
+      } as never,
+    )
+    const client = vi.fn(async (query: string) => {
+      if (query === SEARCH_QUERY) {
+        return { search: { nodes: [{ id: 'PR_1' }, { id: 'PR_blocked' }] } }
+      }
+      if (query === DETAILS_QUERY) throw restriction
+      throw new Error(`unexpected query: ${query}`)
+    })
+
+    const result = await fetchPullRequests(client, 'vlad')
+    expect(result.prs.map((pr) => pr.id)).toEqual(['PR_1'])
+    expect(result.restrictedOrgs).toEqual(['status-im'])
   })
 })

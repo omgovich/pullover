@@ -67,6 +67,12 @@ describe('formatStatusLine', () => {
     )
   })
 
+  it('still reports staleness when a ready snapshot carries a warning', () => {
+    expect(
+      formatStatusLine({ ...base, errorMessage: "status-im hasn't approved Pullover" }, NOW),
+    ).toBe('Updated 5m ago')
+  })
+
   it('prefers the running refresh over a previous error', () => {
     expect(formatStatusLine({ ...base, status: 'loading', errorMessage: 'boom' }, NOW)).toBe(
       'Refreshing…',

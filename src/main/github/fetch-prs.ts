@@ -2,6 +2,7 @@ import { mapPullRequest, type PullRequestNode } from '@core/map-pr'
 import { buildSearchQuery, chunk } from '@core/search-query'
 import { graphql } from '@octokit/graphql'
 import { type PullRequest, SEARCH_BUCKETS, type SearchBucket } from '@shared/types'
+import { graphqlPartialData, restrictedOrganizations } from './org-restriction'
 import { DETAILS_QUERY, SEARCH_QUERY, VIEWER_QUERY } from './queries'
 import { isTransientError } from './transient-error'
 
@@ -68,6 +69,29 @@ export async function fetchViewerLogin(client: GraphQLClient): Promise<string> {
   return data.viewer.login
 }
 
+export interface FetchedPullRequests {
+  prs: PullRequest[]
+  /** Orgs the OAuth app cannot see; their PRs are omitted rather than failing the fetch. */
+  restrictedOrgs: string[]
+}
+
+function idsFromSearch(data: unknown): string[] {
+  if (typeof data !== 'object' || data === null || !('search' in data)) return []
+  const search = (data as { search?: { nodes?: Array<{ id?: string } | null> } }).search
+  return (search?.nodes ?? []).flatMap((node) => (node?.id !== undefined ? [node.id] : []))
+}
+
+function nodesFromDetails(data: unknown): Array<PullRequestNode | null> {
+  if (typeof data !== 'object' || data === null || !('nodes' in data)) return []
+  const nodes = (data as { nodes?: Array<PullRequestNode | null> }).nodes
+  return nodes ?? []
+}
+
+function searchQuery(bucket: SearchBucket, excludeOrgs: string[]): string {
+  const extra = excludeOrgs.map((org) => `-org:${org}`).join(' ')
+  return extra === '' ? buildSearchQuery(bucket) : `${buildSearchQuery(bucket)} ${extra}`
+}
+
 /**
  * One more attempt at a request that failed on GitHub's side. No backoff:
  * what `isTransientError` admits is GitHub failing of its own accord, not it
@@ -89,6 +113,35 @@ async function retryTransient<T>(attempt: () => Promise<T>): Promise<T> {
 }
 
 /**
+ * One locked-down org must not blank the whole inbox: GitHub names the org
+ * and @octokit/graphql then throws, even when other results are sitting in
+ * `error.data`. Retry excluding those orgs until the search goes through.
+ */
+async function searchBucket(
+  client: GraphQLClient,
+  bucket: SearchBucket,
+): Promise<{ ids: string[]; restrictedOrgs: string[] }> {
+  const excluded: string[] = []
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const data = await retryTransient(() =>
+        client(SEARCH_QUERY, { q: searchQuery(bucket, excluded) }),
+      )
+      return { ids: idsFromSearch(data), restrictedOrgs: excluded }
+    } catch (error) {
+      const named = restrictedOrganizations(error)
+      const fresh = named.filter((org) => !excluded.includes(org))
+      if (fresh.length === 0) {
+        if (named.length === 0) throw error
+        return { ids: idsFromSearch(graphqlPartialData(error)), restrictedOrgs: excluded }
+      }
+      excluded.push(...fresh)
+    }
+  }
+  return { ids: [], restrictedOrgs: excluded }
+}
+
+/**
  * Asks for these pull requests, with one second chance: two half-size
  * requests where there is something to split, a plain repeat where there
  * isn't.
@@ -106,30 +159,36 @@ async function retryTransient<T>(attempt: () => Promise<T>): Promise<T> {
  * fails, not just the oversized one — with nineteen attempts per batch and a
  * couple of hundred requests in flight at the leaves. What one more ask
  * cannot rescue, the next poll can.
+ *
+ * A restricted org is different: GitHub already named it, and other nodes
+ * may be sitting in `error.data`, so that payload is kept instead of retrying.
  */
 async function fetchDetails(
   client: GraphQLClient,
   ids: string[],
   maySplit = true,
-): Promise<Array<PullRequestNode | null>> {
+): Promise<{ nodes: Array<PullRequestNode | null>; restrictedOrgs: string[] }> {
   const request = async (): Promise<Array<PullRequestNode | null>> => {
-    const data = (await client(DETAILS_QUERY, { ids })) as {
-      nodes: Array<PullRequestNode | null>
-    }
-    return data.nodes
+    const data = await client(DETAILS_QUERY, { ids })
+    return nodesFromDetails(data)
   }
 
   try {
-    return await request()
+    return { nodes: await request(), restrictedOrgs: [] }
   } catch (error) {
+    const orgs = restrictedOrganizations(error)
+    if (orgs.length > 0) {
+      return { nodes: nodesFromDetails(graphqlPartialData(error)), restrictedOrgs: orgs }
+    }
     if (!isTransientError(error) || !maySplit) throw error
-    if (ids.length === 1) return request()
+    if (ids.length === 1) return { nodes: await request(), restrictedOrgs: [] }
     const half = Math.ceil(ids.length / 2)
     const halves = await Promise.all([
       fetchDetails(client, ids.slice(0, half), false),
       fetchDetails(client, ids.slice(half), false),
     ])
-    return halves.flat()
+    const restrictedOrgs = [...new Set(halves.flatMap((part) => part.restrictedOrgs))].sort()
+    return { nodes: halves.flatMap((part) => part.nodes), restrictedOrgs }
   }
 }
 
@@ -144,22 +203,20 @@ async function fetchDetails(
  * finished first), so the resulting Map's insertion order is deterministic
  * and independent of response arrival order.
  */
-async function collectIds(client: GraphQLClient): Promise<Map<string, Set<SearchBucket>>> {
+async function collectIds(
+  client: GraphQLClient,
+): Promise<{ byId: Map<string, Set<SearchBucket>>; restrictedOrgs: string[] }> {
   const results = await Promise.all(
     SEARCH_BUCKETS.map(async (bucket) => {
-      const q = buildSearchQuery(bucket)
-      const data = (await retryTransient(() => client(SEARCH_QUERY, { q }))) as {
-        search: { nodes: Array<{ id?: string } | null> }
-      }
-      const ids = data.search.nodes
-        .map((node) => node?.id)
-        .filter((id): id is string => id !== undefined)
-      return { bucket, ids }
+      const found = await searchBucket(client, bucket)
+      return { bucket, ...found }
     }),
   )
 
   const byId = new Map<string, Set<SearchBucket>>()
-  for (const { bucket, ids } of results) {
+  const restrictedOrgs = new Set<string>()
+  for (const { bucket, ids, restrictedOrgs: orgs } of results) {
+    for (const org of orgs) restrictedOrgs.add(org)
     for (const id of ids) {
       const buckets = byId.get(id) ?? new Set<SearchBucket>()
       buckets.add(bucket)
@@ -167,15 +224,16 @@ async function collectIds(client: GraphQLClient): Promise<Map<string, Set<Search
     }
   }
 
-  return byId
+  return { byId, restrictedOrgs: [...restrictedOrgs].sort() }
 }
 
 export async function fetchPullRequests(
   client: GraphQLClient,
   myLogin: string,
-): Promise<PullRequest[]> {
+): Promise<FetchedPullRequests> {
   const metered = meterRateLimit(client)
-  const bucketsById = await collectIds(metered.client)
+  const { byId: bucketsById, restrictedOrgs } = await collectIds(metered.client)
+  const hidden = new Set(restrictedOrgs)
 
   // The detail batches also run concurrently. `Promise.all` returns results
   // in the same order as the promises it was given — i.e. the order the
@@ -187,7 +245,8 @@ export async function fetchPullRequests(
   const batchResults = await Promise.all(batches.map((ids) => fetchDetails(metered.client, ids)))
 
   const prs: PullRequest[] = []
-  for (const nodes of batchResults) {
+  for (const { nodes, restrictedOrgs: orgs } of batchResults) {
+    for (const org of orgs) hidden.add(org)
     for (const node of nodes) {
       if (!node) continue
       prs.push(mapPullRequest(node, [...(bucketsById.get(node.id) ?? [])], myLogin))
@@ -197,5 +256,5 @@ export async function fetchPullRequests(
   // Only on the way out: a fetch that threw has no complete number to report.
   metered.report()
 
-  return prs
+  return { prs, restrictedOrgs: [...hidden].sort() }
 }
