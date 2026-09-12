@@ -12,6 +12,8 @@ function stubApi(settings: Settings, launchAtLogin: boolean, shortcutActive: boo
     onSettings: () => () => {},
     getLaunchAtLogin: () => Promise.resolve(launchAtLogin),
     isShortcutActive: () => Promise.resolve(shortcutActive),
+    getMcpStatus: () =>
+      Promise.resolve({ listening: false, url: 'http://127.0.0.1:7855/mcp', error: null }),
   } as unknown as typeof window.api
 }
 
