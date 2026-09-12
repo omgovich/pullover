@@ -60,6 +60,7 @@ let store: AppStore
 let send: ReturnType<typeof vi.fn>
 let hide: ReturnType<typeof vi.fn>
 let shortcutCalls: (string | null)[]
+let mcpApplied: number
 
 beforeEach(() => {
   handlers.clear()
@@ -69,6 +70,7 @@ beforeEach(() => {
   send = vi.fn()
   hide = vi.fn()
   shortcutCalls = []
+  mcpApplied = 0
   const inbox = new Inbox({ store, getClient: () => null, onChange: () => {} })
 
   registerIpc({
@@ -84,6 +86,10 @@ beforeEach(() => {
       shortcutCalls.push(accelerator)
     },
     isShortcutActive: () => true,
+    getMcpStatus: () => ({ listening: true, url: 'http://127.0.0.1:7855/mcp', error: null }),
+    applyMcpSetting: async () => {
+      mcpApplied += 1
+    },
   })
 })
 
@@ -142,6 +148,28 @@ describe('settings push', () => {
   it('does not push when addRepository rejects an invalid name', () => {
     expect(() => call(IPC.addRepository, 'nonsense' as never)).toThrow(/owner\/repo/)
     expect(send).not.toHaveBeenCalled()
+  })
+})
+
+describe('MCP server', () => {
+  it('reports the status main holds', () => {
+    expect(call(IPC.getMcpStatus)).toEqual({
+      listening: true,
+      url: 'http://127.0.0.1:7855/mcp',
+      error: null,
+    })
+  })
+
+  it('applies the server setting, then pushes settings, when the patch toggles it', async () => {
+    await call(IPC.setSettings, { mcpServerEnabled: true } as never)
+    expect(store.getSettings().mcpServerEnabled).toBe(true)
+    expect(mcpApplied).toBe(1)
+    expect(send).toHaveBeenCalledWith(IPC.settingsChanged, store.getSettings())
+  })
+
+  it('leaves the server alone when the patch does not mention it', async () => {
+    await call(IPC.setSettings, { pollIntervalMinutes: 15 } as never)
+    expect(mcpApplied).toBe(0)
   })
 })
 
