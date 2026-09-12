@@ -63,6 +63,8 @@ function fixtures(): PullRequest[] {
 let prs: PullRequest[]
 let now: string
 let fetches: number
+/** Parks the next fetch, so a pass can be left in flight on purpose. */
+let hold: Promise<void> | null
 let inbox: Inbox
 let server: PulloverMcpServer
 
@@ -70,6 +72,7 @@ beforeEach(async () => {
   prs = fixtures()
   now = NOW
   fetches = 0
+  hold = null
   inbox = new Inbox({
     store: new AppStore(new MemoryStore()),
     getClient: () => CLIENT,
@@ -78,6 +81,7 @@ beforeEach(async () => {
     fetchLogin: async () => 'vlad',
     fetchPrs: async () => {
       fetches += 1
+      if (hold !== null) await hold
       return prs
     },
   })
@@ -190,6 +194,27 @@ describe('get_inbox', () => {
   it('answers from the snapshot while it is fresh', async () => {
     await callTool('get_inbox')
     expect(fetches).toBe(1)
+  })
+
+  it('waits for a pass in flight rather than answering from the list it replaces', async () => {
+    now = LATER
+    prs = [makePullRequest({ id: 'PR_50', number: 50, buckets: ['review-requested'] })]
+    // Held well past a loopback round trip, so a call that did not wait would
+    // answer from the old snapshot long before this fetch lands.
+    hold = new Promise<void>((resolve) => setTimeout(resolve, 100))
+
+    const pass = inbox.refresh()
+    const { structured } = await callTool('get_inbox')
+    await pass
+
+    const inboxView = structured as {
+      status: string
+      sections: { pullRequests: { number: number }[] }[]
+    }
+    expect(inboxView.status).toBe('ready')
+    expect(inboxView.sections.flatMap((s) => s.pullRequests.map((p) => p.number))).toEqual([50])
+    // The pass it waited for, and no second one on top.
+    expect(fetches).toBe(2)
   })
 
   it('refreshes first once the snapshot is stale, like opening the popup does', async () => {

@@ -137,4 +137,11 @@ describe('describeInbox', () => {
     const result = describeInbox(snapshot([], { status: 'loading' }), { includeWaiting: false })
     expect(result.notice).toMatch(/last completed/i)
   })
+
+  it('does not claim a completed result when the first fetch is still running', () => {
+    const result = describeInbox(snapshot([], { status: 'loading', lastUpdatedAt: null }), {
+      includeWaiting: false,
+    })
+    expect(result.notice).toMatch(/nothing to show yet/i)
+  })
 })

@@ -75,7 +75,9 @@ function noticeFor(snapshot: InboxSnapshot): string | null {
     case 'error':
       return snapshot.errorMessage
     case 'loading':
-      return 'A refresh is in progress; this is the last completed result.'
+      return snapshot.lastUpdatedAt === null
+        ? 'The first fetch is still running; there is nothing to show yet.'
+        : 'A refresh is in progress; this is the last completed result.'
     case 'ready':
       return null
   }

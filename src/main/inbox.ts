@@ -135,6 +135,15 @@ export class Inbox {
     return this.queuedRefresh
   }
 
+  /**
+   * Resolves when the pass now running has finished, or at once when none
+   * is. Never rejects: a failed pass still ends in a snapshot, which is what
+   * a caller waiting for one is after.
+   */
+  whenIdle(): Promise<void> {
+    return this.inFlightRefresh?.catch(() => undefined) ?? Promise.resolve()
+  }
+
   private startQueuedPass(): Promise<void> {
     this.queuedRefresh = null
     this.inFlightRefresh = this.runPass()

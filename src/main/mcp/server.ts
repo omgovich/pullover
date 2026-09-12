@@ -93,8 +93,12 @@ function registerTools(server: McpServer, deps: McpServerDeps): void {
       annotations: { readOnlyHint: true },
     },
     async ({ includeWaiting }) => {
-      // The popup's own rule for spending a fetch on open, so an agent and a
-      // click get the same freshness for the same price.
+      // A pass already running is the fresh answer on its way, and the app
+      // reports one as `loading` with the list it is about to replace still
+      // in place. A human sees a spinner and waits; an agent would take that
+      // list — or, at launch, an empty one — for the answer.
+      await inbox.whenIdle()
+      // Then the popup's own rule, so an agent and a click cost the same.
       if (shouldRefreshOnOpen(inbox.getSnapshot(), now())) await inbox.refresh()
       return toolResult(
         describeInbox(inbox.getSnapshot(), { includeWaiting: includeWaiting ?? false }),
