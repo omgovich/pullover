@@ -1,3 +1,4 @@
+import type { McpStatus } from '@shared/ipc'
 import { LAYOUT_OPTIONS, type Layout, SHORTCUT_OPTIONS, type ThemePreference } from '@shared/types'
 import { Heart, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -14,6 +15,7 @@ import {
 } from 'reshaped/bundle'
 import { useLaunchAtLogin } from '../useLaunchAtLogin'
 import { useSettings } from '../useSettings'
+import McpSection from './McpSection'
 import RepositoryPicker from './RepositoryPicker'
 
 interface Props {
@@ -38,10 +40,25 @@ export default function SettingsPanel({
   const settings = useSettings()
   const [launchAtLogin, setLaunchAtLogin] = useLaunchAtLogin()
   const [shortcutActive, setShortcutActive] = useState(true)
+  const [mcpStatus, setMcpStatus] = useState<McpStatus | null>(null)
 
   useEffect(() => {
     void window.api.isShortcutActive().then(setShortcutActive)
   }, [])
+
+  useEffect(() => {
+    void window.api.getMcpStatus().then(setMcpStatus)
+  }, [])
+
+  const setMcpEnabled = async (enabled: boolean): Promise<void> => {
+    await window.api.setSettings({ mcpServerEnabled: enabled })
+    setMcpStatus(await window.api.getMcpStatus())
+  }
+
+  const copyMcpCommand = (): void => {
+    if (mcpStatus === null) return
+    void window.api.copyText(`claude mcp add --transport http pullover ${mcpStatus.url}`)
+  }
 
   const setShortcut = async (accelerator: string | null): Promise<void> => {
     await window.api.setSettings({ globalShortcut: accelerator })
@@ -189,6 +206,15 @@ export default function SettingsPanel({
                 </Text>
               )}
             </View>
+
+            <Divider />
+
+            <McpSection
+              enabled={settings.mcpServerEnabled}
+              status={mcpStatus}
+              onToggle={(enabled) => void setMcpEnabled(enabled)}
+              onCopyCommand={copyMcpCommand}
+            />
 
             <Divider />
 
