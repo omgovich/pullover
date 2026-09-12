@@ -44,7 +44,7 @@ const inbox = new Inbox({
 // installed one must not fight it for the socket.
 const MCP_PORT = app.isPackaged ? 7855 : 7856
 
-const mcp = new PulloverMcpServer({ inbox, version: app.getVersion() })
+const mcp = new PulloverMcpServer({ inbox, store, version: app.getVersion() })
 
 function applyMcpSetting(): Promise<void> {
   return store.getSettings().mcpServerEnabled ? mcp.start(MCP_PORT) : mcp.stop()

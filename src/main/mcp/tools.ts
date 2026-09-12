@@ -1,12 +1,15 @@
-import { describeInbox } from '@core/agent-view'
+import { describeInbox, describePullRequest } from '@core/agent-view'
 import { shouldRefreshOnOpen } from '@core/staleness'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import type { ClassifiedPullRequest } from '@shared/types'
 import { z } from 'zod'
 import type { Inbox } from '../inbox'
+import type { AppStore } from '../store'
 
 export interface McpServerDeps {
   inbox: Inbox
+  store: AppStore
   version: string
   now?: () => string
 }
@@ -16,6 +19,10 @@ function toolResult(payload: unknown): CallToolResult {
     content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
     structuredContent: payload as Record<string, unknown>,
   }
+}
+
+function toolError(message: string): CallToolResult {
+  return { content: [{ type: 'text', text: message }], isError: true }
 }
 
 const GET_INBOX_TOOL_DESCRIPTION = `Pullover's inbox: the open pull requests waiting on the user, grouped into sections by why they are waiting. Call it when the user asks what needs their attention on GitHub, what to review next, or whether anything is blocked on them.
@@ -32,9 +39,55 @@ Categories, in the order the app shows them:
 
 Pullover reads GitHub; it never comments, reviews or merges. Act on a pull request with your own GitHub tooling — the \`gh\` CLI, say — at the url given.`
 
+/** Both snooze tools name a pull request the way everything else does. */
+const identifier = {
+  repository: z.string().describe('Full name, owner/repo'),
+  number: z.number().int().positive().describe('The pull request number'),
+}
+
+const LOCAL_NOTE =
+  'This is a note inside Pullover on this Mac, undone by unsnooze_pull_request and visible to nobody else. GitHub is not touched: nothing is muted, closed or commented on there.'
+
 export function registerTools(server: McpServer, deps: McpServerDeps): void {
-  const { inbox } = deps
+  const { inbox, store } = deps
   const now = deps.now ?? ((): string => new Date().toISOString())
+
+  const notFound = (repository: string, number: number): CallToolResult =>
+    // Signed out, `findPullRequest` returns null for everything, and pointing
+    // the agent at `get_inbox` would send it looking for a list nobody has.
+    inbox.getSnapshot().status === 'signed-out'
+      ? toolError(
+          'Pullover is signed out, so it knows no pull requests to park. Sign in from its menu-bar window first.',
+        )
+      : toolError(
+          `Pullover does not know ${repository}#${number}. It only tracks open pull requests involving the signed-in user; call get_inbox first, which refreshes the list when it is stale.`,
+        )
+
+  /**
+   * A pull request the classifier hides takes no snooze: `classify` returns
+   * before the snooze is ever consulted. Writing one anyway would report no
+   * effect and then quietly take hold the day the pull request reappears.
+   *
+   * Three things are hidden, not just drafts — an own pull request that is
+   * approved with auto-merge armed, and one the user is simply not involved
+   * in, are the other two — so only a draft may be named as one.
+   */
+  const refuseIfHidden = (item: ClassifiedPullRequest): CallToolResult | null => {
+    if (item.category !== 'hidden') return null
+    const name = `${item.pr.repository}#${item.pr.number}`
+    return toolError(
+      item.pr.isDraft
+        ? `${name} is a draft, and Pullover does not park drafts: they are out of the inbox already. It will appear once it is marked ready for review.`
+        : `${name} is not in the inbox — nothing about it is waiting on the user — so there is nothing to park. Call get_inbox to see what is.`,
+    )
+  }
+
+  /** The pull request as it reads after a snooze changed its classification. */
+  const reportAfterChange = (repository: string, number: number): CallToolResult => {
+    inbox.reclassify()
+    const item = inbox.findPullRequest(repository, number)
+    return item === null ? notFound(repository, number) : toolResult(describePullRequest(item))
+  }
 
   server.registerTool(
     'get_inbox',
@@ -62,6 +115,55 @@ export function registerTools(server: McpServer, deps: McpServerDeps): void {
       return toolResult(
         describeInbox(inbox.getSnapshot(), { includeWaiting: includeWaiting ?? false }),
       )
+    },
+  )
+
+  server.registerTool(
+    'snooze_pull_request',
+    {
+      title: 'Park a pull request in Pullover',
+      description: `Moves a pull request out of the attention sections into "Waiting on others" for a set number of hours, or — with no hours — until it wakes on its own. It wakes on exactly two things: somebody replying in an unresolved review thread the user took part in, or a new commit. A new conversation comment, a fresh thread the user is not in, or a CI result does not wake it. Use it when the user asks to put something aside, not to tidy the list on your own: parking a pull request is deciding what they do not have to look at. Work you actually finish needs no snooze, because Pullover reclassifies a pull request by itself once the answer it was waiting for lands. ${LOCAL_NOTE}`,
+      inputSchema: {
+        ...identifier,
+        hours: z
+          .number()
+          .min(0.25)
+          .max(24 * 14)
+          .optional()
+          .describe(
+            'Park it for this long instead of until new activity. Fifteen minutes to two weeks.',
+          ),
+      },
+      // Not idempotent: a repeat moves the deadline, or re-bases the wait on
+      // new activity, so a client must not retry it on its own.
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    },
+    async ({ repository, number, hours }) => {
+      const item = inbox.findPullRequest(repository, number)
+      if (item === null) return notFound(repository, number)
+      const hidden = refuseIfHidden(item)
+      if (hidden !== null) return hidden
+      if (hours === undefined) store.snooze(item.pr.id, 'until-activity', now())
+      else store.snooze(item.pr.id, 'until-time', now(), hours)
+      return reportAfterChange(repository, number)
+    },
+  )
+
+  server.registerTool(
+    'unsnooze_pull_request',
+    {
+      title: 'Put a parked pull request back',
+      description: `Undoes snooze_pull_request, returning the pull request to whichever section its state calls for. ${LOCAL_NOTE}`,
+      inputSchema: identifier,
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    async ({ repository, number }) => {
+      const item = inbox.findPullRequest(repository, number)
+      if (item === null) return notFound(repository, number)
+      const hidden = refuseIfHidden(item)
+      if (hidden !== null) return hidden
+      store.unsnooze(item.pr.id)
+      return reportAfterChange(repository, number)
     },
   )
 }

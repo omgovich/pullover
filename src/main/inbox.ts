@@ -1,4 +1,4 @@
-import { classifyAll, countAttention } from '@core/classify'
+import { classify, classifyAll, countAttention } from '@core/classify'
 import { formatWait } from '@core/format'
 import { collectRepositories, filterByRepositories } from '@core/repo-filter'
 import { computeStackPositions } from '@core/stack'
@@ -106,6 +106,26 @@ export class Inbox {
       items,
       attentionCount: countAttention(items),
     })
+  }
+
+  /**
+   * Looks in the unfiltered fetch, not in the snapshot: a caller naming a
+   * pull request by number should get an answer even when the repository
+   * filter or the classifier keeps it out of the window.
+   */
+  findPullRequest(repository: string, number: number): ClassifiedPullRequest | null {
+    if (this.myLogin === null) return null
+    const wanted = repository.toLowerCase()
+    const pr = this.prs.find((p) => p.number === number && p.repository.toLowerCase() === wanted)
+    if (pr === undefined) return null
+    const [item] = this.attachStacks([
+      classify(pr, {
+        myLogin: this.myLogin,
+        snoozes: this.deps.store.getSnoozes(),
+        now: this.now(),
+      }),
+    ])
+    return item ?? null
   }
 
   /**

@@ -46,7 +46,7 @@ export interface AgentInbox {
   sections: AgentInboxSection[]
 }
 
-function summarize(item: ClassifiedPullRequest): AgentPullRequestSummary {
+export function describePullRequest(item: ClassifiedPullRequest): AgentPullRequestSummary {
   const { pr } = item
   return {
     repository: pr.repository,
@@ -95,7 +95,7 @@ export function describeInbox(
     if (inSection.length === 0) continue
     // Ordered the way `App` orders it, so a stack reads to an agent as the
     // chain it is rather than as whatever the classifier's sort left behind.
-    const pullRequests = orderSection(inSection).map(summarize)
+    const pullRequests = orderSection(inSection).map(describePullRequest)
     sections.push({ category, title: CATEGORY_TITLES[category], pullRequests })
   }
   return {
