@@ -271,6 +271,44 @@ describe('lifecycle', () => {
     await second.stop()
   })
 
+  it('leaves nothing listening when a stop lands during a bind', async () => {
+    const second = new PulloverMcpServer({ inbox, version: '0.0.0-test' })
+    // Both calls made before either settles, which is what a double-click on
+    // the settings switch does.
+    const starting = second.start(0)
+    const stopping = second.stop()
+    await Promise.all([starting, stopping])
+    expect(second.status()).toEqual({ listening: false, port: null, error: null })
+  })
+
+  it('does not report a conflict against a listener of its own', async () => {
+    // A port known to be free, so the two starts below race for the same one.
+    const probe = new PulloverMcpServer({ inbox, version: '0.0.0-test' })
+    await probe.start(0)
+    const free = probe.status().port as number
+    await probe.stop()
+
+    const second = new PulloverMcpServer({ inbox, version: '0.0.0-test' })
+    await Promise.all([second.start(free), second.start(free)])
+    expect(second.status()).toEqual({ listening: true, port: free, error: null })
+    await second.stop()
+  })
+
+  it('stops twice without complaint', async () => {
+    await server.stop()
+    await server.stop()
+    expect(server.status().listening).toBe(false)
+  })
+
+  it('clears an earlier bind failure once a start succeeds', async () => {
+    const second = new PulloverMcpServer({ inbox, version: '0.0.0-test' })
+    await second.start(port())
+    expect(second.status().error).toMatch(/in use/)
+    await second.start(0)
+    expect(second.status()).toMatchObject({ listening: true, error: null })
+    await second.stop()
+  })
+
   it('is not listening after stop', async () => {
     await server.stop()
     expect(server.status().listening).toBe(false)

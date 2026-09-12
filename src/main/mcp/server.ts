@@ -111,6 +111,7 @@ export class PulloverMcpServer {
   private http: Server | null = null
   private port: number | null = null
   private error: string | null = null
+  private pending: Promise<void> = Promise.resolve()
 
   constructor(private readonly deps: McpServerDeps) {}
 
@@ -119,12 +120,39 @@ export class PulloverMcpServer {
   }
 
   /** Resolves once the outcome is known; a port that cannot be bound is reported by `status()`, not thrown. */
-  async start(port: number): Promise<void> {
-    await this.stop()
-    this.error = null
+  start(port: number): Promise<void> {
+    return this.enqueue(async () => {
+      await this.closeHttp()
+      this.error = null
+      await this.bind(port)
+    })
+  }
+
+  stop(): Promise<void> {
+    return this.enqueue(() => this.closeHttp())
+  }
+
+  /**
+   * `listen` finishes a turn after the call, so an unserialised pair could
+   * leave a listener running behind a setting that says off, or have a start
+   * report a bind conflict against a listener of its own. Neither step ever
+   * rejects, so the chain cannot be poisoned.
+   */
+  private enqueue(step: () => Promise<void>): Promise<void> {
+    this.pending = this.pending.then(step)
+    return this.pending
+  }
+
+  private bind(port: number): Promise<void> {
     const http = createServer((req, res) => void this.handle(req, res))
-    await new Promise<void>((resolve) => {
-      http.once('error', (error: NodeJS.ErrnoException) => {
+    return new Promise<void>((resolve) => {
+      // Stays attached past a successful listen: an accept that fails later
+      // would otherwise be an unhandled 'error' event, which ends the app.
+      http.on('error', (error: NodeJS.ErrnoException) => {
+        if (this.http !== null) {
+          console.error('[mcp] server error', error)
+          return
+        }
         this.error =
           error.code === 'EADDRINUSE'
             ? `Port ${port} is in use — quit whatever holds it, then turn this off and on.`
@@ -140,7 +168,7 @@ export class PulloverMcpServer {
     })
   }
 
-  async stop(): Promise<void> {
+  private async closeHttp(): Promise<void> {
     const http = this.http
     this.http = null
     this.port = null
