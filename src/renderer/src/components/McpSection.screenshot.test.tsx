@@ -1,6 +1,7 @@
 import type { McpStatus } from '@shared/ipc'
 import { visualCase } from '../test/visual'
 import McpSection from './McpSection'
+import SettingsGroup from './SettingsGroup'
 
 const LISTENING: McpStatus = { listening: true, url: 'http://127.0.0.1:7855/mcp', error: null }
 
@@ -13,7 +14,9 @@ const PORT_TAKEN: McpStatus = {
 function section(enabled: boolean, status: McpStatus | null): React.JSX.Element {
   return (
     <div style={{ padding: 12 }}>
-      <McpSection enabled={enabled} status={status} onToggle={() => {}} onCopyCommand={() => {}} />
+      <SettingsGroup>
+        <McpSection enabled={enabled} status={status} onToggle={() => {}} />
+      </SettingsGroup>
     </div>
   )
 }

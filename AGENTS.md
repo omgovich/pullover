@@ -43,6 +43,10 @@ The two pictures README shows are recorded by the separate `docs` project: `src/
 
 Unlike the component tests, these fetch their avatars from DiceBear — the one place in the suite that reaches the network, and a trade taken on purpose rather than an oversight. Keep to a CC0 style. The pair differs only in colour mode and layout, which is the argument for the compact setting; everything the fixture shows must be something `classify` could really produce.
 
+## Documentation that the tests check
+
+`src/docs.test.ts` reads the repo rather than the classifier: it asserts that the *Setup instructions* link in `McpSection` names a file that exists, and that the ports in `MCP.md` and README match the ones `src/main/index.ts` binds. Change a port or move a doc and it goes red — which is the point, since nothing else notices a link that only breaks in somebody's browser.
+
 ## MCP server
 
 `src/main/mcp/server.ts` serves the inbox to agents over Streamable HTTP on `127.0.0.1`, port `7855` packaged and `7856` in dev, off unless `mcpServerEnabled` is set. It holds the transport and the server's lifecycle; the tools themselves — their descriptions, which are the API an agent reads, and their handlers — are in `src/main/mcp/tools.ts`, because the two change for quite different reasons. Both must stay free of `electron` imports so `server.test.ts` can start the server on port 0 and talk to it with the SDK's own client. There are three tools: `get_inbox`, which waits out a pass already in flight and then applies the popup's own staleness rule, and `snooze_pull_request`/`unsnooze_pull_request`, which write to `AppStore` and reclassify, the way the context menu does. What the tools return is shaped in `src/core/agent-view.ts`, so a change to what agents see is a change there and in its test. The `Host`/`Origin` check in front of the transport is ours; the SDK's `allowedHosts` is deprecated and was seen letting a foreign host through. Try it by hand with the dev port:

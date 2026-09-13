@@ -3,9 +3,8 @@ import RepositoryPicker from './RepositoryPicker'
 
 /**
  * The picker reaches for the IPC bridge only from its handlers, so it renders
- * on plain props. Its one branch worth a picture is `FILTER_THRESHOLD`: under
- * five repositories the list is short enough to scan and the filter field is
- * left out, from five it appears.
+ * on plain props. Whether every repository is watched is the pane's business,
+ * not its own: it is simply not rendered in that case.
  */
 
 const FEW = ['acme/web', 'acme/api', 'acme/infra']
@@ -19,19 +18,11 @@ const MANY = [
   'acme/platform-terraform-modules',
 ]
 
-visualCase('watching-all', <RepositoryPicker knownRepositories={FEW} selected={[]} watchAll />)
+visualCase('nothing-fetched', <RepositoryPicker knownRepositories={[]} selected={[]} />)
 
-visualCase(
-  'few-repositories',
-  <RepositoryPicker knownRepositories={FEW} selected={['acme/api']} watchAll={false} />,
-)
+visualCase('few-repositories', <RepositoryPicker knownRepositories={FEW} selected={['acme/api']} />)
 
-// Five or more, so the filter field is in.
 visualCase(
   'filter-shown',
-  <RepositoryPicker
-    knownRepositories={MANY}
-    selected={['acme/api', 'acme/web']}
-    watchAll={false}
-  />,
+  <RepositoryPicker knownRepositories={MANY} selected={['acme/api', 'acme/web']} />,
 )

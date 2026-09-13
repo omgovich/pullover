@@ -1,21 +1,24 @@
 import type { McpStatus } from '@shared/ipc'
-import { Button, Switch, Text, View } from 'reshaped/bundle'
+import { ExternalLink } from 'lucide-react'
+import { Icon, Link, Switch, Text, View } from 'reshaped/bundle'
+import SettingRow from './SettingRow'
+
+/** What the Setup instructions link opens: the setup guide in the repository. */
+const SETUP_DOC = 'https://github.com/omgovich/pullover/blob/main/MCP.md'
 
 interface Props {
   enabled: boolean
   /** Null until main has answered; the row below waits for it rather than guessing. */
   status: McpStatus | null
   onToggle: (enabled: boolean) => void
-  onCopyCommand: () => void
 }
 
 /**
- * The three things the section can have to say once the switch is on. The URL
- * follows `listening` rather than the absence of an error, so the moment
- * between the switch and the bind does not offer a command that cannot connect
- * yet.
+ * What the section has to say once the switch is on. The URL follows
+ * `listening` rather than the absence of an error, so the moment between the
+ * switch and the bind does not offer an address that cannot be reached yet.
  */
-function detail(status: McpStatus, onCopyCommand: () => void): React.JSX.Element {
+function detail(status: McpStatus): React.JSX.Element {
   if (status.error !== null) {
     return (
       <Text variant="caption-1" color="critical">
@@ -34,40 +37,49 @@ function detail(status: McpStatus, onCopyCommand: () => void): React.JSX.Element
 
   return (
     <View direction="row" align="center" gap={2}>
-      <Text variant="caption-1" color="neutral-faded" maxLines={1}>
+      {/* Monospaced because it is something to be read character by character
+          and typed into another program's config. */}
+      <Text variant="caption-1" color="neutral-faded" maxLines={1} monospace>
         {status.url}
       </Text>
       <View grow />
-      <Button size="small" variant="outline" onClick={onCopyCommand}>
-        Copy Claude Code command
-      </Button>
+      <Link
+        variant="plain"
+        onClick={() => void window.api.openPr(SETUP_DOC)}
+        attributes={{ title: SETUP_DOC }}
+      >
+        <View direction="row" align="center" gap={1}>
+          <Text variant="caption-1" weight="medium">
+            Setup instructions
+          </Text>
+          <Icon svg={ExternalLink} size={3} />
+        </View>
+      </Link>
     </View>
   )
 }
 
-export default function McpSection({
-  enabled,
-  status,
-  onToggle,
-  onCopyCommand,
-}: Props): React.JSX.Element {
+export default function McpSection({ enabled, status, onToggle }: Props): React.JSX.Element {
   return (
-    <View gap={2}>
-      <Text variant="caption-1" weight="bold" color="neutral-faded">
-        AI AGENTS
-      </Text>
-      <View direction="row" align="center" gap={3}>
-        <Switch name="mcp-server" checked={enabled} onChange={({ checked }) => onToggle(checked)} />
-        <View grow minWidth={0}>
-          <Text variant="body-2" weight="medium">
-            MCP server
-          </Text>
-          <Text variant="caption-1" color="neutral-faded">
-            Lets Claude Code and other agents on this Mac read this inbox.
-          </Text>
+    <>
+      <SettingRow
+        label="MCP server"
+        description="Lets Claude and other local agents read this inbox."
+      >
+        <Switch
+          name="mcp-server"
+          inputAttributes={{ 'aria-label': 'MCP server' }}
+          checked={enabled}
+          onChange={({ checked }) => onToggle(checked)}
+        />
+      </SettingRow>
+      {/* No padding of its own on top: the row above already ends in twelve
+          pixels, and a second helping reads as a gap. */}
+      {enabled && status !== null && (
+        <View paddingTop={0} paddingBottom={3} paddingInline={3}>
+          {detail(status)}
         </View>
-      </View>
-      {enabled && status !== null && detail(status, onCopyCommand)}
-    </View>
+      )}
+    </>
   )
 }
