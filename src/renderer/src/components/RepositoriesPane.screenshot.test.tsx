@@ -1,3 +1,6 @@
+import { Reshaped } from 'reshaped/bundle'
+import { expect, test } from 'vitest'
+import { render } from 'vitest-browser-react'
 import { visualCase } from '../test/visual'
 import RepositoriesPane from './RepositoriesPane'
 
@@ -18,12 +21,12 @@ const KNOWN = [
 /** The window's real height — `CARD_HEIGHT` in src/main/window.ts. */
 const WINDOW_HEIGHT_PX = 620
 
-function pane(selected: string[], watchAll: boolean): React.JSX.Element {
+function pane(selected: string[], watchAll: boolean, known = KNOWN): React.JSX.Element {
   stubApi()
   return (
     <div style={{ height: WINDOW_HEIGHT_PX }}>
       <RepositoriesPane
-        knownRepositories={KNOWN}
+        knownRepositories={known}
         selected={selected}
         watchAll={watchAll}
         onBack={() => {}}
@@ -32,8 +35,58 @@ function pane(selected: string[], watchAll: boolean): React.JSX.Element {
   )
 }
 
+/**
+ * More repositories than the window can hold, which is the case the layout
+ * has to answer: the list scrolls inside its own card, with the filter above
+ * it staying put and the screen behind them not scrolling at all.
+ */
+const MANY = [
+  ...KNOWN,
+  'acme/auth',
+  'acme/billing',
+  'acme/cli',
+  'acme/data-pipeline',
+  'acme/design-system',
+  'acme/edge-proxy',
+  'acme/events',
+  'acme/growth',
+  'acme/ios',
+  'acme/marketing-site',
+  'acme/notifications',
+  'acme/payments',
+  'acme/platform-terraform-modules',
+  'acme/search',
+  'acme/support-tools',
+  'acme/webhooks',
+]
+
 // Watching everything: the switch is on and a line says what that means.
 visualCase('watching-all', () => pane([], true))
 
 // Narrowed down, which is when the filter and the list earn their place.
 visualCase('picked', () => pane(['acme/api', 'acme/web'], false))
+
+visualCase('many-repositories', () => pane(['acme/api', 'acme/web'], false, MANY))
+
+/**
+ * Where a list too long for the window scrolls, which no screenshot can say:
+ * both layouts look the same at the top of the list. The filter has to stay
+ * put and the screen behind it has to stay still, which means exactly one
+ * scroller on the screen, holding the repositories and not the field.
+ */
+test('scrolls the repository list rather than the screen', async () => {
+  await render(<Reshaped theme="slate">{pane(['acme/api'], false, MANY)}</Reshaped>)
+
+  // Both halves matter: an element that overflows without a scroller of its
+  // own has simply been cut off, and one that could scroll but holds nothing
+  // taller than itself is not the scroller either.
+  const scrollers = [...document.body.querySelectorAll('*')].filter((el) => {
+    const overflow = getComputedStyle(el).overflowY
+    return (overflow === 'auto' || overflow === 'scroll') && el.scrollHeight - el.clientHeight > 1
+  })
+
+  expect(scrollers).toHaveLength(1)
+  const list = scrollers[0]
+  expect(list?.querySelectorAll('input[type="checkbox"]').length).toBeGreaterThan(1)
+  expect(list?.querySelector('input[name="repository-filter"]')).toBeNull()
+})

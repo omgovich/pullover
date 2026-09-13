@@ -1,7 +1,7 @@
 import { repositoryOptions } from '@core/repo-filter'
 import { Search } from 'lucide-react'
 import { useState } from 'react'
-import { Checkbox, Text, TextField, View } from 'reshaped/bundle'
+import { Checkbox, ScrollArea, Text, TextField, View } from 'reshaped/bundle'
 import SettingsGroup from './SettingsGroup'
 
 interface Props {
@@ -64,44 +64,54 @@ export default function RepositoryPicker({
 
   return (
     <View gap={2} minHeight="0px">
-      <SettingsGroup>
-        {/* Headless, and with no inset of its own: the card is already the
-            field's edge, and the icon then lines up with the ticks below. */}
-        <View paddingBlock={1}>
-          <TextField
-            name="repository-filter"
-            icon={Search}
-            variant="headless"
-            placeholder="Filter repositories"
-            value={filter}
-            onChange={({ value }) => setFilter(value)}
-            endSlot={
-              <Text variant="caption-1" color="neutral-faded" numeric>
-                {selectedCount}/{options.length}
-              </Text>
-            }
-          />
-        </View>
+      {/* The card hugs its rows until the screen runs out and then shrinks,
+          which is what gives the list below a height to scroll within. */}
+      <View minHeight="0px" overflow="hidden">
+        <SettingsGroup fill>
+          {/* Headless, and with no inset of its own: the card is already the
+              field's edge, and the icon then lines up with the ticks below. */}
+          <View paddingBlock={1}>
+            <TextField
+              name="repository-filter"
+              icon={Search}
+              variant="headless"
+              placeholder="Filter repositories"
+              value={filter}
+              onChange={({ value }) => setFilter(value)}
+              endSlot={
+                <Text variant="caption-1" color="neutral-faded" numeric>
+                  {selectedCount}/{options.length}
+                </Text>
+              }
+            />
+          </View>
 
-        <View padding={2} gap={2}>
-          {visible.length === 0 ? (
-            <Text variant="caption-1" color="neutral-faded">
-              No repository matches “{filter.trim()}”.
-            </Text>
-          ) : (
-            visible.map((repo) => (
-              <Checkbox
-                key={repo}
-                name={`repository-${repo}`}
-                checked={selected.includes(repo.toLowerCase())}
-                onChange={({ checked }) => void toggleRepository(repo, checked)}
-              >
-                <RepositoryName fullName={repo} />
-              </Checkbox>
-            ))
-          )}
-        </View>
-      </SettingsGroup>
+          {/* Shrinkable rather than growing: a growing row would measure as
+              nothing, and the card around it would collapse to the field. */}
+          <View minHeight="0px">
+            <ScrollArea scrollableClassName="pv-settings-scroll">
+              <View padding={2} gap={2}>
+                {visible.length === 0 ? (
+                  <Text variant="caption-1" color="neutral-faded">
+                    No repository matches “{filter.trim()}”.
+                  </Text>
+                ) : (
+                  visible.map((repo) => (
+                    <Checkbox
+                      key={repo}
+                      name={`repository-${repo}`}
+                      checked={selected.includes(repo.toLowerCase())}
+                      onChange={({ checked }) => void toggleRepository(repo, checked)}
+                    >
+                      <RepositoryName fullName={repo} />
+                    </Checkbox>
+                  ))
+                )}
+              </View>
+            </ScrollArea>
+          </View>
+        </SettingsGroup>
+      </View>
 
       {error !== null && (
         <Text variant="caption-1" color="critical">

@@ -1,4 +1,4 @@
-import { ScrollArea, Switch, View } from 'reshaped/bundle'
+import { Switch, View } from 'reshaped/bundle'
 import PaneHeader from './PaneHeader'
 import RepositoryPicker from './RepositoryPicker'
 import SettingRow from './SettingRow'
@@ -26,33 +26,33 @@ export default function RepositoriesPane({
     <View height="100%" minHeight={0}>
       <PaneHeader back="Settings" onBack={onBack} title="Repositories" />
 
+      {/* The screen does not scroll: the repository list scrolls inside its
+          own card, so the filter above it stays where the eye left it. */}
       <View grow minHeight="0px">
-        <ScrollArea scrollableClassName="pv-settings-scroll">
-          <View padding={3} gap={3}>
-            <SettingsGroup>
-              <SettingRow
-                label="Watch all"
-                description="Every repository you have access to, now and later."
-                leading={
-                  <Switch
-                    name="watch-all"
-                    inputAttributes={{ 'aria-label': 'Watch all repositories' }}
-                    checked={watchAll}
-                    onChange={({ checked }) =>
-                      void window.api.setSettings({ watchAllRepositories: checked })
-                    }
-                  />
-                }
-              />
-            </SettingsGroup>
+        <View padding={3} gap={3} height="100%">
+          <SettingsGroup>
+            <SettingRow
+              label="Watch all"
+              description="Every repository you have access to, now and later."
+              leading={
+                <Switch
+                  name="watch-all"
+                  inputAttributes={{ 'aria-label': 'Watch all repositories' }}
+                  checked={watchAll}
+                  onChange={({ checked }) =>
+                    void window.api.setSettings({ watchAllRepositories: checked })
+                  }
+                />
+              }
+            />
+          </SettingsGroup>
 
-            {/* Nothing to narrow while every repository is watched, and the
+          {/* Nothing to narrow while every repository is watched, and the
                 row above already says as much. */}
-            {!watchAll && (
-              <RepositoryPicker knownRepositories={knownRepositories} selected={selected} />
-            )}
-          </View>
-        </ScrollArea>
+          {!watchAll && (
+            <RepositoryPicker knownRepositories={knownRepositories} selected={selected} />
+          )}
+        </View>
       </View>
     </View>
   )
