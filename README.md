@@ -97,17 +97,23 @@ Click the menu-bar item, hit **Sign in with GitHub**. Pullover shows you a short
 
 </details>
 
-## 🤖 For agents
+## 🤖 Agent-friendly
 
-Pullover can serve its inbox to AI agents over the [Model Context Protocol](https://modelcontextprotocol.io) — which pull requests are waiting on you and why, from the same inbox you see, with no extra GitHub token. It is off by default: turn on **MCP server** in Settings, then point your client at the address the section shows.
+Let your agents check the inbox for you:
+
+> *"Hey Claude, check Pullover to see what's on my plate right now."*
+
+They get the same classified inbox the window shows — what is waiting on you and why — with no extra GitHub token and no rules to re-implement. They can also park a pull request until tomorrow, which is the one thing your GitHub tooling cannot do.
+
+Turn on **MCP server** in Settings, then hand your client the address it shows:
 
 ```bash
 claude mcp add --transport http pullover http://127.0.0.1:7855/mcp
 ```
 
-The agent gets three tools: `get_inbox` for the sections you see, and `snooze_pull_request` / `unsnooze_pull_request` to park a PR and bring it back. Nothing an agent does through Pullover reaches GitHub — a snooze is a note on this Mac, and to reply or approve it uses its own GitHub tooling, at the link Pullover gives it.
+Nothing an agent does through Pullover reaches GitHub: it reads, and a snooze is a note on this Mac. To reply or approve, it uses its own GitHub tooling at the link Pullover gives it.
 
-**[Full setup and what it exposes → MCP.md](MCP.md)**
+**[Set up any client → MCP.md](MCP.md)**
 
 ## 🔐 Privacy
 
