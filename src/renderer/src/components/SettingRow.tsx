@@ -3,6 +3,8 @@ import { Actionable, Icon, Text, View } from 'reshaped/bundle'
 
 interface Props {
   label: string
+  /** A pill beside the label, where the setting has a state worth a glance. */
+  badge?: React.ReactNode
   /** A control before the label, where the setting reads better led by it. */
   leading?: React.ReactNode
   /** A second line under the label, for a setting whose name is not enough. */
@@ -19,6 +21,7 @@ interface Props {
 
 function Body({
   label,
+  badge,
   leading,
   description,
   problem,
@@ -30,7 +33,10 @@ function Body({
     <View direction="row" align="center" gap={3} padding={3}>
       {leading}
       <View grow minWidth={0}>
-        <Text variant="body-2">{label}</Text>
+        <View direction="row" align="center" gap={2}>
+          <Text variant="body-2">{label}</Text>
+          {badge}
+        </View>
         {description !== undefined && (
           <Text variant="caption-1" color="neutral-faded">
             {description}

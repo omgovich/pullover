@@ -1,6 +1,6 @@
 import type { McpStatus } from '@shared/ipc'
 import { ExternalLink } from 'lucide-react'
-import { Icon, Link, Switch, Text, View } from 'reshaped/bundle'
+import { Badge, Icon, Link, Switch, Text, View } from 'reshaped/bundle'
 import SettingRow from './SettingRow'
 
 /** What the Setup instructions link opens: the setup guide in the repository. */
@@ -14,11 +14,41 @@ interface Props {
 }
 
 /**
- * What the section has to say once the switch is on. The URL follows
- * `listening` rather than the absence of an error, so the moment between the
- * switch and the bind does not offer an address that cannot be reached yet.
+ * Whether the server is actually up, which is not what the switch says: the
+ * setting stays on when the port is taken, and there is a moment after the
+ * switch before the socket is bound.
  */
-function detail(status: McpStatus): React.JSX.Element {
+function statusBadge(status: McpStatus): React.JSX.Element {
+  if (status.error !== null) {
+    return (
+      <Badge color="critical" variant="faded" size="small">
+        Not running
+      </Badge>
+    )
+  }
+
+  if (!status.listening) {
+    return (
+      <Badge variant="faded" size="small">
+        Starting…
+      </Badge>
+    )
+  }
+
+  return (
+    <Badge color="positive" variant="faded" size="small">
+      Running
+    </Badge>
+  )
+}
+
+/**
+ * What the section has to say beyond the badge, or nothing while it is
+ * starting. The URL follows `listening` rather than the absence of an error,
+ * so the moment between the switch and the bind does not offer an address
+ * that cannot be reached yet.
+ */
+function detail(status: McpStatus): React.JSX.Element | null {
   if (status.error !== null) {
     return (
       <Text variant="caption-1" color="critical">
@@ -27,13 +57,7 @@ function detail(status: McpStatus): React.JSX.Element {
     )
   }
 
-  if (!status.listening) {
-    return (
-      <Text variant="caption-1" color="neutral-faded">
-        Starting…
-      </Text>
-    )
-  }
+  if (!status.listening) return null
 
   return (
     <View direction="row" align="center" gap={2}>
@@ -60,10 +84,16 @@ function detail(status: McpStatus): React.JSX.Element {
 }
 
 export default function McpSection({ enabled, status, onToggle }: Props): React.JSX.Element {
+  // Off, or before main has answered, there is no state to report: the switch
+  // is the whole story.
+  const live = enabled ? status : null
+  const body = live === null ? null : detail(live)
+
   return (
     <>
       <SettingRow
         label="MCP server"
+        badge={live === null ? undefined : statusBadge(live)}
         description="Lets Claude and other local agents read this inbox."
       >
         <Switch
@@ -75,9 +105,9 @@ export default function McpSection({ enabled, status, onToggle }: Props): React.
       </SettingRow>
       {/* No padding of its own on top: the row above already ends in twelve
           pixels, and a second helping reads as a gap. */}
-      {enabled && status !== null && (
+      {body !== null && (
         <View paddingTop={0} paddingBottom={3} paddingInline={3}>
-          {detail(status)}
+          {body}
         </View>
       )}
     </>
