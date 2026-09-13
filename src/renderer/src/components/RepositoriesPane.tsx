@@ -33,7 +33,7 @@ export default function RepositoriesPane({
           <SettingsGroup>
             <SettingRow
               label="Watch all"
-              description="Every repository you have access to, now and later."
+              description="Every repository you are involved in, now and later."
               leading={
                 <Switch
                   name="watch-all"

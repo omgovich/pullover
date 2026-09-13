@@ -90,3 +90,32 @@ test('scrolls the repository list rather than the screen', async () => {
   expect(list?.querySelectorAll('input[type="checkbox"]').length).toBeGreaterThan(1)
   expect(list?.querySelector('input[name="repository-filter"]')).toBeNull()
 })
+
+/**
+ * The header's title is an absolutely positioned layer over the whole bar,
+ * and it comes before the back button in the markup: the button stays
+ * clickable only because Reshaped gives its root a stacking context of its
+ * own. A real click, not a dispatched event, so that covering the button
+ * would fail this rather than pass it.
+ */
+test('lets the back button be clicked through the title layer over it', async () => {
+  let backs = 0
+  stubApi()
+  const screen = await render(
+    <Reshaped theme="slate">
+      <div style={{ height: WINDOW_HEIGHT_PX }}>
+        <RepositoriesPane
+          knownRepositories={KNOWN}
+          selected={['acme/api']}
+          watchAll={false}
+          onBack={() => {
+            backs += 1
+          }}
+        />
+      </div>
+    </Reshaped>,
+  )
+
+  await screen.getByRole('button', { name: 'Settings' }).click()
+  expect(backs).toBe(1)
+})
