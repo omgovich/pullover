@@ -73,7 +73,7 @@ function toolResult(payload: unknown): CallToolResult {
 
 const GET_INBOX_TOOL_DESCRIPTION = `Pullover's inbox: the open pull requests waiting on the user, grouped into sections by why they are waiting. Call it when the user asks what needs their attention on GitHub, what to review next, or whether anything is blocked on them.
 
-Each section is longest-waiting first — except "waiting", which has nobody waiting and is ordered by latest activity. Pullover refreshes from GitHub when its last fetch is over a minute old, so the list is current as of lastUpdatedAt. When notice is not null, something is wrong with the list itself; relay it to the user.
+Each section is longest-waiting first — except "waiting", which has nobody waiting and is ordered by latest activity. Pullover refreshes from GitHub when its last fetch is over a minute old, so the list is current as of lastUpdatedAt. When notice is not null, the list is not the whole answer — signed out, a fetch that failed, or a first one still running — so relay the notice to the user.
 
 Categories, in the order the app shows them:
 - needs-review: somebody asked the user for review and they have not reviewed yet.
