@@ -57,7 +57,7 @@ In `~/.cursor/mcp.json`, or `.cursor/mcp.json` inside a project:
 <details>
 <summary>🖥 <b>Claude Desktop</b></summary>
 
-Its connectors are dialled from Anthropic's servers rather than from your Mac, so they cannot reach an address on it. `mcp-remote` runs locally and does the reaching. Open **Settings → Developer → Edit Config**, put this in `claude_desktop_config.json`, and restart the app:
+Its connectors are dialled from Anthropic's servers rather than from your Mac, so they cannot reach an address on it. `mcp-remote` runs locally and does the reaching. In **Settings**, under *Desktop app*, open **Developer** and press **Edit config**. Put this in `claude_desktop_config.json`, then restart the app:
 
 ```json
 {
