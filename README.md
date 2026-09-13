@@ -99,7 +99,7 @@ Click the menu-bar item, hit **Sign in with GitHub**. Pullover shows you a short
 
 ## 🤖 For agents
 
-Pullover can serve its inbox to AI agents over the [Model Context Protocol](https://modelcontextprotocol.io). It is off by default: turn on **MCP server** in Settings, then connect your client to `http://127.0.0.1:7855/mcp`. For Claude Code, Settings has a button that copies the whole command:
+Pullover can serve its inbox to AI agents over the [Model Context Protocol](https://modelcontextprotocol.io). It is off by default: turn on **MCP server** in Settings, then connect your client to the URL the section shows. For Claude Code, the button next to it copies the whole command:
 
 ```bash
 claude mcp add --transport http pullover http://127.0.0.1:7855/mcp
@@ -107,12 +107,15 @@ claude mcp add --transport http pullover http://127.0.0.1:7855/mcp
 
 Any client that speaks Streamable HTTP works the same way — point it at that URL, no token, no headers.
 
+> [!NOTE]
+> `7855` is the released app. A build run from source listens on `7856` instead, so the two can run side by side — copy the command from Settings rather than from here.
+
 The agent gets one read-only tool, `get_inbox`: the sections you see, each PR with the reason it is there and since when. Nothing an agent does through Pullover reaches GitHub — it acts on a PR with its own GitHub tooling, at the link Pullover gives it.
 
 The server listens on `127.0.0.1` only and refuses requests that did not come from this machine. The tool answers from Pullover's last fetch and refreshes first when that is more than a minute old, the same rule the window uses when you open it.
 
 ## 🔐 Privacy
 
-Pullover has no backend. There's no server in the middle, no account to create, no analytics, no telemetry, no crash reporting — the app talks to exactly one place, GitHub's API, straight from your Mac. The optional MCP server listens on this Mac only, is off until you turn it on, and hands out nothing you could not already see in the window. Your OAuth token never leaves the machine: it's encrypted via the macOS Keychain (Electron's `safeStorage`) and stored locally. And you don't have to take anyone's word for any of this — the entire app is open source, right here in this repo.
+Pullover has no backend. There's no server in the middle, no account to create, no analytics, no telemetry, no crash reporting — the app talks to exactly one place, GitHub's API, straight from your Mac. The optional MCP server listens on this Mac only and is off until you turn it on. What it serves is the same inbox the window is built from — the pull requests you are involved in, with a few fields the card does not print, such as the base branch and the exact timestamps — and it serves it to local clients alone. Your OAuth token never leaves the machine: it's encrypted via the macOS Keychain (Electron's `safeStorage`) and stored locally. And you don't have to take anyone's word for any of this — the entire app is open source, right here in this repo.
 
 Pullover only ever reads — never a comment, a review, or any other write. Sign-in asks for `repo` and `read:org`, the narrowest scopes GitHub offers that can still see pull requests in private repositories and review requests that arrived through a team; if your organisation restricts third-party OAuth Apps, an owner has to approve Pullover under **Settings → Third-party Actions Access** before those repos show up.

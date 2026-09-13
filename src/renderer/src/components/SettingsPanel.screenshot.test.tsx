@@ -3,7 +3,7 @@ import { visualCase } from '../test/visual'
 import SettingsPanel from './SettingsPanel'
 
 /**
- * The panel pulls four things off the IPC bridge on mount, so the bridge is
+ * The panel pulls five things off the IPC bridge on mount, so the bridge is
  * stubbed. Nothing else here talks to main until something is clicked.
  */
 function stubApi(settings: Settings, launchAtLogin: boolean, shortcutActive: boolean): void {
@@ -13,7 +13,7 @@ function stubApi(settings: Settings, launchAtLogin: boolean, shortcutActive: boo
     getLaunchAtLogin: () => Promise.resolve(launchAtLogin),
     isShortcutActive: () => Promise.resolve(shortcutActive),
     getMcpStatus: () =>
-      Promise.resolve({ listening: false, url: 'http://127.0.0.1:7855/mcp', error: null }),
+      Promise.resolve({ listening: true, url: 'http://127.0.0.1:7855/mcp', error: null }),
   } as unknown as typeof window.api
 }
 

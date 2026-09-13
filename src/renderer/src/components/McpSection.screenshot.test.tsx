@@ -20,6 +20,12 @@ function section(enabled: boolean, status: McpStatus | null): React.JSX.Element 
 
 visualCase('off', () => section(false, null))
 
+// Switched on, but the bind has not come back yet: no URL to copy and
+// nothing wrong either.
+visualCase('starting', () =>
+  section(true, { listening: false, url: 'http://127.0.0.1:7855/mcp', error: null }),
+)
+
 // The URL an agent connects to, and the one button a user needs.
 visualCase('on', () => section(true, LISTENING))
 
