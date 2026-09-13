@@ -1,4 +1,4 @@
-# Pullover for AI agents
+# 🤖 Pullover for AI agents
 
 Let your agents check the inbox for you, instead of going and looking yourself:
 
@@ -8,14 +8,14 @@ They get the same classified inbox the window shows — which pull requests are 
 
 > *"Snooze everything from acme/infra until tomorrow."*
 
-## Turn it on
+## 🔛 Turn it on
 
 The server is off until you say otherwise. Open **Settings** in Pullover and turn on **MCP server**. The address appears under the switch; that is the one to give your client.
 
-## Connect a client
+## 🔌 Connect a client
 
 <details>
-<summary><b>Claude Code</b></summary>
+<summary>⌨️ <b>Claude Code</b></summary>
 
 One command:
 
@@ -26,7 +26,7 @@ claude mcp add --transport http pullover http://127.0.0.1:7855/mcp
 </details>
 
 <details>
-<summary><b>Codex CLI</b></summary>
+<summary>⌨️ <b>Codex CLI</b></summary>
 
 In `~/.codex/config.toml`:
 
@@ -38,7 +38,7 @@ url = "http://127.0.0.1:7855/mcp"
 </details>
 
 <details>
-<summary><b>Cursor</b></summary>
+<summary>🖱 <b>Cursor</b></summary>
 
 In `~/.cursor/mcp.json`, or `.cursor/mcp.json` inside a project:
 
@@ -55,7 +55,7 @@ In `~/.cursor/mcp.json`, or `.cursor/mcp.json` inside a project:
 </details>
 
 <details>
-<summary><b>Claude Desktop</b></summary>
+<summary>🖥 <b>Claude Desktop</b></summary>
 
 Its connectors are dialled from Anthropic's servers rather than from your Mac, so they cannot reach an address on it. `mcp-remote` runs locally and does the reaching. Open **Settings → Developer → Edit Config**, put this in `claude_desktop_config.json`, and restart the app:
 
@@ -73,7 +73,7 @@ Its connectors are dialled from Anthropic's servers rather than from your Mac, s
 </details>
 
 <details>
-<summary><b>Anything else that speaks Streamable HTTP</b></summary>
+<summary>🧩 <b>Anything else that speaks Streamable HTTP</b></summary>
 
 The same URL, with no token and no header to set:
 
@@ -83,15 +83,22 @@ http://127.0.0.1:7855/mcp
 
 </details>
 
-## What your agent can do
+## 🧰 What your agent can do
 
-**`get_inbox`** returns the sections you see in the window, longest wait first, each pull request carrying the reason Pullover put it there, its CI state, its place in a stack, and its link. It refreshes from GitHub when the last fetch is over a minute old — the same rule the window uses — so an agent and a click see the same thing.
+| Tool | What it does |
+| --- | --- |
+| `get_inbox` | The sections you see in the window, longest wait first |
+| `snooze_pull_request` | Parks one for a number of hours, or until it wakes |
+| `unsnooze_pull_request` | Brings it back |
 
-**`snooze_pull_request`** parks one for a set number of hours, or until it wakes on its own: a reply in a review thread you took part in, or a new commit. **`unsnooze_pull_request`** brings it back. Finished work needs no snooze — once your reply lands on GitHub, Pullover reclassifies it by itself.
+**`get_inbox`** carries, for each pull request, the reason Pullover put it there, its CI state, its place in a stack, and its link. It refreshes from GitHub when the last fetch is over a minute old — the same rule the window uses — so an agent and a click see the same thing.
 
-**Nothing an agent does through Pullover reaches GitHub.** It reads, and a snooze is a private note on your Mac that nobody else sees. To reply, approve or merge, an agent uses its own GitHub tooling, at the link Pullover gave it.
+**`snooze_pull_request`** without hours parks a pull request until it wakes on its own: a reply in a review thread you took part in, or a new commit. Finished work needs no snooze — once your reply lands on GitHub, Pullover reclassifies it by itself.
 
-## Local and private
+> [!NOTE]
+> **Nothing an agent does through Pullover reaches GitHub.** It reads, and a snooze is a private note on your Mac that nobody else sees. To reply, approve or merge, an agent uses its own GitHub tooling, at the link Pullover gave it.
+
+## 🔐 Local and private
 
 The server binds to `127.0.0.1` and nothing else. It refuses any request that did not come from a program on this Mac, which includes a web page in your browser being pointed at the loopback address.
 
