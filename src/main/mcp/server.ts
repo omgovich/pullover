@@ -71,16 +71,19 @@ function toolResult(payload: unknown): CallToolResult {
   }
 }
 
-const GET_INBOX_TOOL_DESCRIPTION = `The pull requests that need the signed-in user, grouped into sections by why, each section longest-waiting first — except "waiting", which has nobody waiting and is ordered by latest activity. Refreshes from GitHub first when the last fetch is more than a minute old, so the answer is current (see lastUpdatedAt). When notice is not null, relay it.
+const GET_INBOX_TOOL_DESCRIPTION = `Pullover's inbox: the open pull requests waiting on the user, grouped into sections by why they are waiting. Call it when the user asks what needs their attention on GitHub, what to review next, or whether anything is blocked on them.
+
+Each section is longest-waiting first — except "waiting", which has nobody waiting and is ordered by latest activity. Pullover refreshes from GitHub when its last fetch is over a minute old, so the list is current as of lastUpdatedAt. When notice is not null, something is wrong with the list itself; relay it to the user.
 
 Categories, in the order the app shows them:
-- needs-review: someone asked for your review and you have not reviewed yet.
-- new-replies: somebody replied in a review thread you took part in; the reason says how many.
-- re-review: you reviewed already and the author pushed new commits or asked again.
-- my-pr-action: your own pull request needs you — changes requested, open threads, red CI, merge conflicts, or approved and ready to merge; the reason says which.
-- mentioned: you were @-mentioned and have not responded since.
-- waiting: nothing is waiting on you (waiting on the author or on other reviewers, or snoozed); only listed when includeWaiting is true.
-Pullover reads GitHub; it never comments, reviews or merges. Act on a pull request with your own GitHub tooling, at the url given.`
+- needs-review: somebody asked the user for review and they have not reviewed yet.
+- new-replies: somebody replied in a review thread the user took part in; the reason says how many.
+- re-review: the user reviewed already and the author pushed new commits or asked again.
+- my-pr-action: the user's own pull request needs them — changes requested, open threads, red CI, merge conflicts, or approved and ready to merge; the reason says which.
+- mentioned: the user was @-mentioned and has not responded since.
+- waiting: nothing is waiting on the user — it is on the author or on other reviewers, or it is snoozed; listed only when includeWaiting is true.
+
+Pullover reads GitHub; it never comments, reviews or merges. Act on a pull request with your own GitHub tooling — the \`gh\` CLI, say — at the url given.`
 
 function registerTools(server: McpServer, deps: McpServerDeps): void {
   const { inbox } = deps
@@ -89,13 +92,15 @@ function registerTools(server: McpServer, deps: McpServerDeps): void {
   server.registerTool(
     'get_inbox',
     {
-      title: 'Pull requests waiting on you',
+      title: 'Pull requests waiting on the user',
       description: GET_INBOX_TOOL_DESCRIPTION,
       inputSchema: {
         includeWaiting: z
           .boolean()
           .optional()
-          .describe('Also list the pull requests waiting on other people. Default false.'),
+          .describe(
+            "Also list what is waiting on somebody else — the user's own pull requests out for review, ones where the ball is with the author, and anything snoozed. Default false.",
+          ),
       },
       annotations: { readOnlyHint: true },
     },
