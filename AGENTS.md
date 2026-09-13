@@ -43,6 +43,14 @@ The two pictures README shows are recorded by the separate `docs` project: `src/
 
 Unlike the component tests, these fetch their avatars from DiceBear — the one place in the suite that reaches the network, and a trade taken on purpose rather than an oversight. Keep to a CC0 style. The pair differs only in colour mode and layout, which is the argument for the compact setting; everything the fixture shows must be something `classify` could really produce.
 
+## MCP server
+
+`src/main/mcp/server.ts` serves the inbox to agents over Streamable HTTP on `127.0.0.1`, port `7855` packaged and `7856` in dev, off unless `mcpServerEnabled` is set. It must stay free of `electron` imports so `server.test.ts` can start it on port 0 and talk to it with the SDK's own client. What the tool returns is shaped in `src/core/agent-view.ts`, so a change to what agents see is a change there and in its test. The `Host`/`Origin` check in front of the transport is ours; the SDK's `allowedHosts` is deprecated and was seen letting a foreign host through. Try it by hand with the dev port:
+
+```bash
+curl -s -X POST http://127.0.0.1:7856/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
 ## Releases
 
 Everything happens in CI: pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds the dmgs into a draft GitHub release, writes the notes, and publishes it. To cut a release, from a clean synced `main`:
