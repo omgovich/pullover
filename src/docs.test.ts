@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * The Settings panel and the README both point at files and ports that live
+ * The Settings panel and the documentation point at files and ports that live
  * elsewhere in the repository. Nothing else notices when one of them moves:
  * a renamed doc leaves a link that only fails in a browser, and a changed
  * port leaves instructions that only fail on somebody else's machine.
@@ -35,11 +35,15 @@ describe('the documented ports', () => {
     expect(bound).toEqual(['7855', '7856'])
   })
 
-  it('are both named in the setup guide, so neither build is left guessing', () => {
-    expect(ports(read('MCP.md'))).toEqual(['7855', '7856'])
+  // MCP.md and the README are read by people running the released app, so the
+  // dev port would only be something to rule out. AGENTS.md is read from a
+  // source build, where it is the only port that works.
+  it('are the packaged one in the docs written for released users', () => {
+    expect(ports(read('MCP.md'))).toEqual(['7855'])
+    expect(ports(read('README.md'))).toEqual(['7855'])
   })
 
-  it('are the packaged one in the README, which is written for the released app', () => {
-    expect(ports(read('README.md'))).toEqual(['7855'])
+  it('are both in the agent guide, which is read from a source build', () => {
+    expect(ports(read('AGENTS.md'))).toEqual(['7855', '7856'])
   })
 })

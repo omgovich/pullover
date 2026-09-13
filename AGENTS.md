@@ -45,7 +45,7 @@ Unlike the component tests, these fetch their avatars from DiceBear — the one 
 
 ## Documentation that the tests check
 
-`src/docs.test.ts` reads the repo rather than the classifier: it asserts that the *Setup instructions* link in `McpSection` names a file that exists, and that the ports in `MCP.md` and README match the ones `src/main/index.ts` binds. Change a port or move a doc and it goes red — which is the point, since nothing else notices a link that only breaks in somebody's browser.
+`src/docs.test.ts` reads the repo rather than the classifier: it asserts that the *Setup instructions* link in `McpSection` names a file that exists, and that every port a document names is one `src/main/index.ts` really binds. `MCP.md` and README are written for somebody running the released app, so they name `7855` alone; this guide names both, since a source build answers on `7856`. Change a port or move a doc and it goes red — which is the point, since nothing else notices a link that only breaks in somebody's browser.
 
 ## MCP server
 

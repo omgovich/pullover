@@ -6,9 +6,6 @@ Pullover can serve its inbox to AI agents over the [Model Context Protocol](http
 
 The server is off until you say otherwise. Open **Settings** in Pullover, find **AI agents**, and flip **MCP server**. The address appears under the switch; that is the one to give your client.
 
-> [!NOTE]
-> The released app listens on `7855`. A build you run from source listens on `7856`, so the two can run side by side without fighting for the socket. Read the address off the Settings row rather than copying it from here.
-
 ## Connect a client
 
 **Claude Code** takes it as one command:
@@ -17,26 +14,41 @@ The server is off until you say otherwise. Open **Settings** in Pullover, find *
 claude mcp add --transport http pullover http://127.0.0.1:7855/mcp
 ```
 
-Then ask it something like *"what pull requests are waiting on me?"*. Remove it again with `claude mcp remove pullover`.
+**Codex CLI** reads `~/.codex/config.toml`:
 
-**Anything else that speaks Streamable HTTP** is pointed at the same URL. There is no token and no header to set. A config file usually looks like this:
+```toml
+[mcp_servers.pullover]
+url = "http://127.0.0.1:7855/mcp"
+```
+
+**Cursor** reads `~/.cursor/mcp.json`, or `.cursor/mcp.json` inside a project:
 
 ```json
 {
   "mcpServers": {
     "pullover": {
-      "type": "http",
       "url": "http://127.0.0.1:7855/mcp"
     }
   }
 }
 ```
 
-To check the server by hand, without any client:
+**Claude Desktop** needs a bridge. Its connectors are dialled from Anthropic's servers rather than from your Mac, so they cannot reach an address on it; `mcp-remote` runs locally and does the reaching. Open **Settings → Developer → Edit Config**, put this in `claude_desktop_config.json`, and restart the app:
 
-```bash
-curl -s -X POST http://127.0.0.1:7855/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```json
+{
+  "mcpServers": {
+    "pullover": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://127.0.0.1:7855/mcp", "--allow-http"]
+    }
+  }
+}
 ```
+
+Anything else that speaks Streamable HTTP takes the same URL, with no token and no header to set.
+
+Then ask it something like *"what pull requests are waiting on me?"*.
 
 ## The tools
 
