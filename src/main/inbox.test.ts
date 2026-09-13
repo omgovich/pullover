@@ -44,6 +44,34 @@ function build(prs: PullRequest[], overrides: Record<string, unknown> = {}) {
   })
 }
 
+describe('Inbox.whenIdle', () => {
+  it('resolves only once the pass that is running has finished', async () => {
+    let release = (): void => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const inbox = build([], {
+      fetchPrs: async () => {
+        await held
+        return [makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })]
+      },
+    })
+
+    const pass = inbox.refresh()
+    expect(inbox.getSnapshot().status).toBe('loading')
+
+    const idle = inbox.whenIdle()
+    release()
+    await idle
+    expect(inbox.getSnapshot().status).toBe('ready')
+    await pass
+  })
+
+  it('resolves at once when no pass is running', async () => {
+    await expect(build([]).whenIdle()).resolves.toBeUndefined()
+  })
+})
+
 describe('Inbox.refresh', () => {
   it('classifies fetched PRs and counts the ones needing attention', async () => {
     const inbox = build([

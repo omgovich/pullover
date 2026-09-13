@@ -39,6 +39,14 @@ export interface DeviceCodePayload {
   verificationUri: string
 }
 
+/** What Settings shows about the MCP server. `url` is where clients connect whether or not it is listening yet. */
+export interface McpStatus {
+  listening: boolean
+  url: string
+  /** Why it is not listening although the setting is on, or null. */
+  error: string | null
+}
+
 export const IPC = {
   getSnapshot: 'inbox:get-snapshot',
   snapshotChanged: 'inbox:snapshot-changed',
@@ -63,6 +71,7 @@ export const IPC = {
   getLaunchAtLogin: 'system:get-launch-at-login',
   setLaunchAtLogin: 'system:set-launch-at-login',
   isShortcutActive: 'system:is-shortcut-active',
+  getMcpStatus: 'mcp:get-status',
 } as const
 
 export interface RendererApi {
@@ -98,4 +107,5 @@ export interface RendererApi {
   setLaunchAtLogin: (enabled: boolean) => Promise<boolean>
   /** False when the chosen accelerator is already owned by something else. */
   isShortcutActive: () => Promise<boolean>
+  getMcpStatus: () => Promise<McpStatus>
 }

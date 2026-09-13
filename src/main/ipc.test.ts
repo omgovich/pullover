@@ -60,6 +60,7 @@ let store: AppStore
 let send: ReturnType<typeof vi.fn>
 let hide: ReturnType<typeof vi.fn>
 let shortcutCalls: (string | null)[]
+let mcpApplied: number
 
 beforeEach(() => {
   handlers.clear()
@@ -69,6 +70,7 @@ beforeEach(() => {
   send = vi.fn()
   hide = vi.fn()
   shortcutCalls = []
+  mcpApplied = 0
   const inbox = new Inbox({ store, getClient: () => null, onChange: () => {} })
 
   registerIpc({
@@ -84,6 +86,10 @@ beforeEach(() => {
       shortcutCalls.push(accelerator)
     },
     isShortcutActive: () => true,
+    getMcpStatus: () => ({ listening: true, url: 'http://127.0.0.1:7855/mcp', error: null }),
+    applyMcpSetting: async () => {
+      mcpApplied += 1
+    },
   })
 })
 
@@ -94,34 +100,34 @@ function call(channel: string, ...args: never[]): unknown {
 }
 
 describe('settings push', () => {
-  it('pushes the updated settings after setSettings', () => {
-    call(IPC.setSettings, { pollIntervalMinutes: 15 } as never)
+  it('pushes the updated settings after setSettings', async () => {
+    await call(IPC.setSettings, { pollIntervalMinutes: 15 } as never)
     expect(store.getSettings().pollIntervalMinutes).toBe(15)
     expect(send).toHaveBeenCalledWith(IPC.settingsChanged, store.getSettings())
   })
 
-  it('re-registers the global shortcut when it changes', () => {
-    call(IPC.setSettings, { globalShortcut: 'Control+Alt+R' } as never)
+  it('re-registers the global shortcut when it changes', async () => {
+    await call(IPC.setSettings, { globalShortcut: 'Control+Alt+R' } as never)
     expect(shortcutCalls).toEqual(['Control+Alt+R'])
   })
 
-  it('unregisters the global shortcut when it is turned off', () => {
-    call(IPC.setSettings, { globalShortcut: null } as never)
+  it('unregisters the global shortcut when it is turned off', async () => {
+    await call(IPC.setSettings, { globalShortcut: null } as never)
     expect(shortcutCalls).toEqual([null])
   })
 
   // Counted, not merely inspected: a fake that only records its argument
   // cannot tell "never called" from "called with undefined", so dropping the
   // guard this test exists for would go unnoticed.
-  it('leaves the shortcut alone when the patch does not mention it', () => {
-    call(IPC.setSettings, { pollIntervalMinutes: 15 } as never)
+  it('leaves the shortcut alone when the patch does not mention it', async () => {
+    await call(IPC.setSettings, { pollIntervalMinutes: 15 } as never)
     expect(shortcutCalls).toEqual([])
   })
 
   // The store may correct an accelerator it no longer offers; registering the
   // raw patch would leave the OS holding one key and the picker showing another.
-  it('registers what the store settled on, not what the patch asked for', () => {
-    call(IPC.setSettings, { globalShortcut: 'Alt+Space' } as never)
+  it('registers what the store settled on, not what the patch asked for', async () => {
+    await call(IPC.setSettings, { globalShortcut: 'Alt+Space' } as never)
     expect(shortcutCalls).toEqual([store.getSettings().globalShortcut])
   })
 
@@ -142,6 +148,28 @@ describe('settings push', () => {
   it('does not push when addRepository rejects an invalid name', () => {
     expect(() => call(IPC.addRepository, 'nonsense' as never)).toThrow(/owner\/repo/)
     expect(send).not.toHaveBeenCalled()
+  })
+})
+
+describe('MCP server', () => {
+  it('reports the status main holds', () => {
+    expect(call(IPC.getMcpStatus)).toEqual({
+      listening: true,
+      url: 'http://127.0.0.1:7855/mcp',
+      error: null,
+    })
+  })
+
+  it('applies the server setting, then pushes settings, when the patch toggles it', async () => {
+    await call(IPC.setSettings, { mcpServerEnabled: true } as never)
+    expect(store.getSettings().mcpServerEnabled).toBe(true)
+    expect(mcpApplied).toBe(1)
+    expect(send).toHaveBeenCalledWith(IPC.settingsChanged, store.getSettings())
+  })
+
+  it('leaves the server alone when the patch does not mention it', async () => {
+    await call(IPC.setSettings, { pollIntervalMinutes: 15 } as never)
+    expect(mcpApplied).toBe(0)
   })
 })
 

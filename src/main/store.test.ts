@@ -44,6 +44,15 @@ describe('settings', () => {
     expect(store.getSettings().theme).toBe('system')
   })
 
+  it('keeps the MCP server off until asked', () => {
+    expect(store.getSettings().mcpServerEnabled).toBe(false)
+  })
+
+  it('persists turning the MCP server on', () => {
+    store.updateSettings({ mcpServerEnabled: true })
+    expect(store.getSettings().mcpServerEnabled).toBe(true)
+  })
+
   it('normalises a pre-existing settings file missing theme to system', () => {
     const backend = new MemoryStore()
     // Simulate a settings file written before `theme` existed: the key is
@@ -78,6 +87,7 @@ describe('settings', () => {
       theme: 'system',
       globalShortcut: 'Control+Alt+P',
       layout: 'comfortable',
+      mcpServerEnabled: false,
     })
     store = new AppStore(backend)
     expect(store.getSettings().watchAllRepositories).toBe(false)
@@ -97,6 +107,7 @@ describe('settings', () => {
       theme: 'system',
       globalShortcut: 'Control+Alt+P',
       layout: 'comfortable',
+      mcpServerEnabled: false,
     })
   })
 

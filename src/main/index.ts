@@ -6,6 +6,7 @@ import { clearToken, loadToken, saveToken } from './auth/token-storage'
 import { createGraphQLClient, type GraphQLClient } from './github/fetch-prs'
 import { Inbox } from './inbox'
 import { registerIpc } from './ipc'
+import { mcpUrl, PulloverMcpServer } from './mcp/server'
 import { Shortcut } from './shortcut'
 import { createAppStore } from './store'
 import { createTray, setBadge } from './tray'
@@ -38,6 +39,16 @@ const inbox = new Inbox({
   // staring at a stale list forever.
   onAuthError: () => signOut(),
 })
+
+// Two ports for the same reason as two app names: a dev Pullover next to an
+// installed one must not fight it for the socket.
+const MCP_PORT = app.isPackaged ? 7855 : 7856
+
+const mcp = new PulloverMcpServer({ inbox, version: app.getVersion() })
+
+function applyMcpSetting(): Promise<void> {
+  return store.getSettings().mcpServerEnabled ? mcp.start(MCP_PORT) : mcp.stop()
+}
 
 function loadClientFromDisk(): void {
   const token = loadToken()
@@ -163,12 +174,22 @@ void app.whenReady().then(() => {
     installUpdate: () => updater.install(),
     applyShortcut: (accelerator) => shortcut.apply(accelerator),
     isShortcutActive: () => shortcut.isActive(),
+    getMcpStatus: () => {
+      const status = mcp.status()
+      return { listening: status.listening, url: mcpUrl(MCP_PORT), error: status.error }
+    },
+    applyMcpSetting,
   })
 
   if (client !== null) inbox.start()
   updater.start()
   shortcut.apply(store.getSettings().globalShortcut)
+  void applyMcpSetting()
 })
 
 // The app lives in the menu bar, so closing the popup must not quit it.
 app.on('window-all-closed', () => {})
+
+// Frees the port before the relaunch `installUpdate` triggers, which would
+// otherwise find it held by the process on its way out.
+app.on('before-quit', () => void mcp.stop())

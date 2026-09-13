@@ -1,4 +1,10 @@
-import { type DeviceCodePayload, IPC, type PrMenuAction, type PrMenuRequest } from '@shared/ipc'
+import {
+  type DeviceCodePayload,
+  IPC,
+  type McpStatus,
+  type PrMenuAction,
+  type PrMenuRequest,
+} from '@shared/ipc'
 import type { Settings, SnoozeType, UpdateState } from '@shared/types'
 import {
   app,
@@ -25,6 +31,9 @@ export interface IpcDeps {
   installUpdate: () => void
   applyShortcut: (accelerator: string | null) => void
   isShortcutActive: () => boolean
+  getMcpStatus: () => McpStatus
+  /** Starts or stops the MCP server to match `store.getSettings().mcpServerEnabled`. */
+  applyMcpSetting: () => Promise<void>
 }
 
 export function registerIpc(deps: IpcDeps): void {
@@ -38,6 +47,8 @@ export function registerIpc(deps: IpcDeps): void {
   }
 
   ipcMain.handle(IPC.isShortcutActive, () => deps.isShortcutActive())
+
+  ipcMain.handle(IPC.getMcpStatus, () => deps.getMcpStatus())
 
   ipcMain.handle(IPC.getLaunchAtLogin, () => app.getLoginItemSettings().openAtLogin)
 
@@ -108,7 +119,7 @@ export function registerIpc(deps: IpcDeps): void {
 
   ipcMain.handle(IPC.getSettings, () => deps.store.getSettings())
 
-  ipcMain.handle(IPC.setSettings, (_event, patch: Partial<Settings>) => {
+  ipcMain.handle(IPC.setSettings, async (_event, patch: Partial<Settings>) => {
     deps.store.updateSettings(patch)
     if (patch.pollIntervalMinutes !== undefined) deps.restartPolling()
     if (patch.watchAllRepositories !== undefined) deps.inbox.reclassify()
@@ -117,6 +128,9 @@ export function registerIpc(deps: IpcDeps): void {
     if (patch.globalShortcut !== undefined) {
       deps.applyShortcut(deps.store.getSettings().globalShortcut)
     }
+    // Awaited so the renderer's follow-up getMcpStatus sees the outcome of
+    // the bind, not the moment before it.
+    if (patch.mcpServerEnabled !== undefined) await deps.applyMcpSetting()
     pushSettings()
   })
 
