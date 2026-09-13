@@ -55,13 +55,11 @@ export function registerTools(server: McpServer, deps: McpServerDeps): void {
   const notFound = (repository: string, number: number): CallToolResult =>
     // Signed out, `findPullRequest` returns null for everything, and pointing
     // the agent at `get_inbox` would send it looking for a list nobody has.
-    inbox.getSnapshot().status === 'signed-out'
-      ? toolError(
-          'Pullover is signed out, so it knows no pull requests to park. Sign in from its menu-bar window first.',
-        )
-      : toolError(
-          `Pullover does not know ${repository}#${number}. It only tracks open pull requests involving the signed-in user; call get_inbox first, which refreshes the list when it is stale.`,
-        )
+    toolError(
+      inbox.getSnapshot().status === 'signed-out'
+        ? 'Pullover is signed out, so it knows no pull requests to park. Sign in from its menu-bar window first.'
+        : `Pullover does not know ${repository}#${number}. It only tracks open pull requests involving the signed-in user; call get_inbox first, which refreshes the list when it is stale.`,
+    )
 
   /**
    * A pull request the classifier hides takes no snooze: `classify` returns
