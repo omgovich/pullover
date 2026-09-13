@@ -192,9 +192,11 @@ export interface Settings {
   /** Accelerator that opens the popup from anywhere, or null for no shortcut. */
   globalShortcut: string | null
   layout: Layout
-  /** Whether the local MCP server for AI agents should listen. Whether it
-      actually does is what `getMcpStatus` reports: a taken port leaves this
-      on and the server off. */
+  /**
+   * Whether the local MCP server for AI agents should listen. Whether it
+   * actually does is what `getMcpStatus` reports: a taken port leaves this
+   * on and the server off.
+   */
   mcpServerEnabled: boolean
 }
 

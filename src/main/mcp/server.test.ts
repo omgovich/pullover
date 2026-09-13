@@ -161,9 +161,12 @@ describe('tools/list', () => {
   it('offers the one tool', async () => {
     const client = new Client({ name: 'test', version: '0' })
     await client.connect(new StreamableHTTPClientTransport(new URL(mcpUrl(port()))))
-    const { tools } = await client.listTools()
-    await client.close()
-    expect(tools.map((tool) => tool.name)).toEqual(['get_inbox'])
+    try {
+      const { tools } = await client.listTools()
+      expect(tools.map((tool) => tool.name)).toEqual(['get_inbox'])
+    } finally {
+      await client.close()
+    }
   })
 })
 
@@ -246,6 +249,88 @@ describe('get_inbox', () => {
     }
     expect(inboxView.lastUpdatedAt).toBe(LATER)
     expect(inboxView.sections.flatMap((s) => s.pullRequests.map((p) => p.number))).toEqual([50])
+  })
+})
+
+describe('get_inbox when the app cannot answer properly', () => {
+  // The spec promises an agent a usable answer while signed out, rather than
+  // a refused connection: the server runs whether or not anyone is signed in.
+  it('says so, and points at the window, while signed out', async () => {
+    const signedOut = new Inbox({
+      store: new AppStore(new MemoryStore()),
+      getClient: () => null,
+      onChange: () => {},
+      now: () => now,
+      fetchLogin: async () => 'vlad',
+      fetchPrs: async () => [],
+    })
+    await signedOut.refresh()
+
+    const other = new PulloverMcpServer({ inbox: signedOut, version: '0.0.0-test', now: () => now })
+    await other.start(0)
+    const bound = other.status().port as number
+    try {
+      const client = new Client({ name: 'test', version: '0' })
+      await client.connect(new StreamableHTTPClientTransport(new URL(mcpUrl(bound))))
+      try {
+        const result = await client.callTool({ name: 'get_inbox', arguments: {} })
+        expect(result.isError).not.toBe(true)
+        expect(result.structuredContent).toMatchObject({
+          status: 'signed-out',
+          myLogin: null,
+          sections: [],
+        })
+        expect((result.structuredContent as { notice: string }).notice).toMatch(/sign in/i)
+      } finally {
+        await client.close()
+      }
+    } finally {
+      await other.stop()
+    }
+  })
+
+  // Two agents asking while a pass is already running must both get the
+  // result of that pass. Counting fetches is not enough to prove it: while a
+  // pass runs the status is `loading`, which suppresses a fetch on its own.
+  it('serves callers who arrive during a pass from that one fetch', async () => {
+    now = LATER
+    prs = [makePullRequest({ id: 'PR_50', number: 50, buckets: ['review-requested'] })]
+    let release = (): void => {}
+    hold = new Promise<void>((resolve) => {
+      release = resolve
+    })
+
+    let waits = 0
+    const realWhenIdle = inbox.whenIdle.bind(inbox)
+    inbox.whenIdle = (): Promise<void> => {
+      waits += 1
+      return realWhenIdle()
+    }
+
+    const pass = inbox.refresh()
+    const both = Promise.all([callTool('get_inbox'), callTool('get_inbox')])
+    // Released only once both handlers have reached the wait, never on a
+    // timer: otherwise a slow connect lets the fetch land first and the test
+    // passes with the wait deleted.
+    for (let i = 0; waits < 2 && i < 300; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+    expect(waits).toBe(2)
+    release()
+
+    const [first, second] = await both
+    await pass
+
+    for (const answer of [first, second]) {
+      const view = answer.structured as {
+        status: string
+        sections: { pullRequests: { number: number }[] }[]
+      }
+      expect(view.status).toBe('ready')
+      expect(view.sections.flatMap((s) => s.pullRequests.map((p) => p.number))).toEqual([50])
+    }
+    // The pass they waited for, and nothing on top of it.
+    expect(fetches).toBe(2)
   })
 })
 

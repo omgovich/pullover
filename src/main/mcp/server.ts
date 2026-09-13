@@ -88,7 +88,7 @@ function registerTools(server: McpServer, deps: McpServerDeps): void {
     'get_inbox',
     {
       title: 'Pull requests waiting on you',
-      description: `The pull requests that need the signed-in user, grouped into sections by why, longest-waiting first. Refreshes from GitHub first when the last fetch is more than a minute old, so the answer is current (see lastUpdatedAt). When notice is not null, relay it.\n\n${CATEGORIES_HELP}`,
+      description: `The pull requests that need the signed-in user, grouped into sections by why, each section longest-waiting first — except "waiting", which has nobody waiting and is ordered by latest activity. Refreshes from GitHub first when the last fetch is more than a minute old, so the answer is current (see lastUpdatedAt). When notice is not null, relay it.\n\n${CATEGORIES_HELP}`,
       inputSchema: {
         includeWaiting: z
           .boolean()
