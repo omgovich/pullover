@@ -122,16 +122,17 @@ export function registerTools(server: McpServer, deps: McpServerDeps): void {
     'snooze_pull_request',
     {
       title: 'Park a pull request in Pullover',
-      description: `Moves a pull request out of the attention sections into "Waiting on others" for a set number of hours, or — with no hours — until it wakes on its own. It wakes on exactly two things: somebody replying in an unresolved review thread the user took part in, or a new commit. A new conversation comment, a fresh thread the user is not in, or a CI result does not wake it. Use it when the user asks to put something aside, not to tidy the list on your own: parking a pull request is deciding what they do not have to look at. Work you actually finish needs no snooze, because Pullover reclassifies a pull request by itself once the answer it was waiting for lands. ${LOCAL_NOTE}`,
+      description: `Moves a pull request out of the attention sections into "Waiting on others", either for a number of hours or — with no hours — until it wakes on its own. It wakes on exactly two things: somebody replying in an unresolved review thread the user took part in, or a new commit. A new conversation comment, a fresh thread the user is not in, or a CI result does not wake it. Use it when the user asks to put something aside, not to tidy the list on your own: parking a pull request is deciding what they do not have to look at. Work you actually finish needs no snooze, because Pullover reclassifies a pull request by itself once the answer it was waiting for lands. ${LOCAL_NOTE}`,
       inputSchema: {
         ...identifier,
         hours: z
           .number()
-          .min(0.25)
+          .int()
+          .min(1)
           .max(24 * 14)
           .optional()
           .describe(
-            'Park it for this long instead of until new activity. Fifteen minutes to two weeks.',
+            'Whole hours to park it for, 1 to 336. Leave it out and it is parked with no deadline instead, until a reply or a new commit wakes it.',
           ),
       },
       // Not idempotent: a repeat moves the deadline, or re-bases the wait on

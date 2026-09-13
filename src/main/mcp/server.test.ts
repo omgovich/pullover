@@ -448,11 +448,23 @@ describe('snooze tools', () => {
     expect(store.getSnoozes()).toEqual({})
   })
 
-  it('refuses a snooze so short the store would keep one nothing honours', async () => {
+  // An hour is the shortest park the app has any way to show, and a fraction
+  // of one is a deadline the user would never have asked for in those words.
+  it('refuses a park shorter than the one hour it counts in', async () => {
     const { isError } = await callTool('snooze_pull_request', {
       repository: 'acme/web',
       number: 1,
-      hours: 0.001,
+      hours: 0.5,
+    })
+    expect(isError).toBe(true)
+    expect(store.getSnoozes()).toEqual({})
+  })
+
+  it('refuses a fraction of an hour, which the minimum alone would let through', async () => {
+    const { isError } = await callTool('snooze_pull_request', {
+      repository: 'acme/web',
+      number: 1,
+      hours: 2.5,
     })
     expect(isError).toBe(true)
     expect(store.getSnoozes()).toEqual({})
