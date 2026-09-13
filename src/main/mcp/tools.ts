@@ -46,7 +46,7 @@ const identifier = {
 }
 
 const LOCAL_NOTE =
-  'This is a note inside Pullover on this Mac, undone by unsnooze_pull_request and visible to nobody else. GitHub is not touched: nothing is muted, closed or commented on there.'
+  'This is a note inside Pullover on this Mac, visible to nobody else. GitHub is not touched: nothing is muted, closed or commented on there.'
 
 export function registerTools(server: McpServer, deps: McpServerDeps): void {
   const { inbox, store } = deps
@@ -57,7 +57,7 @@ export function registerTools(server: McpServer, deps: McpServerDeps): void {
     // the agent at `get_inbox` would send it looking for a list nobody has.
     toolError(
       inbox.getSnapshot().status === 'signed-out'
-        ? 'Pullover is signed out, so it knows no pull requests to park. Sign in from its menu-bar window first.'
+        ? 'Pullover is signed out, so it knows no pull requests at all. Sign in from its menu-bar window first.'
         : `Pullover does not know ${repository}#${number}. It only tracks open pull requests involving the signed-in user; call get_inbox first, which refreshes the list when it is stale.`,
     )
 
@@ -120,7 +120,7 @@ export function registerTools(server: McpServer, deps: McpServerDeps): void {
     'snooze_pull_request',
     {
       title: 'Park a pull request in Pullover',
-      description: `Moves a pull request out of the attention sections into "Waiting on others", either for a number of hours or — with no hours — until it wakes on its own. It wakes on exactly two things: somebody replying in an unresolved review thread the user took part in, or a new commit. A new conversation comment, a fresh thread the user is not in, or a CI result does not wake it. Use it when the user asks to put something aside, not to tidy the list on your own: parking a pull request is deciding what they do not have to look at. Work you actually finish needs no snooze, because Pullover reclassifies a pull request by itself once the answer it was waiting for lands. ${LOCAL_NOTE}`,
+      description: `Moves a pull request out of the attention sections into "Waiting on others", either for a number of hours or — with no hours — until it wakes on its own. With no hours it wakes on exactly two things: somebody replying in an unresolved review thread the user took part in, or a new commit. A new conversation comment, a fresh thread the user is not in, or a CI result does not wake it. Use it when the user asks to put something aside, not to tidy the list on your own: parking a pull request is deciding what they do not have to look at. Work you actually finish needs no snooze, because Pullover reclassifies a pull request by itself once the answer it was waiting for lands. Undo it with unsnooze_pull_request. ${LOCAL_NOTE}`,
       inputSchema: {
         ...identifier,
         hours: z
@@ -130,7 +130,7 @@ export function registerTools(server: McpServer, deps: McpServerDeps): void {
           .max(24 * 14)
           .optional()
           .describe(
-            'Whole hours to park it for, 1 to 336. Leave it out and it is parked with no deadline instead, until a reply or a new commit wakes it.',
+            'Whole hours to park it for, 1 to 336. A park with hours ends on the clock alone — a reply or a new commit does not cut it short. Leave it out and it is parked with no deadline instead, until one of those wakes it.',
           ),
       },
       // Not idempotent: a repeat moves the deadline, or re-bases the wait on
@@ -156,11 +156,13 @@ export function registerTools(server: McpServer, deps: McpServerDeps): void {
       inputSchema: identifier,
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     },
+    // No hidden check, unlike snoozing: a pull request that went to draft
+    // while parked still carries the snooze, and refusing here would leave it
+    // there to take hold the day it comes back — the very thing the check on
+    // the other side exists to prevent.
     async ({ repository, number }) => {
       const item = inbox.findPullRequest(repository, number)
       if (item === null) return notFound(repository, number)
-      const hidden = refuseIfHidden(item)
-      if (hidden !== null) return hidden
       store.unsnooze(item.pr.id)
       return reportAfterChange(repository, number)
     },

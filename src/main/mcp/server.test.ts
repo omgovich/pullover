@@ -397,6 +397,36 @@ describe('snooze tools', () => {
     expect(structured).toMatchObject({ category: 'needs-review', isSnoozed: false })
   })
 
+  // The mirror of the refusal below: a pull request parked while it was in
+  // the inbox and turned to draft afterwards still carries the snooze, and
+  // this is the only way left to clear it — the window does not draw a draft,
+  // so its context menu is out of reach.
+  it('unsnoozes a pull request that went to draft while it was parked', async () => {
+    await callTool('snooze_pull_request', { repository: 'acme/web', number: 1, hours: 336 })
+    expect(store.getSnoozes()['PR_1']).toBeDefined()
+
+    prs = prs.map((pr) => (pr.id === 'PR_1' ? { ...pr, isDraft: true } : pr))
+    now = LATER
+    await inbox.refresh()
+
+    const { isError } = await callTool('unsnooze_pull_request', {
+      repository: 'acme/web',
+      number: 1,
+    })
+    expect(isError).toBe(false)
+    expect(store.getSnoozes()).toEqual({})
+  })
+
+  // The `idempotentHint: true` the tool advertises: a client may retry it.
+  it('unsnoozes a pull request that was never parked, without complaining', async () => {
+    const { isError, structured } = await callTool('unsnooze_pull_request', {
+      repository: 'acme/web',
+      number: 1,
+    })
+    expect(isError).toBe(false)
+    expect(structured).toMatchObject({ category: 'needs-review', isSnoozed: false })
+  })
+
   // `classify` returns early for a draft, before the snooze check, so the
   // store would keep a snooze that does nothing — until the draft is marked
   // ready and it silently takes hold.
@@ -448,13 +478,14 @@ describe('snooze tools', () => {
     expect(store.getSnoozes()).toEqual({})
   })
 
-  // An hour is the shortest park the app has any way to show, and a fraction
-  // of one is a deadline the user would never have asked for in those words.
+  // Zero rather than a fraction: a fraction is refused by the whole-hours
+  // rule on its own, so it would pass with no minimum at all — and with none,
+  // zero writes a deadline that has already gone by.
   it('refuses a park shorter than the one hour it counts in', async () => {
     const { isError } = await callTool('snooze_pull_request', {
       repository: 'acme/web',
       number: 1,
-      hours: 0.5,
+      hours: 0,
     })
     expect(isError).toBe(true)
     expect(store.getSnoozes()).toEqual({})
