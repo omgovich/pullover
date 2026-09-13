@@ -61,6 +61,7 @@ function fixtures(): PullRequest[] {
 }
 
 let prs: PullRequest[]
+let store: AppStore
 let now: string
 let fetches: number
 /** Parks the next fetch, so a pass can be left in flight on purpose. */
@@ -73,8 +74,9 @@ beforeEach(async () => {
   now = NOW
   fetches = 0
   hold = null
+  store = new AppStore(new MemoryStore())
   inbox = new Inbox({
-    store: new AppStore(new MemoryStore()),
+    store,
     getClient: () => CLIENT,
     onChange: () => {},
     now: () => now,
@@ -86,7 +88,7 @@ beforeEach(async () => {
     },
   })
   await inbox.refresh()
-  server = new PulloverMcpServer({ inbox, version: '0.0.0-test', now: () => now })
+  server = new PulloverMcpServer({ inbox, store, version: '0.0.0-test', now: () => now })
   await server.start(0)
 })
 
@@ -158,12 +160,16 @@ function rawPost(
 }
 
 describe('tools/list', () => {
-  it('offers the one tool', async () => {
+  it('offers the three tools', async () => {
     const client = new Client({ name: 'test', version: '0' })
     await client.connect(new StreamableHTTPClientTransport(new URL(mcpUrl(port()))))
     const { tools } = await client.listTools()
     await client.close()
-    expect(tools.map((tool) => tool.name)).toEqual(['get_inbox'])
+    expect(tools.map((tool) => tool.name)).toEqual([
+      'get_inbox',
+      'snooze_pull_request',
+      'unsnooze_pull_request',
+    ])
   })
 })
 
@@ -231,6 +237,87 @@ describe('get_inbox', () => {
   })
 })
 
+describe('snooze tools', () => {
+  it('parks a pull request until new activity and reports its new state', async () => {
+    const { isError, structured } = await callTool('snooze_pull_request', {
+      repository: 'acme/web',
+      number: 1,
+    })
+    expect(isError).toBe(false)
+    expect(store.getSnoozes()['PR_1']).toMatchObject({ type: 'until-activity', snoozedAt: NOW })
+    expect(structured).toMatchObject({
+      number: 1,
+      category: 'waiting',
+      reason: 'Snoozed',
+      isSnoozed: true,
+    })
+  })
+
+  it('takes it out of the attention sections straight away', async () => {
+    await callTool('snooze_pull_request', { repository: 'acme/web', number: 1 })
+    const { structured } = await callTool('get_inbox')
+    const inboxView = structured as { sections: { pullRequests: { number: number }[] }[] }
+    expect(inboxView.sections.flatMap((s) => s.pullRequests.map((p) => p.number))).not.toContain(1)
+  })
+
+  it('parks it for a number of hours instead, when given one', async () => {
+    await callTool('snooze_pull_request', { repository: 'acme/web', number: 1, hours: 4 })
+    expect(store.getSnoozes()['PR_1']).toMatchObject({
+      type: 'until-time',
+      until: '2026-08-10T16:00:00.000Z',
+    })
+  })
+
+  it('matches the repository name whatever its case', async () => {
+    const { isError } = await callTool('snooze_pull_request', {
+      repository: 'ACME/Web',
+      number: 1,
+    })
+    expect(isError).toBe(false)
+    expect(store.getSnoozes()['PR_1']).toBeDefined()
+  })
+
+  it('unsnoozes, putting the pull request back where it was', async () => {
+    await callTool('snooze_pull_request', { repository: 'acme/web', number: 1 })
+    const { isError, structured } = await callTool('unsnooze_pull_request', {
+      repository: 'acme/web',
+      number: 1,
+    })
+    expect(isError).toBe(false)
+    expect(store.getSnoozes()['PR_1']).toBeUndefined()
+    expect(structured).toMatchObject({ category: 'needs-review', isSnoozed: false })
+  })
+
+  it('refuses a pull request it has never seen, and writes nothing', async () => {
+    const { isError, text } = await callTool('snooze_pull_request', {
+      repository: 'acme/web',
+      number: 404,
+    })
+    expect(isError).toBe(true)
+    expect(text).toMatch(/only tracks open pull requests/i)
+    expect(store.getSnoozes()).toEqual({})
+  })
+
+  // Nothing validates the length downstream: `AppStore.snooze` would happily
+  // date a deadline years out.
+  it('refuses an absurd snooze length before it reaches the store', async () => {
+    const { isError } = await callTool('snooze_pull_request', {
+      repository: 'acme/web',
+      number: 1,
+      hours: 100_000,
+    })
+    expect(isError).toBe(true)
+    expect(store.getSnoozes()).toEqual({})
+  })
+
+  it('never refreshes: a bulk triage must not cost a fetch per pull request', async () => {
+    now = LATER
+    await callTool('snooze_pull_request', { repository: 'acme/web', number: 1 })
+    await callTool('unsnooze_pull_request', { repository: 'acme/web', number: 1 })
+    expect(fetches).toBe(1)
+  })
+})
+
 describe('the HTTP surface', () => {
   it('refuses a foreign Host with a JSON-RPC error', async () => {
     const { status, body } = await rawPost({ Host: 'evil.example' })
@@ -261,7 +348,7 @@ describe('the HTTP surface', () => {
 
 describe('lifecycle', () => {
   it('reports a port that is already taken instead of throwing', async () => {
-    const second = new PulloverMcpServer({ inbox, version: '0.0.0-test' })
+    const second = new PulloverMcpServer({ inbox, store, version: '0.0.0-test' })
     await second.start(port())
     expect(second.status()).toEqual({
       listening: false,
@@ -272,7 +359,7 @@ describe('lifecycle', () => {
   })
 
   it('leaves nothing listening when a stop lands during a bind', async () => {
-    const second = new PulloverMcpServer({ inbox, version: '0.0.0-test' })
+    const second = new PulloverMcpServer({ inbox, store, version: '0.0.0-test' })
     // Both calls made before either settles, which is what a double-click on
     // the settings switch does.
     const starting = second.start(0)
@@ -283,12 +370,12 @@ describe('lifecycle', () => {
 
   it('does not report a conflict against a listener of its own', async () => {
     // A port known to be free, so the two starts below race for the same one.
-    const probe = new PulloverMcpServer({ inbox, version: '0.0.0-test' })
+    const probe = new PulloverMcpServer({ inbox, store, version: '0.0.0-test' })
     await probe.start(0)
     const free = probe.status().port as number
     await probe.stop()
 
-    const second = new PulloverMcpServer({ inbox, version: '0.0.0-test' })
+    const second = new PulloverMcpServer({ inbox, store, version: '0.0.0-test' })
     await Promise.all([second.start(free), second.start(free)])
     expect(second.status()).toEqual({ listening: true, port: free, error: null })
     await second.stop()
@@ -301,7 +388,7 @@ describe('lifecycle', () => {
   })
 
   it('clears an earlier bind failure once a start succeeds', async () => {
-    const second = new PulloverMcpServer({ inbox, version: '0.0.0-test' })
+    const second = new PulloverMcpServer({ inbox, store, version: '0.0.0-test' })
     await second.start(port())
     expect(second.status().error).toMatch(/in use/)
     await second.start(0)

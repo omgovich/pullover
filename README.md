@@ -38,7 +38,7 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 - 🌗 **Light, dark, roomy or dense.** Follows your macOS appearance out of the box, and can pack down to one row per PR when your list gets long.
 - ⬇️ **Updates itself quietly.** New versions download in the background; Pullover then offers a restart and waits for you to take it.
 - 👀 **Read-only by design.** Pullover never comments, approves, or merges. Clicking a PR opens it on github.com — you act where you always did.
-- 🤖 **Talks to your agents.** An optional MCP server, local to your Mac, lets Claude Code and other agents ask which PRs are waiting on you and why — from the same inbox you see, with no extra GitHub token.
+- 🤖 **Talks to your agents.** An optional MCP server, local to your Mac, lets Claude Code and other agents ask which PRs are waiting on you and why — and park the ones that can wait — from the same inbox you see, with no extra GitHub token.
 
 ## 📦 Install
 
@@ -107,12 +107,14 @@ claude mcp add --transport http pullover http://127.0.0.1:7855/mcp
 
 Any client that speaks Streamable HTTP works the same way — point it at that URL, no token, no headers.
 
-The agent gets one read-only tool, `get_inbox`: the sections you see, each PR with the reason it is there and since when. Nothing an agent does through Pullover reaches GitHub — it acts on a PR with its own GitHub tooling, at the link Pullover gives it.
+The agent gets three tools. `get_inbox` returns the sections you see, each PR with the reason it is there and since when. `snooze_pull_request` and `unsnooze_pull_request` park a PR and bring it back, exactly as the context menu does — useful for "put everything from that repo aside until tomorrow", which is tedious by hand.
+
+Nothing an agent does through Pullover reaches GitHub. A snooze is a note on this Mac that only Pullover reads; to actually reply, approve or merge, an agent uses its own GitHub tooling, at the link Pullover gives it.
 
 The server listens on `127.0.0.1` only and refuses requests that did not come from this machine. The tool answers from Pullover's last fetch and refreshes first when that is more than a minute old, the same rule the window uses when you open it.
 
 ## 🔐 Privacy
 
-Pullover has no backend. There's no server in the middle, no account to create, no analytics, no telemetry, no crash reporting — the app talks to exactly one place, GitHub's API, straight from your Mac. The optional MCP server listens on this Mac only, is off until you turn it on, and hands out nothing you could not already see in the window. Your OAuth token never leaves the machine: it's encrypted via the macOS Keychain (Electron's `safeStorage`) and stored locally. And you don't have to take anyone's word for any of this — the entire app is open source, right here in this repo.
+Pullover has no backend. There's no server in the middle, no account to create, no analytics, no telemetry, no crash reporting — the app talks to exactly one place, GitHub's API, straight from your Mac. The optional MCP server listens on this Mac only, is off until you turn it on, hands out nothing you could not already see in the window, and lets an agent change nothing but Pullover's own snooze list. Your OAuth token never leaves the machine: it's encrypted via the macOS Keychain (Electron's `safeStorage`) and stored locally. And you don't have to take anyone's word for any of this — the entire app is open source, right here in this repo.
 
 Pullover only ever reads — never a comment, a review, or any other write. Sign-in asks for `repo` and `read:org`, the narrowest scopes GitHub offers that can still see pull requests in private repositories and review requests that arrived through a team; if your organisation restricts third-party OAuth Apps, an owner has to approve Pullover under **Settings → Third-party Actions Access** before those repos show up.

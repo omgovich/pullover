@@ -45,7 +45,7 @@ export interface AgentInbox {
   sections: AgentInboxSection[]
 }
 
-function summarize(item: ClassifiedPullRequest): AgentPullRequestSummary {
+export function describePullRequest(item: ClassifiedPullRequest): AgentPullRequestSummary {
   const { pr } = item
   return {
     repository: pr.repository,
@@ -90,7 +90,9 @@ export function describeInbox(
   const sections: AgentInboxSection[] = []
   for (const category of VISIBLE_CATEGORIES) {
     if (category === 'waiting' && !options.includeWaiting) continue
-    const pullRequests = snapshot.items.filter((item) => item.category === category).map(summarize)
+    const pullRequests = snapshot.items
+      .filter((item) => item.category === category)
+      .map(describePullRequest)
     if (pullRequests.length === 0) continue
     sections.push({ category, title: CATEGORY_TITLES[category], pullRequests })
   }
