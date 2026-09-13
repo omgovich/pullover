@@ -23,13 +23,17 @@ function section(enabled: boolean, status: McpStatus | null): React.JSX.Element 
 
 visualCase('off', () => section(false, null))
 
-// Switched on, but the bind has not come back yet: no URL to copy and
-// nothing wrong either.
+// Switched on a moment ago, with main yet to answer: the switch has moved
+// and nothing else has, because nothing is known yet to badge or report.
+visualCase('awaiting-status', () => section(true, null))
+
+// Switched on, and main has answered that the bind has not come back yet:
+// the badge says so and there is no URL to hand out.
 visualCase('starting', () =>
   section(true, { listening: false, url: 'http://127.0.0.1:7855/mcp', error: null }),
 )
 
-// The URL an agent connects to, and the one button a user needs.
+// The URL an agent connects to, and the way to the setup guide.
 visualCase('on', () => section(true, LISTENING))
 
 // The only critical-coloured text in the section: the switch is on but
