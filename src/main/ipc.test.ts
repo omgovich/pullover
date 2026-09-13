@@ -60,7 +60,7 @@ let store: AppStore
 let send: ReturnType<typeof vi.fn>
 let hide: ReturnType<typeof vi.fn>
 let shortcutCalls: (string | null)[]
-let mcpApplied: number
+let mcpApplied: boolean[]
 
 beforeEach(() => {
   handlers.clear()
@@ -70,7 +70,7 @@ beforeEach(() => {
   send = vi.fn()
   hide = vi.fn()
   shortcutCalls = []
-  mcpApplied = 0
+  mcpApplied = []
   const inbox = new Inbox({ store, getClient: () => null, onChange: () => {} })
 
   registerIpc({
@@ -87,8 +87,11 @@ beforeEach(() => {
     },
     isShortcutActive: () => true,
     getMcpStatus: () => ({ listening: true, url: 'http://127.0.0.1:7855/mcp', error: null }),
+    // Reads the store the way `index.ts` does, and resolves a turn late, so
+    // the tests below can tell a dropped `await` from a kept one.
     applyMcpSetting: async () => {
-      mcpApplied += 1
+      await Promise.resolve()
+      mcpApplied.push(store.getSettings().mcpServerEnabled)
     },
   })
 })
@@ -160,16 +163,27 @@ describe('MCP server', () => {
     })
   })
 
-  it('applies the server setting, then pushes settings, when the patch toggles it', async () => {
-    await call(IPC.setSettings, { mcpServerEnabled: true } as never)
+  it('starts the server on the setting the store settled on, and only then pushes', async () => {
+    const pending = call(IPC.setSettings, { mcpServerEnabled: true } as never) as Promise<void>
+    // Nothing after the handler's `await` can have run yet, so a dropped
+    // `await` would show up here as a push that already happened.
+    expect(send).not.toHaveBeenCalled()
+
+    await pending
     expect(store.getSettings().mcpServerEnabled).toBe(true)
-    expect(mcpApplied).toBe(1)
+    expect(mcpApplied).toEqual([true])
     expect(send).toHaveBeenCalledWith(IPC.settingsChanged, store.getSettings())
+  })
+
+  it('stops the server when the setting is turned off', async () => {
+    store.updateSettings({ mcpServerEnabled: true })
+    await call(IPC.setSettings, { mcpServerEnabled: false } as never)
+    expect(mcpApplied).toEqual([false])
   })
 
   it('leaves the server alone when the patch does not mention it', async () => {
     await call(IPC.setSettings, { pollIntervalMinutes: 15 } as never)
-    expect(mcpApplied).toBe(0)
+    expect(mcpApplied).toEqual([])
   })
 })
 

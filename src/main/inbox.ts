@@ -141,7 +141,10 @@ export class Inbox {
    * a caller waiting for one is after.
    */
   whenIdle(): Promise<void> {
-    return this.inFlightRefresh?.catch(() => undefined) ?? Promise.resolve()
+    // The queued pass when there is one: it resolves after the pass running
+    // now *and* the follow-up behind it, which is what "idle" has to mean.
+    const pass = this.queuedRefresh ?? this.inFlightRefresh
+    return pass?.catch(() => undefined) ?? Promise.resolve()
   }
 
   private startQueuedPass(): Promise<void> {

@@ -199,12 +199,30 @@ describe('get_inbox', () => {
   it('waits for a pass in flight rather than answering from the list it replaces', async () => {
     now = LATER
     prs = [makePullRequest({ id: 'PR_50', number: 50, buckets: ['review-requested'] })]
-    // Held well past a loopback round trip, so a call that did not wait would
-    // answer from the old snapshot long before this fetch lands.
-    hold = new Promise<void>((resolve) => setTimeout(resolve, 100))
+    let release = (): void => {}
+    hold = new Promise<void>((resolve) => {
+      release = resolve
+    })
+
+    // Released exactly when the handler reaches the wait, never on a timer: a
+    // slow connect would otherwise let the fetch land first, and the test
+    // would pass with the wait deleted.
+    let waited = false
+    const realWhenIdle = inbox.whenIdle.bind(inbox)
+    inbox.whenIdle = (): Promise<void> => {
+      waited = true
+      return realWhenIdle()
+    }
 
     const pass = inbox.refresh()
-    const { structured } = await callTool('get_inbox')
+    const answer = callTool('get_inbox')
+    for (let i = 0; !waited && i < 300; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+    expect(waited).toBe(true)
+    release()
+
+    const { structured } = await answer
     await pass
 
     const inboxView = structured as {
@@ -251,6 +269,19 @@ describe('the HTTP surface', () => {
   it('answers 405 to GET on /mcp', async () => {
     const { status } = await rawPost({}, 'GET')
     expect(status).toBe(405)
+  })
+
+  it('accepts a Host header in another case, which HTTP says is the same host', async () => {
+    const { status } = await rawPost({ Host: `LOCALHOST:${port()}` })
+    expect(status).toBe(200)
+  })
+
+  // `new URL` throws on these, and the throw used to escape the handler as an
+  // unhandled rejection, leaving the connection hanging with no reply at all.
+  it('answers 400 to a request target it cannot parse', async () => {
+    const { status, body } = await rawPost({}, 'POST', '//[')
+    expect(status).toBe(400)
+    expect(JSON.parse(body)).toMatchObject({ jsonrpc: '2.0', error: { code: -32000 } })
   })
 
   it('answers 404 off /mcp', async () => {
@@ -309,6 +340,15 @@ describe('lifecycle', () => {
     await second.stop()
   })
 
+  it('forgets a bind failure once it is stopped', async () => {
+    const second = new PulloverMcpServer({ inbox, version: '0.0.0-test' })
+    await second.start(port())
+    expect(second.status().error).toMatch(/in use/)
+    await second.stop()
+    // Otherwise Settings reports a conflict for a server that is simply off.
+    expect(second.status().error).toBeNull()
+  })
+
   it('is not listening after stop', async () => {
     await server.stop()
     expect(server.status().listening).toBe(false)
@@ -322,6 +362,8 @@ describe('refusalFor', () => {
     expect(refusalFor({ host: 'localhost:7855' }, 7855)).toBeNull()
     expect(refusalFor({ host: '127.0.0.1:7856' }, 7855)).toMatch(/Host/)
     expect(refusalFor({}, 7855)).toMatch(/Host/)
+    // Case-insensitive per RFC 9110, so a legitimate client is not refused.
+    expect(refusalFor({ host: 'LocalHost:7855' }, 7855)).toBeNull()
   })
 
   it('allows a missing Origin and a loopback one, and refuses any other', () => {
@@ -330,5 +372,6 @@ describe('refusalFor', () => {
     expect(refusalFor({ host: 'localhost:7855', origin: 'https://github.com' }, 7855)).toMatch(
       /Origin/,
     )
+    expect(refusalFor({ host: 'localhost:7855', origin: 'HTTP://LOCALHOST:7855' }, 7855)).toBeNull()
   })
 })

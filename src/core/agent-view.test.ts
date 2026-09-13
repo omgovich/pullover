@@ -51,6 +51,18 @@ describe('describeInbox', () => {
     expect(result.sections[0]?.pullRequests.map((p) => p.number)).toEqual([1, 3])
   })
 
+  it('orders a stack as a chain, the way the window does', () => {
+    const inChain = (index: number) => ({ id: 'PR_root', index, total: 2 })
+    const result = describeInbox(
+      snapshot([
+        item('needs-review', { id: 'PR_tip', number: 20 }, { stack: inChain(2) }),
+        item('needs-review', { id: 'PR_root', number: 10 }, { stack: inChain(1) }),
+      ]),
+      { includeWaiting: false },
+    )
+    expect(result.sections[0]?.pullRequests.map((p) => p.number)).toEqual([10, 20])
+  })
+
   it('leaves the waiting section out unless asked for it', () => {
     const items = [
       item('needs-review'),

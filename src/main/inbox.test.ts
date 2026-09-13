@@ -67,6 +67,55 @@ describe('Inbox.whenIdle', () => {
     await pass
   })
 
+  it('waits for a queued follow-up pass too, not just the one running', async () => {
+    let releaseFirst = (): void => {}
+    let releaseSecond = (): void => {}
+    const first = new Promise<void>((resolve) => {
+      releaseFirst = resolve
+    })
+    const second = new Promise<void>((resolve) => {
+      releaseSecond = resolve
+    })
+    let fetches = 0
+    const inbox = build([], {
+      fetchPrs: async () => {
+        fetches += 1
+        await (fetches === 1 ? first : second)
+        return []
+      },
+    })
+
+    const pass = inbox.refresh()
+    const queued = inbox.refresh()
+    let settled = false
+    const idle = inbox.whenIdle().then(() => {
+      settled = true
+    })
+
+    releaseFirst()
+    // Long enough for every pending turn to run. The follow-up pass is now
+    // in flight and still held, so a wait that covered only the first pass
+    // has already resolved by here.
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(settled).toBe(false)
+
+    releaseSecond()
+    await idle
+    expect(fetches).toBe(2)
+    await Promise.all([pass, queued])
+  })
+
+  it('resolves even when the pass it waited for failed', async () => {
+    const inbox = build([], {
+      getClient: () => {
+        throw new Error('the keychain is locked')
+      },
+    })
+    const pass = inbox.refresh().catch(() => undefined)
+    await expect(inbox.whenIdle()).resolves.toBeUndefined()
+    await pass
+  })
+
   it('resolves at once when no pass is running', async () => {
     await expect(build([]).whenIdle()).resolves.toBeUndefined()
   })

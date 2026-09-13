@@ -1,3 +1,4 @@
+import { orderSection } from '@core/stack'
 import type { InboxSnapshot } from '@shared/ipc'
 import {
   CATEGORY_TITLES,
@@ -90,8 +91,11 @@ export function describeInbox(
   const sections: AgentInboxSection[] = []
   for (const category of VISIBLE_CATEGORIES) {
     if (category === 'waiting' && !options.includeWaiting) continue
-    const pullRequests = snapshot.items.filter((item) => item.category === category).map(summarize)
-    if (pullRequests.length === 0) continue
+    const inSection = snapshot.items.filter((item) => item.category === category)
+    if (inSection.length === 0) continue
+    // Ordered the way `App` orders it, so a stack reads to an agent as the
+    // chain it is rather than as whatever the classifier's sort left behind.
+    const pullRequests = orderSection(inSection).map(summarize)
     sections.push({ category, title: CATEGORY_TITLES[category], pullRequests })
   }
   return {

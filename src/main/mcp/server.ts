@@ -41,10 +41,15 @@ export function mcpUrl(port: number): string {
  */
 export function refusalFor(headers: IncomingHttpHeaders, port: number): string | null {
   const hosts = [`127.0.0.1:${port}`, `localhost:${port}`]
-  if (headers.host === undefined || !hosts.includes(headers.host)) {
+  // Lowercased because both fields are case-insensitive (RFC 9110), and a
+  // client sending `LOCALHOST` is a legitimate one. The allowlist is fixed,
+  // so folding case lets nothing new through.
+  const host = headers.host?.toLowerCase()
+  if (host === undefined || !hosts.includes(host)) {
     return `Host ${headers.host ?? '(missing)'} is not this machine`
   }
-  if (headers.origin !== undefined && !hosts.some((host) => headers.origin === `http://${host}`)) {
+  const origin = headers.origin?.toLowerCase()
+  if (origin !== undefined && !hosts.some((each) => origin === `http://${each}`)) {
     return `Origin ${headers.origin} is not this machine`
   }
   return null
@@ -144,7 +149,15 @@ export class PulloverMcpServer {
   }
 
   private bind(port: number): Promise<void> {
-    const http = createServer((req, res) => void this.handle(req, res))
+    const http = createServer((req, res) => {
+      // `handle` is async, so anything it throws would otherwise surface as
+      // an unhandled rejection and leave the connection hanging unanswered.
+      void this.handle(req, res).catch((error: unknown) => {
+        console.error('[mcp] request failed', error)
+        if (res.headersSent) res.end()
+        else sendJson(res, 500, rpcError('The MCP server failed to handle the request'))
+      })
+    })
     return new Promise<void>((resolve) => {
       // Stays attached past a successful listen: an accept that fails later
       // would otherwise be an unhandled 'error' event, which ends the app.
@@ -172,6 +185,7 @@ export class PulloverMcpServer {
     const http = this.http
     this.http = null
     this.port = null
+    this.error = null
     if (http === null) return
     http.closeAllConnections()
     await new Promise<void>((resolve) => http.close(() => resolve()))
@@ -184,8 +198,14 @@ export class PulloverMcpServer {
       sendJson(res, 403, rpcError(refusal))
       return
     }
-    const url = new URL(req.url ?? '/', mcpUrl(port))
-    if (url.pathname !== PATH) {
+    let pathname: string
+    try {
+      pathname = new URL(req.url ?? '/', mcpUrl(port)).pathname
+    } catch {
+      sendJson(res, 400, rpcError('Malformed request target'))
+      return
+    }
+    if (pathname !== PATH) {
       sendJson(res, 404, rpcError(`Nothing here; the MCP endpoint is ${PATH}`))
       return
     }
