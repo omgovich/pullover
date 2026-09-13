@@ -4,6 +4,12 @@ interface Props {
   value: string
   options: { value: string; label: string }[]
   onChange: (value: string) => void
+  /**
+   * Whether the highlight slides to the option picked. Off where the change
+   * also switches the colour mode: the highlight measures its target while
+   * Reshaped has the theme off `<html>`, and lands nowhere near it.
+   */
+  animate?: boolean
 }
 
 /**
@@ -11,12 +17,18 @@ interface Props {
  * tabs this grew out of, it takes only the width its options need, so the
  * setting's name keeps the rest of the row.
  */
-export default function SegmentedPicker({ value, options, onChange }: Props): React.JSX.Element {
+export default function SegmentedPicker({
+  value,
+  options,
+  onChange,
+  animate = true,
+}: Props): React.JSX.Element {
   return (
     <View className="pv-segmented">
       <Tabs
         variant="pills-raised"
         size="small"
+        disableSelectionAnimation={!animate}
         value={value}
         onChange={({ value: next }) => onChange(next)}
       >

@@ -113,6 +113,7 @@ export default function SettingsPanel({
                 <SegmentedPicker
                   value={settings.theme}
                   options={THEME_OPTIONS}
+                  animate={false}
                   onChange={(value) =>
                     void window.api.setSettings({ theme: value as ThemePreference })
                   }
