@@ -10,7 +10,7 @@ They get the same classified inbox the window shows — which pull requests are 
 
 ## Turn it on
 
-The server is off until you say otherwise. Open **Settings** in Pullover, find **AI agents**, and flip **MCP server**. The address appears under the switch; that is the one to give your client.
+The server is off until you say otherwise. Open **Settings** in Pullover and turn on **MCP server**. The address appears under the switch; that is the one to give your client.
 
 ## Connect a client
 
