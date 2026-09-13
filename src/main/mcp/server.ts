@@ -71,7 +71,9 @@ function toolResult(payload: unknown): CallToolResult {
   }
 }
 
-const CATEGORIES_HELP = `Categories, in the order the app shows them:
+const GET_INBOX_TOOL_DESCRIPTION = `The pull requests that need the signed-in user, grouped into sections by why, each section longest-waiting first — except "waiting", which has nobody waiting and is ordered by latest activity. Refreshes from GitHub first when the last fetch is more than a minute old, so the answer is current (see lastUpdatedAt). When notice is not null, relay it.
+
+Categories, in the order the app shows them:
 - needs-review: someone asked for your review and you have not reviewed yet.
 - new-replies: somebody replied in a review thread you took part in; the reason says how many.
 - re-review: you reviewed already and the author pushed new commits or asked again.
@@ -88,7 +90,7 @@ function registerTools(server: McpServer, deps: McpServerDeps): void {
     'get_inbox',
     {
       title: 'Pull requests waiting on you',
-      description: `The pull requests that need the signed-in user, grouped into sections by why, each section longest-waiting first — except "waiting", which has nobody waiting and is ordered by latest activity. Refreshes from GitHub first when the last fetch is more than a minute old, so the answer is current (see lastUpdatedAt). When notice is not null, relay it.\n\n${CATEGORIES_HELP}`,
+      description: GET_INBOX_TOOL_DESCRIPTION,
       inputSchema: {
         includeWaiting: z
           .boolean()
