@@ -105,15 +105,15 @@ Let your agents check the inbox for you:
 
 They get the same classified inbox the window shows — what is waiting on you and why — with no extra GitHub token and no rules to re-implement. They can also park a pull request until tomorrow, which is the one thing your GitHub tooling cannot do.
 
+<p align="center">
+  <img src="docs/demo-agents.gif" width="70%" alt="A terminal: the claude mcp add line is run and the server is added, then Claude is asked what is on your plate and answers with the classified inbox — nine pull requests under Needs your review, Replies to you, Take another look, Your PRs and Mentions, each with its repository and number, its title, why it needs you and how long it has waited. Asked to snooze the Checkout stack until tomorrow, it parks all three and reports that GitHub was not touched." />
+</p>
+
 Turn on **MCP server** in Settings, then hand your client the address it shows:
 
 ```bash
 claude mcp add --transport http pullover http://127.0.0.1:7855/mcp
 ```
-
-<p align="center">
-  <img src="docs/demo-agents.gif" width="90%" alt="A terminal: the claude mcp add line is run and the server is added, then Claude is asked what is on your plate and answers with the classified inbox — nine pull requests under Needs your review, Replies to you, Take another look, Your PRs and Mentions, each with its repository and number, its title, why it needs you and how long it has waited. Asked to snooze the Checkout stack until tomorrow, it parks all three and reports that GitHub was not touched." />
-</p>
 
 Nothing an agent does through Pullover reaches GitHub: it reads, and a snooze is a note on this Mac. To reply or approve, it uses its own GitHub tooling at the link Pullover gives it.
 
