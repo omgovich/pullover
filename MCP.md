@@ -8,6 +8,10 @@ They get the same classified inbox the window shows — which pull requests are 
 
 > *"Snooze everything from acme/infra until tomorrow."*
 
+<p align="center">
+  <img src="docs/demo-agents.gif" width="90%" alt="A terminal: the claude mcp add line is run and the server is added, then Claude is asked what is on your plate and answers with the classified inbox — nine pull requests under Needs your review, Replies to you, Take another look, Your PRs and Mentions, each with its repository and number, its title, why it needs you and how long it has waited. Asked to snooze the Checkout stack until tomorrow, it parks all three and reports that GitHub was not touched." />
+</p>
+
 ## 🔛 Turn it on
 
 The server is off until you say otherwise. Open **Settings** in Pullover and turn on **MCP server**. The address appears under the switch; that is the one to give your client.
