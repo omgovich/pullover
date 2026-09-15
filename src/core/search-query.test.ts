@@ -21,6 +21,16 @@ describe('chunk', () => {
 })
 
 describe('buildSearchQuery', () => {
+  it('appends nothing when no organization is excluded', () => {
+    expect(buildSearchQuery('author', [])).toBe(buildSearchQuery('author'))
+  })
+
+  it('excludes each organization that has not approved the OAuth app', () => {
+    expect(buildSearchQuery('author', ['status-im', 'acme'])).toBe(
+      'is:pr is:open archived:false author:@me sort:updated-desc -org:status-im -org:acme',
+    )
+  })
+
   it('builds an unscoped query with is:pr, is:open and the bucket qualifier', () => {
     expect(buildSearchQuery('review-requested')).toBe(
       'is:pr is:open archived:false review-requested:@me sort:updated-desc',

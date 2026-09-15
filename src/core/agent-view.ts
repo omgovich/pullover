@@ -80,7 +80,10 @@ function noticeFor(snapshot: InboxSnapshot): string | null {
         ? 'The first fetch is still running; there is nothing to show yet.'
         : 'A refresh is in progress; this is the last completed result.'
     case 'ready':
-      return null
+      // Usually nothing to say. A restricted org is the exception: the fetch
+      // succeeded, so the list is real, but a whole organization is missing
+      // from it — and an agent that isn't told reads the gap as "no PRs".
+      return snapshot.errorMessage
   }
 }
 

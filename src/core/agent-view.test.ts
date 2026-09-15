@@ -145,6 +145,20 @@ describe('describeInbox', () => {
     expect(result.sections).toHaveLength(1)
   })
 
+  it('warns on a healthy list when an org is missing from it', () => {
+    // The fetch worked, so nothing marks this snapshot as broken — but a whole
+    // organization is absent, and an agent reading silence would call it empty.
+    const result = describeInbox(
+      snapshot([item('needs-review')], {
+        status: 'ready',
+        errorMessage: "status-im hasn't approved Pullover",
+      }),
+      { includeWaiting: false },
+    )
+    expect(result.notice).toBe("status-im hasn't approved Pullover")
+    expect(result.sections).toHaveLength(1)
+  })
+
   it('says the list is the last completed one while a refresh runs', () => {
     const result = describeInbox(snapshot([], { status: 'loading' }), { includeWaiting: false })
     expect(result.notice).toMatch(/last completed/i)

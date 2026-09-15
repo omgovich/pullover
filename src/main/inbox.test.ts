@@ -2,6 +2,7 @@ import { makePullRequest } from '@core/test-factory'
 import type { InboxSnapshot } from '@shared/ipc'
 import { DEFAULT_SETTINGS, type PullRequest } from '@shared/types'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { FetchedPullRequests } from './github/fetch-prs'
 import { Inbox } from './inbox'
 import type { KeyValueStore, PersistedState } from './store'
 import { AppStore } from './store'
@@ -19,6 +20,11 @@ class MemoryStore implements KeyValueStore {
   set<K extends keyof PersistedState>(key: K, value: PersistedState[K]): void {
     this.state[key] = value
   }
+}
+
+/** What `fetchPullRequests` resolves to, for stubs that only care about the PRs. */
+function fetched(prs: PullRequest[]): FetchedPullRequests {
+  return { prs, restrictedOrgs: [] }
 }
 
 const NOW = '2026-08-10T12:00:00Z'
@@ -39,7 +45,7 @@ function build(prs: PullRequest[], overrides: Record<string, unknown> = {}) {
     onChange: (snapshot) => changes.push(snapshot),
     now: () => NOW,
     fetchLogin: async () => 'vlad',
-    fetchPrs: async () => prs,
+    fetchPrs: async () => fetched(prs),
     ...overrides,
   })
 }
@@ -91,7 +97,7 @@ describe('Inbox.whenIdle', () => {
     const inbox = build([], {
       fetchPrs: async () => {
         await held
-        return [makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })]
+        return fetched([makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })])
       },
     })
 
@@ -119,7 +125,7 @@ describe('Inbox.whenIdle', () => {
       fetchPrs: async () => {
         fetches += 1
         await (fetches === 1 ? first : second)
-        return []
+        return fetched([])
       },
     })
 
@@ -160,6 +166,21 @@ describe('Inbox.whenIdle', () => {
 })
 
 describe('Inbox.refresh', () => {
+  it('keeps the inbox ready when an org has not approved the OAuth app', async () => {
+    const fetchPrs = vi.fn(async () => ({
+      prs: [makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })],
+      restrictedOrgs: ['status-im'],
+    }))
+    const inbox = build([], { fetchPrs })
+
+    await inbox.refresh()
+    const snapshot = inbox.getSnapshot()
+
+    expect(snapshot.status).toBe('ready')
+    expect(snapshot.items.map((item) => item.pr.id)).toEqual(['PR_1'])
+    expect(snapshot.errorMessage).toBe("status-im hasn't approved Pullover")
+  })
+
   it('classifies fetched PRs and counts the ones needing attention', async () => {
     const inbox = build([
       makePullRequest({ id: 'PR_1', buckets: ['review-requested'] }),
@@ -189,7 +210,9 @@ describe('Inbox.refresh', () => {
     // the catch block does.
     const fetchPrs = vi
       .fn()
-      .mockResolvedValueOnce([makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })])
+      .mockResolvedValueOnce(
+        fetched([makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })]),
+      )
       .mockRejectedValueOnce(new Error('rate limit exceeded'))
     const inbox = build([], { fetchPrs })
 
@@ -207,7 +230,9 @@ describe('Inbox.refresh', () => {
   it('preserves the last successful update time across a failure', async () => {
     const fetchPrs = vi
       .fn()
-      .mockResolvedValueOnce([makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })])
+      .mockResolvedValueOnce(
+        fetched([makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })]),
+      )
       .mockRejectedValueOnce(new Error('network down'))
     // A frozen now() can't distinguish "preserved" from "recomputed to the
     // same value". Give the failing refresh a different clock reading so a
@@ -302,8 +327,8 @@ describe('Inbox.refresh', () => {
     const resolvers: Array<(prs: PullRequest[]) => void> = []
     const fetchPrs = vi.fn(
       () =>
-        new Promise<PullRequest[]>((resolve) => {
-          resolvers.push(resolve)
+        new Promise<FetchedPullRequests>((resolve) => {
+          resolvers.push((prs) => resolve(fetched(prs)))
         }),
     )
     const inbox = build([], { fetchPrs })
@@ -353,11 +378,11 @@ describe('Inbox.refresh', () => {
     // straight away — it isn't the thing under test here.
     fetchPrs.mockImplementationOnce(
       () =>
-        new Promise<PullRequest[]>((resolve) => {
-          resolvers.push(resolve)
+        new Promise<FetchedPullRequests>((resolve) => {
+          resolvers.push((prs) => resolve(fetched(prs)))
         }),
     )
-    fetchPrs.mockResolvedValue([pr])
+    fetchPrs.mockResolvedValue(fetched([pr]))
     const inbox = build([], { getClient: () => client, fetchLogin, fetchPrs })
 
     const first = inbox.refresh()
@@ -401,8 +426,8 @@ describe('Inbox.refresh', () => {
     let resolveFetch: ((prs: PullRequest[]) => void) | undefined
     const fetchPrs = vi.fn(
       () =>
-        new Promise<PullRequest[]>((resolve) => {
-          resolveFetch = resolve
+        new Promise<FetchedPullRequests>((resolve) => {
+          resolveFetch = (prs) => resolve(fetched(prs))
         }),
     )
     const inbox = build([], { fetchPrs })
@@ -428,7 +453,7 @@ describe('Inbox.refresh', () => {
 
   it('always calls fetchPrs unfiltered, regardless of the repository selection', async () => {
     store.updateSettings({ watchAllRepositories: false, repositories: ['acme/web'] })
-    const fetchPrs = vi.fn((_client: unknown, _myLogin: string) => Promise.resolve([]))
+    const fetchPrs = vi.fn((_client: unknown, _myLogin: string) => Promise.resolve(fetched([])))
     const inbox = build([], { fetchPrs })
 
     await inbox.refresh()
@@ -501,8 +526,8 @@ describe('Inbox.refresh', () => {
     const resolvers: Array<(prs: PullRequest[]) => void> = []
     const fetchPrs = vi.fn(
       () =>
-        new Promise<PullRequest[]>((resolve) => {
-          resolvers.push(resolve)
+        new Promise<FetchedPullRequests>((resolve) => {
+          resolvers.push((prs) => resolve(fetched(prs)))
         }),
     )
     const inbox = build([], { fetchPrs })
@@ -558,9 +583,9 @@ describe('Inbox.refresh', () => {
       if (calls === 1) throw new Error('boom')
       return CLIENT
     })
-    const fetchPrs = vi.fn(async () => [
-      makePullRequest({ id: 'PR_1', buckets: ['review-requested'] }),
-    ])
+    const fetchPrs = vi.fn(async () =>
+      fetched([makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })]),
+    )
     const inbox = build([], { getClient, fetchPrs })
 
     const first = inbox.refresh()
@@ -579,24 +604,25 @@ describe('Inbox.refresh', () => {
   it('attaches each item its stack position', async () => {
     store.updateSettings({ watchAllRepositories: true })
     const inbox = build([], {
-      fetchPrs: async () => [
-        makePullRequest({
-          id: 'PR_1',
-          repository: 'acme/web',
-          buckets: ['review-requested'],
-          headRefName: 'part-1',
-          baseRefName: 'main',
-        }),
-        makePullRequest({
-          id: 'PR_2',
-          repository: 'acme/web',
-          buckets: ['review-requested'],
-          headRefName: 'part-2',
-          baseRefName: 'part-1',
-        }),
-        // Not part of the stack above -- an ordinary PR.
-        makePullRequest({ id: 'PR_3', repository: 'acme/web', buckets: ['review-requested'] }),
-      ],
+      fetchPrs: async () =>
+        fetched([
+          makePullRequest({
+            id: 'PR_1',
+            repository: 'acme/web',
+            buckets: ['review-requested'],
+            headRefName: 'part-1',
+            baseRefName: 'main',
+          }),
+          makePullRequest({
+            id: 'PR_2',
+            repository: 'acme/web',
+            buckets: ['review-requested'],
+            headRefName: 'part-2',
+            baseRefName: 'part-1',
+          }),
+          // Not part of the stack above -- an ordinary PR.
+          makePullRequest({ id: 'PR_3', repository: 'acme/web', buckets: ['review-requested'] }),
+        ]),
     })
 
     await inbox.refresh()
@@ -615,18 +641,19 @@ describe('Inbox.refresh', () => {
     store.updateSettings({ watchAllRepositories: true })
     const mine = { authorLogin: 'vlad', buckets: ['author' as const], repository: 'acme/web' }
     const inbox = build([], {
-      fetchPrs: async () => [
-        makePullRequest({ ...mine, id: 'PR_1', headRefName: 'part-1', baseRefName: 'main' }),
-        makePullRequest({
-          ...mine,
-          id: 'PR_2',
-          headRefName: 'part-2',
-          baseRefName: 'part-1',
-          reviewDecision: 'APPROVED',
-          hasAutoMerge: true,
-        }),
-        makePullRequest({ ...mine, id: 'PR_3', headRefName: 'part-3', baseRefName: 'part-2' }),
-      ],
+      fetchPrs: async () =>
+        fetched([
+          makePullRequest({ ...mine, id: 'PR_1', headRefName: 'part-1', baseRefName: 'main' }),
+          makePullRequest({
+            ...mine,
+            id: 'PR_2',
+            headRefName: 'part-2',
+            baseRefName: 'part-1',
+            reviewDecision: 'APPROVED',
+            hasAutoMerge: true,
+          }),
+          makePullRequest({ ...mine, id: 'PR_3', headRefName: 'part-3', baseRefName: 'part-2' }),
+        ]),
     })
 
     await inbox.refresh()
@@ -653,29 +680,30 @@ describe('Inbox.refresh', () => {
     // one.
     store.updateSettings({ watchAllRepositories: true })
     const inbox = build([], {
-      fetchPrs: async () => [
-        makePullRequest({
-          id: 'PR_1',
-          repository: 'acme/web',
-          buckets: ['review-requested'],
-          headRefName: 'part-1',
-          baseRefName: 'main',
-        }),
-        makePullRequest({
-          id: 'PR_2',
-          repository: 'acme/web',
-          isDraft: true,
-          headRefName: 'part-2',
-          baseRefName: 'part-1',
-        }),
-        makePullRequest({
-          id: 'PR_3',
-          repository: 'acme/web',
-          buckets: ['review-requested'],
-          headRefName: 'part-3',
-          baseRefName: 'part-2',
-        }),
-      ],
+      fetchPrs: async () =>
+        fetched([
+          makePullRequest({
+            id: 'PR_1',
+            repository: 'acme/web',
+            buckets: ['review-requested'],
+            headRefName: 'part-1',
+            baseRefName: 'main',
+          }),
+          makePullRequest({
+            id: 'PR_2',
+            repository: 'acme/web',
+            isDraft: true,
+            headRefName: 'part-2',
+            baseRefName: 'part-1',
+          }),
+          makePullRequest({
+            id: 'PR_3',
+            repository: 'acme/web',
+            buckets: ['review-requested'],
+            headRefName: 'part-3',
+            baseRefName: 'part-2',
+          }),
+        ]),
     })
 
     await inbox.refresh()
@@ -747,8 +775,10 @@ describe('Inbox rate limiting', () => {
     const fetchPrs = vi
       .fn()
       .mockRejectedValueOnce(rateLimitError(RESET))
-      .mockResolvedValueOnce([makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })])
-      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(
+        fetched([makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })]),
+      )
+      .mockResolvedValueOnce(fetched([]))
     const inbox = build([], { fetchPrs, now: () => current })
 
     await inbox.refresh()
@@ -775,7 +805,10 @@ describe('Inbox rate limiting', () => {
 
   it('clears the hold on sign-out, so signing back in before the original reset refreshes normally', async () => {
     let client: object | null = CLIENT
-    const fetchPrs = vi.fn().mockRejectedValueOnce(rateLimitError(RESET)).mockResolvedValueOnce([])
+    const fetchPrs = vi
+      .fn()
+      .mockRejectedValueOnce(rateLimitError(RESET))
+      .mockResolvedValueOnce(fetched([]))
     const inbox = build([], { fetchPrs, getClient: () => client })
 
     await inbox.refresh()
@@ -833,7 +866,7 @@ describe('Inbox.start / stop', () => {
 
   it('performs an immediate refresh', async () => {
     vi.useFakeTimers()
-    const fetchPrs = vi.fn(async () => [])
+    const fetchPrs = vi.fn(async () => fetched([]))
     const inbox = build([], { fetchPrs })
 
     inbox.start()
@@ -845,7 +878,7 @@ describe('Inbox.start / stop', () => {
 
   it('schedules repeat refreshes at the configured poll interval', async () => {
     vi.useFakeTimers()
-    const fetchPrs = vi.fn(async () => [])
+    const fetchPrs = vi.fn(async () => fetched([]))
     const inbox = build([], { fetchPrs }) // MemoryStore defaults to a 5 minute interval
 
     inbox.start()
@@ -863,7 +896,7 @@ describe('Inbox.start / stop', () => {
 
   it('stop() prevents further ticks', async () => {
     vi.useFakeTimers()
-    const fetchPrs = vi.fn(async () => [])
+    const fetchPrs = vi.fn(async () => fetched([]))
     const inbox = build([], { fetchPrs })
 
     inbox.start()
@@ -877,7 +910,7 @@ describe('Inbox.start / stop', () => {
 
   it('calling start() twice does not leave two timers running', async () => {
     vi.useFakeTimers()
-    const fetchPrs = vi.fn(async () => [])
+    const fetchPrs = vi.fn(async () => fetched([]))
     const inbox = build([], { fetchPrs })
 
     inbox.start()
@@ -898,9 +931,9 @@ describe('Inbox.start / stop', () => {
 
 describe('Inbox.reclassify', () => {
   it('moves a snoozed PR to waiting without refetching', async () => {
-    const fetchPrs = vi.fn(async () => [
-      makePullRequest({ id: 'PR_1', buckets: ['review-requested'] }),
-    ])
+    const fetchPrs = vi.fn(async () =>
+      fetched([makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })]),
+    )
     const inbox = build([], { fetchPrs })
     await inbox.refresh()
     expect(inbox.getSnapshot().attentionCount).toBe(1)
@@ -915,10 +948,12 @@ describe('Inbox.reclassify', () => {
 
   it('applies a changed repository selection without refetching', async () => {
     // MemoryStore starts with repositories: ['acme/web'], watchAllRepositories: false.
-    const fetchPrs = vi.fn(async () => [
-      makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
-      makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
-    ])
+    const fetchPrs = vi.fn(async () =>
+      fetched([
+        makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
+        makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
+      ]),
+    )
     const inbox = build([], { fetchPrs })
     await inbox.refresh()
     expect(inbox.getSnapshot().items.map((item) => item.pr.id)).toEqual(['PR_1'])
@@ -942,10 +977,12 @@ describe('Inbox.reclassify', () => {
       watchAllRepositories: false,
       repositories: ['acme/web', 'acme/api'],
     })
-    const fetchPrs = vi.fn(async () => [
-      makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
-      makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
-    ])
+    const fetchPrs = vi.fn(async () =>
+      fetched([
+        makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
+        makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
+      ]),
+    )
     const inbox = build([], { fetchPrs })
     await inbox.refresh()
     expect(
@@ -969,10 +1006,12 @@ describe('Inbox.reclassify', () => {
     // watchAllRepositories starts on, so both PRs show regardless of the
     // (narrower) repositories list.
     store.updateSettings({ watchAllRepositories: true, repositories: ['acme/web'] })
-    const fetchPrs = vi.fn(async () => [
-      makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
-      makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
-    ])
+    const fetchPrs = vi.fn(async () =>
+      fetched([
+        makePullRequest({ id: 'PR_1', repository: 'acme/web', buckets: ['review-requested'] }),
+        makePullRequest({ id: 'PR_2', repository: 'acme/api', buckets: ['review-requested'] }),
+      ]),
+    )
     const inbox = build([], { fetchPrs })
     await inbox.refresh()
     expect(
@@ -993,22 +1032,24 @@ describe('Inbox.reclassify', () => {
 
   it('keeps stack positions attached, without refetching', async () => {
     store.updateSettings({ watchAllRepositories: true })
-    const fetchPrs = vi.fn(async () => [
-      makePullRequest({
-        id: 'PR_1',
-        repository: 'acme/web',
-        buckets: ['review-requested'],
-        headRefName: 'part-1',
-        baseRefName: 'main',
-      }),
-      makePullRequest({
-        id: 'PR_2',
-        repository: 'acme/web',
-        buckets: ['review-requested'],
-        headRefName: 'part-2',
-        baseRefName: 'part-1',
-      }),
-    ])
+    const fetchPrs = vi.fn(async () =>
+      fetched([
+        makePullRequest({
+          id: 'PR_1',
+          repository: 'acme/web',
+          buckets: ['review-requested'],
+          headRefName: 'part-1',
+          baseRefName: 'main',
+        }),
+        makePullRequest({
+          id: 'PR_2',
+          repository: 'acme/web',
+          buckets: ['review-requested'],
+          headRefName: 'part-2',
+          baseRefName: 'part-1',
+        }),
+      ]),
+    )
     const inbox = build([], { fetchPrs })
     await inbox.refresh()
 

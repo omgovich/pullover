@@ -7,6 +7,7 @@ import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
 import { isAuthError } from './github/auth-error'
 import { describeError } from './github/error-message'
 import { fetchPullRequests, fetchViewerLogin, type GraphQLClient } from './github/fetch-prs'
+import { formatRestrictedOrgs } from './github/org-restriction'
 import { rateLimitResetAt } from './github/rate-limit'
 import type { AppStore } from './store'
 
@@ -221,7 +222,8 @@ export class Inbox {
       // Always fetch unfiltered: the picker's options come from what shows
       // up in the inbox, so the search itself must never be narrowed by the
       // repository selection.
-      this.prs = await this.fetchPrs(client, myLogin)
+      const { prs, restrictedOrgs } = await this.fetchPrs(client, myLogin)
+      this.prs = prs
 
       const settings = this.deps.store.getSettings()
       const filtered = filterByRepositories(
@@ -244,7 +246,7 @@ export class Inbox {
         items,
         attentionCount: countAttention(items),
         lastUpdatedAt: now,
-        errorMessage: null,
+        errorMessage: formatRestrictedOrgs(restrictedOrgs),
         myLogin: this.myLogin,
         knownRepositories: collectRepositories(this.prs),
       })

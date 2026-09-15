@@ -84,7 +84,7 @@ beforeEach(async () => {
     fetchPrs: async () => {
       fetches += 1
       if (hold !== null) await hold
-      return prs
+      return { prs, restrictedOrgs: [] }
     },
   })
   await inbox.refresh()
@@ -269,7 +269,7 @@ describe('get_inbox when the app cannot answer properly', () => {
       onChange: () => {},
       now: () => now,
       fetchLogin: async () => 'vlad',
-      fetchPrs: async () => [],
+      fetchPrs: async () => ({ prs: [], restrictedOrgs: [] }),
     })
     await signedOut.refresh()
 
@@ -519,7 +519,7 @@ describe('snooze tools', () => {
       onChange: () => {},
       now: () => now,
       fetchLogin: async () => 'vlad',
-      fetchPrs: async () => [],
+      fetchPrs: async () => ({ prs: [], restrictedOrgs: [] }),
     })
     await signedOut.refresh()
 

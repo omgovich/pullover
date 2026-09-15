@@ -25,7 +25,7 @@ export function formatBadgeTitle(count: number): string {
 export function formatStatusLine(snapshot: InboxSnapshot, now: string): string {
   if (snapshot.status === 'signed-out') return 'Not signed in'
   if (snapshot.status === 'loading') return 'Refreshing…'
-  if (snapshot.errorMessage !== null) return "Couldn't refresh"
+  if (snapshot.status === 'error') return "Couldn't refresh"
   if (snapshot.lastUpdatedAt === null) return 'Not fetched yet'
   return `Updated ${formatAge(snapshot.lastUpdatedAt, now)}`
 }
