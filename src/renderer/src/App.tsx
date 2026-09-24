@@ -45,7 +45,8 @@ export default function App(): React.JSX.Element {
   const snapshot = useSnapshot()
   const settings = useSettings()
   const update = useUpdate()
-  const scroll = useScrollMemory()
+  const account = settings?.provider ? `${settings.provider}:${snapshot.accountVersion ?? 0}` : null
+  const scroll = useScrollMemory(account)
   const [showSettings, setShowSettings] = useState(false)
   const [now, setNow] = useState(() => new Date().toISOString())
   const { collapsed, toggleCategory } = useSectionCollapse()
@@ -68,10 +69,8 @@ export default function App(): React.JSX.Element {
   const orderedByCategory = useMemo(() => {
     const byCategory = new Map<Category, ClassifiedPullRequest[]>()
     for (const category of VISIBLE_CATEGORIES) {
-      byCategory.set(
-        category,
-        orderSection(snapshot.items.filter((item) => item.category === category)),
-      )
+      const items = snapshot.items.filter((item) => item.category === category)
+      byCategory.set(category, orderSection(items))
     }
     return byCategory
   }, [snapshot.items])
@@ -87,7 +86,7 @@ export default function App(): React.JSX.Element {
   }, [orderedByCategory, collapsed])
 
   const { selectedId, pointAt, selectCard, moveSelection, registerCard, selectedElement } =
-    useSelection(visibleItems)
+    useSelection(visibleItems, account)
 
   // `useHotkeys` (from `reshaped/bundle`) has no built-in "ignore while
   // typing" guard, so that check moves inside each callback instead. It's
@@ -167,6 +166,10 @@ export default function App(): React.JSX.Element {
   )
 
   const showEmptyState = snapshot.attentionCount === 0
+  const noGitLabMrs =
+    settings?.provider === 'gitlab' &&
+    snapshot.status === 'ready' &&
+    snapshot.knownRepositories.length === 0
 
   // The sections the list actually holds — `InboxSection` draws nothing for
   // an empty category. Needed here rather than left to each section because
@@ -218,6 +221,7 @@ export default function App(): React.JSX.Element {
           onRefresh={refresh}
           onOpenSettings={() => setShowSettings(true)}
           onInstallUpdate={() => void window.api.installUpdate()}
+          noGitLabMrs={noGitLabMrs}
         />
 
         <ScrollArea
@@ -227,7 +231,13 @@ export default function App(): React.JSX.Element {
           className="pv-scroll"
           scrollableClassName="pv-scroll-content"
         >
-          {showEmptyState && <EmptyState isError={snapshot.status === 'error'} />}
+          {showEmptyState && (
+            <EmptyState
+              isError={snapshot.status === 'error'}
+              isPartial={snapshot.status === 'ready' && snapshot.errorMessage !== null}
+              gitlabAccount={noGitLabMrs ? snapshot.myLogin : null}
+            />
+          )}
 
           {/* The rules live between the blocks rather than on them: a seam
               belongs to neither side, and only out here is it known what a

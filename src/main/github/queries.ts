@@ -5,9 +5,10 @@ export const VIEWER_QUERY = `
 `
 
 export const SEARCH_QUERY = `
-  query SearchPullRequests($q: String!) {
+  query SearchPullRequests($q: String!, $after: String) {
     rateLimit { cost remaining resetAt }
-    search(query: $q, type: ISSUE, first: 50) {
+    search(query: $q, type: ISSUE, first: 100, after: $after) {
+      pageInfo { hasNextPage endCursor }
       nodes {
         ... on PullRequest { id }
       }

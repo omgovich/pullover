@@ -65,6 +65,8 @@ export type ReviewDecision = 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED
 export type MergeableState = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
 
 export interface PullRequest {
+  provider?: 'github' | 'gitlab'
+  attentionOverride?: { category: Category; reason: string; waitingSince: string | null }
   id: string
   number: number
   title: string
@@ -107,6 +109,7 @@ export type Category =
   | 're-review'
   | 'my-pr-action'
   | 'mentioned'
+  | 'other-action'
   | 'waiting'
   | 'hidden'
 
@@ -117,6 +120,7 @@ export const ATTENTION_CATEGORIES: readonly Category[] = [
   're-review',
   'my-pr-action',
   'mentioned',
+  'other-action',
 ]
 
 /** All visible categories, in display order. `waiting` renders last, collapsed. */
@@ -128,6 +132,7 @@ export const CATEGORY_TITLES: Record<Category, string> = {
   're-review': 'Take another look',
   'my-pr-action': 'Your PRs',
   mentioned: 'Mentions',
+  'other-action': 'Other actions',
   waiting: 'Waiting on others',
   hidden: '',
 }
@@ -183,11 +188,22 @@ export const LAYOUT_OPTIONS: { value: Layout; label: string }[] = [
   { value: 'compact', label: 'Compact' },
 ]
 
+export type Provider = 'github' | 'gitlab'
+
+export interface RepositoryFilter {
+  repositories: string[]
+  watchAllRepositories: boolean
+}
+
 export interface Settings {
+  provider: Provider
+  gitlabUrl: string
   pollIntervalMinutes: number
   repositories: string[]
   /** When true, search every repo the user is involved in and ignore `repositories`. */
   watchAllRepositories: boolean
+  /** Saved selections for the inactive provider. The active one is also in the fields above. */
+  repositoryFilters: Partial<Record<Provider, RepositoryFilter>>
   theme: ThemePreference
   /** Accelerator that opens the popup from anywhere, or null for no shortcut. */
   globalShortcut: string | null
@@ -201,9 +217,12 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  provider: 'github',
+  gitlabUrl: '',
   pollIntervalMinutes: 5,
   repositories: [],
   watchAllRepositories: true,
+  repositoryFilters: {},
   theme: 'system',
   globalShortcut: 'Control+Alt+P',
   layout: 'comfortable',

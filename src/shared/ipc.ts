@@ -7,6 +7,8 @@ export interface InboxSnapshot {
   lastUpdatedAt: string | null
   errorMessage: string | null
   myLogin: string | null
+  /** Changes whenever the active account is reset, including a reconnect to the same provider. */
+  accountVersion?: number
   /** Repositories seen in the fetched pull requests, for the settings picker. */
   knownRepositories: string[]
 }
@@ -29,6 +31,7 @@ export type PrMenuAction =
 export interface PrMenuRequest {
   /** Collapses the snooze options into a single Unsnooze, as the card's pill does. */
   isSnoozed: boolean
+  provider?: 'github' | 'gitlab'
   /** Where to pop the menu, in window coordinates. */
   x: number
   y: number
@@ -62,6 +65,10 @@ export const IPC = {
   addRepository: 'settings:add-repository',
   removeRepository: 'settings:remove-repository',
   startAuth: 'auth:start',
+  cancelAuth: 'auth:cancel',
+  connectGitLab: 'auth:connect-gitlab',
+  switchProvider: 'auth:switch-provider',
+  canUseGitHubDeviceFlow: 'auth:github-device-flow-available',
   deviceCode: 'auth:device-code',
   signOut: 'auth:sign-out',
   hidePopup: 'window:hide-popup',
@@ -90,6 +97,10 @@ export interface RendererApi {
   addRepository: (fullName: string) => Promise<void>
   removeRepository: (fullName: string) => Promise<void>
   startAuth: () => Promise<void>
+  cancelAuth: () => Promise<void>
+  connectGitLab: (serverUrl: string, token: string) => Promise<void>
+  switchProvider: (provider: Settings['provider']) => Promise<void>
+  canUseGitHubDeviceFlow: () => Promise<boolean>
   signOut: () => Promise<void>
   hidePopup: () => Promise<void>
   getUpdate: () => Promise<UpdateState>

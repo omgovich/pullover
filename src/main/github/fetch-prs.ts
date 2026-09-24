@@ -22,11 +22,19 @@ export type GraphQLClient = (query: string, variables: Record<string, unknown>) 
  */
 const DETAIL_BATCH_SIZE = 10
 
+/**
+ * Past GitHub's own ten-second limit with room to spare. Without it a request
+ * that never answers holds the inbox's one refresh pass open forever; a
+ * timeout surfaces as the 500 `isTransientError` retries once.
+ */
+const REQUEST_TIMEOUT_MS = 30_000
+
 export function createGraphQLClient(token: string): GraphQLClient {
   const authed = graphql.defaults({
     headers: { authorization: `token ${token}` },
   })
-  return (query, variables) => authed(query, variables)
+  return (query, variables) =>
+    authed(query, { ...variables, request: { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) } })
 }
 
 /** `rateLimit`, as GraphQL returns it beside the data a query asked for. */
@@ -78,16 +86,25 @@ export interface FetchedPullRequests {
   prs: PullRequest[]
   /** Orgs the OAuth app cannot see; their PRs are omitted rather than failing the fetch. */
   restrictedOrgs: string[]
+  /** Why a successful search may still have omitted older pull requests. */
+  incompleteReasons?: SearchStopReason[]
+}
+
+export type SearchStopReason = 'page-limit' | 'rate-limit' | 'pagination'
+
+interface SearchPage {
+  nodes: Array<{ id?: string } | null>
+  pageInfo?: { hasNextPage: boolean; endCursor: string | null }
 }
 
 /**
- * The nodes in a payload, or null when there is no payload at all. The
+ * The page in a payload, or null when there is no payload at all. The
  * difference decides whether a failed request may be reported as an empty
  * result: "GitHub answered, minus one org" can be, "nothing came back" cannot.
  */
-function searchNodes(data: unknown): Array<{ id?: string } | null> | null {
-  const search = (data as { search?: { nodes?: Array<{ id?: string } | null> } } | null)?.search
-  return search?.nodes ?? null
+function searchPage(data: unknown): SearchPage | null {
+  const search = (data as { search?: Partial<SearchPage> } | null)?.search
+  return search?.nodes ? (search as SearchPage) : null
 }
 
 function detailNodes(data: unknown): Array<PullRequestNode | null> | null {
@@ -119,6 +136,55 @@ async function retryTransient<T>(attempt: () => Promise<T>): Promise<T> {
 }
 
 /**
+ * Pages of 100 read per bucket. GitHub search never returns more than 1,000
+ * results, and every id found costs a share of a details request, so an
+ * inbox is cut at the 200 most recently updated rather than at the ceiling.
+ */
+const MAX_SEARCH_PAGES = 2
+
+/**
+ * Points left in the hour below which no further page is asked for. The
+ * details of what was already found cost far more than a search page does,
+ * so the quota is kept for them rather than for finding more to fetch.
+ */
+const SEARCH_RATE_RESERVE = 500
+
+/**
+ * Walks a search's pages until GitHub says there are no more, the page cap is
+ * reached, or the quota runs low. `found` keeps earlier pages when an org
+ * restriction provides only a partial response.
+ */
+async function searchPages(
+  client: GraphQLClient,
+  q: string,
+  found: string[],
+): Promise<SearchStopReason | null> {
+  let after: string | null = null
+  const seen = new Set<string>()
+
+  for (let page = 0; page < MAX_SEARCH_PAGES; page++) {
+    const cursor = after
+    const data = await retryTransient(() => client(SEARCH_QUERY, { q, after: cursor }))
+    const result = searchPage(data)
+    // An answer without a result set is broken, not empty. Reporting it as
+    // an empty bucket is the one mistake this whole function exists to avoid.
+    if (result === null) throw new Error('GitHub answered the search with no result set')
+    found.push(...idsFromSearch(result.nodes))
+
+    if (!result.pageInfo?.hasNextPage) return null
+    const next = result.pageInfo.endCursor
+    if (next === null || seen.has(next)) return 'pagination'
+    const remaining = (data as RateLimitFields).rateLimit?.remaining
+    if (remaining !== undefined && remaining < SEARCH_RATE_RESERVE) {
+      return 'rate-limit'
+    }
+    seen.add(next)
+    after = next
+  }
+  return 'page-limit'
+}
+
+/**
  * Rounds of "ask again without that org" before giving up on a clean answer.
  * Bounded rather than open-ended because the only thing ending the loop is the
  * wording of someone else's error message: GitHub normally names every
@@ -135,20 +201,17 @@ const MAX_EXCLUSION_ROUNDS = 5
 async function searchBucket(
   client: GraphQLClient,
   bucket: SearchBucket,
-): Promise<{ ids: string[]; restrictedOrgs: string[] }> {
+): Promise<{ ids: string[]; restrictedOrgs: string[]; incompleteReasons: SearchStopReason[] }> {
   const excluded: string[] = []
   let lastRestriction: unknown = null
+  let found: string[] = []
 
   for (let round = 0; round < MAX_EXCLUSION_ROUNDS; round++) {
+    // Each round is a different query, so its cursors start over too.
+    found = []
     try {
-      const data = await retryTransient(() =>
-        client(SEARCH_QUERY, { q: buildSearchQuery(bucket, excluded) }),
-      )
-      const nodes = searchNodes(data)
-      // An answer without a result set is broken, not empty. Reporting it as
-      // an empty bucket is the one mistake this whole function exists to avoid.
-      if (nodes === null) throw new Error('GitHub answered the search with no result set')
-      return { ids: idsFromSearch(nodes), restrictedOrgs: excluded }
+      const reason = await searchPages(client, buildSearchQuery(bucket, excluded), found)
+      return { ids: found, restrictedOrgs: excluded, incompleteReasons: reason ? [reason] : [] }
     } catch (error) {
       const named = restrictedOrganizations(error)
       if (named.length === 0 || !isOnlyRestriction(error)) throw error
@@ -165,9 +228,13 @@ async function searchBucket(
   // alongside the last error rather than dropping the bucket entirely — but
   // only if something did. With no payload there is nothing to stand in for
   // the bucket, and answering "empty" would be a lie the user acts on.
-  const salvaged = searchNodes(graphqlPartialData(lastRestriction))
+  const salvaged = searchPage(graphqlPartialData(lastRestriction))
   if (salvaged === null) throw lastRestriction
-  return { ids: idsFromSearch(salvaged), restrictedOrgs: excluded }
+  return {
+    ids: [...found, ...idsFromSearch(salvaged.nodes)],
+    restrictedOrgs: excluded,
+    incompleteReasons: salvaged.pageInfo?.hasNextPage ? ['pagination'] : [],
+  }
 }
 
 /**
@@ -243,9 +310,11 @@ async function fetchDetails(
  * finished first), so the resulting Map's insertion order is deterministic
  * and independent of response arrival order.
  */
-async function collectIds(
-  client: GraphQLClient,
-): Promise<{ byId: Map<string, Set<SearchBucket>>; restrictedOrgs: string[] }> {
+async function collectIds(client: GraphQLClient): Promise<{
+  byId: Map<string, Set<SearchBucket>>
+  restrictedOrgs: string[]
+  incompleteReasons: SearchStopReason[]
+}> {
   const results = await Promise.all(
     SEARCH_BUCKETS.map(async (bucket) => {
       const found = await searchBucket(client, bucket)
@@ -262,7 +331,42 @@ async function collectIds(
     }
   }
 
-  return { byId, restrictedOrgs: mergeOrgs(...results.map((result) => result.restrictedOrgs)) }
+  return {
+    byId,
+    restrictedOrgs: mergeOrgs(...results.map((result) => result.restrictedOrgs)),
+    incompleteReasons: [...new Set(results.flatMap((result) => result.incompleteReasons))],
+  }
+}
+
+const DETAIL_CONCURRENCY = 6
+
+async function fetchDetailBatches(
+  client: GraphQLClient,
+  batches: string[][],
+): Promise<Awaited<ReturnType<typeof fetchDetails>>[]> {
+  const results: Awaited<ReturnType<typeof fetchDetails>>[] = new Array(batches.length)
+  let available = DETAIL_CONCURRENCY
+  const waiters: Array<() => void> = []
+  const limitedClient: GraphQLClient = async (query, variables) => {
+    if (available > 0) available -= 1
+    else await new Promise<void>((resolve) => waiters.push(resolve))
+    try {
+      return await client(query, variables)
+    } finally {
+      const next = waiters.shift()
+      if (next) next()
+      else available += 1
+    }
+  }
+  let nextIndex = 0
+  const workers = Array.from({ length: Math.min(DETAIL_CONCURRENCY, batches.length) }, async () => {
+    while (nextIndex < batches.length) {
+      const index = nextIndex++
+      results[index] = await fetchDetails(limitedClient, batches[index])
+    }
+  })
+  await Promise.all(workers)
+  return results
 }
 
 export async function fetchPullRequests(
@@ -270,16 +374,15 @@ export async function fetchPullRequests(
   myLogin: string,
 ): Promise<FetchedPullRequests> {
   const metered = meterRateLimit(client)
-  const { byId: bucketsById, restrictedOrgs: searchRestrictions } = await collectIds(metered.client)
+  const {
+    byId: bucketsById,
+    restrictedOrgs: searchRestrictions,
+    incompleteReasons,
+  } = await collectIds(metered.client)
 
-  // The detail batches also run concurrently. `Promise.all` returns results
-  // in the same order as the promises it was given — i.e. the order the
-  // batches were carved out of `bucketsById`'s (already deterministic) key
-  // order — regardless of which batch's request actually resolves first, so
-  // rebuilding `prs` by walking `batches` in order keeps the output stable
-  // even when a later batch answers before an earlier one.
+  // The worker pool preserves batch order even when later requests finish first.
   const batches = chunk([...bucketsById.keys()], DETAIL_BATCH_SIZE)
-  const batchResults = await Promise.all(batches.map((ids) => fetchDetails(metered.client, ids)))
+  const batchResults = await fetchDetailBatches(metered.client, batches)
 
   const prs: PullRequest[] = []
   for (const { nodes } of batchResults) {
@@ -296,5 +399,9 @@ export async function fetchPullRequests(
     searchRestrictions,
     ...batchResults.map((batch) => batch.restrictedOrgs),
   )
-  return { prs, restrictedOrgs }
+  return {
+    prs,
+    restrictedOrgs,
+    ...(incompleteReasons.length > 0 ? { incompleteReasons } : {}),
+  }
 }

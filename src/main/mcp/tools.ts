@@ -25,9 +25,9 @@ function toolError(message: string): CallToolResult {
   return { content: [{ type: 'text', text: message }], isError: true }
 }
 
-const GET_INBOX_TOOL_DESCRIPTION = `Pullover's inbox: the open pull requests waiting on the user, grouped into sections by why they are waiting. Call it when the user asks what needs their attention on GitHub, what to review next, or whether anything is blocked on them.
+const GET_INBOX_TOOL_DESCRIPTION = `Pullover: the open merge requests or pull requests waiting on the user, grouped into sections by why they are waiting. Call it when the user asks what needs their attention on GitLab or GitHub, what to review next, or whether anything is blocked on them.
 
-Each section is longest-waiting first — except "waiting", which has nobody waiting and is ordered by latest activity. Pullover refreshes from GitHub when its last fetch is over a minute old, so the list is current as of lastUpdatedAt. When notice is not null, the list is not the whole answer — signed out, a fetch that failed, a first one still running, or an organization that has not approved Pullover and whose pull requests are therefore missing from an otherwise current list — so relay the notice to the user.
+Each section is longest-waiting first — except "waiting", which has nobody waiting and is ordered by latest activity. Pullover refreshes from the selected provider when its last fetch is over a minute old, so the list is current as of lastUpdatedAt. When notice is not null, the list is not the whole answer — signed out, a fetch that failed, a first one still running, or a restricted GitHub organization whose pull requests are missing from an otherwise current list — so relay the notice to the user.
 
 Categories, in the order the app shows them:
 - needs-review: somebody asked the user for review and they have not reviewed yet.
@@ -35,9 +35,10 @@ Categories, in the order the app shows them:
 - re-review: the user reviewed already and the author pushed new commits or asked again.
 - my-pr-action: the user's own pull request needs them — changes requested, open threads, red CI, merge conflicts, or approved and ready to merge; the reason says which.
 - mentioned: the user was @-mentioned and has not responded since.
+- other-action: another pending GitLab To-Do needs attention; the reason says why.
 - waiting: nothing is waiting on the user — it is on the author or on other reviewers, or it is snoozed; listed only when includeWaiting is true.
 
-Pullover reads GitHub; it never comments, reviews or merges. Act on a pull request with your own GitHub tooling — the \`gh\` CLI, say — at the url given.`
+Pullover reads GitLab or GitHub; it never comments, reviews or merges. Use the URL and the appropriate provider tools if the user asks you to act on a request.`
 
 /** Both snooze tools name a pull request the way everything else does. */
 const identifier = {
@@ -46,7 +47,7 @@ const identifier = {
 }
 
 const LOCAL_NOTE =
-  'This is a note inside Pullover on this Mac, visible to nobody else. GitHub is not touched: nothing is muted, closed or commented on there.'
+  'This is a note inside Pullover on this Mac, visible to nobody else. GitLab and GitHub are not touched: nothing is muted, closed or commented on there.'
 
 export function registerTools(server: McpServer, deps: McpServerDeps): void {
   const { inbox, store } = deps

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearToken, loadToken } from './token-storage'
+import { clearToken, loadToken, saveToken } from './token-storage'
 
 // `vi.mock` factories are hoisted above every import in this file, so their
 // fakes must come from `vi.hoisted` rather than plain top-level `const`s —
@@ -58,7 +58,7 @@ describe('loadToken', () => {
     expect(consoleError).not.toHaveBeenCalled()
   })
 
-  it('logs and clears the file when the Keychain cannot decrypt it, so the next sign-in starts clean', () => {
+  it('keeps the encrypted file when Keychain access is denied, so a later launch can retry', () => {
     readFileSync.mockReturnValue(Buffer.from('corrupt'))
     decryptString.mockImplementation(() => {
       throw new Error('decryption failed')
@@ -66,7 +66,7 @@ describe('loadToken', () => {
 
     expect(loadToken()).toBeNull()
     expect(consoleError).toHaveBeenCalledTimes(1)
-    expect(rmSync).toHaveBeenCalledTimes(1)
+    expect(rmSync).not.toHaveBeenCalled()
   })
 })
 
@@ -74,5 +74,19 @@ describe('clearToken', () => {
   it('removes the token file without throwing when it does not exist', () => {
     expect(() => clearToken()).not.toThrow()
     expect(rmSync).toHaveBeenCalledWith(expect.stringContaining('token.bin'), { force: true })
+  })
+
+  it('keeps GitLab credentials in a separate encrypted file', () => {
+    const encrypted = Buffer.from('encrypted')
+    encryptString.mockReturnValue(encrypted)
+    saveToken('gitlab-token', 'gitlab')
+    expect(writeFileSync).toHaveBeenCalledWith(
+      expect.stringContaining('gitlab-token.bin'),
+      encrypted,
+    )
+    clearToken('gitlab')
+    expect(rmSync).toHaveBeenCalledWith(expect.stringContaining('gitlab-token.bin'), {
+      force: true,
+    })
   })
 })

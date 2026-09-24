@@ -382,6 +382,77 @@ describe('fetchPullRequests', () => {
     await expect(result).resolves.toEqual({ prs: [], restrictedOrgs: [] })
   })
 
+  it('limits concurrent detail requests while preserving every result', async () => {
+    const ids = Array.from({ length: 80 }, (_, i) => `PR_${i}`)
+    const pending: Array<{ ids: string[]; resolve: (value: unknown) => void }> = []
+    let active = 0
+    let peak = 0
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === SEARCH_QUERY) {
+        const q = variables.q as string
+        return { search: { nodes: q.includes('author:@me') ? ids.map((id) => ({ id })) : [] } }
+      }
+      if (query !== DETAILS_QUERY) throw new Error(`unexpected query: ${query}`)
+      active += 1
+      peak = Math.max(peak, active)
+      const batch = variables.ids as string[]
+      const response = deferred<unknown>()
+      pending.push({ ids: batch, resolve: response.resolve })
+      try {
+        return await response.promise
+      } finally {
+        active -= 1
+      }
+    })
+
+    const result = fetchPullRequests(client, 'vlad')
+    for (let released = 0; released < 8; released++) {
+      await vi.waitFor(() => expect(pending.length).toBeGreaterThan(released))
+      expect(active).toBeLessThanOrEqual(6)
+      const request = pending[released]!
+      request.resolve({ nodes: request.ids.map((id) => detailNode(id)) })
+    }
+
+    expect((await result).prs.map((pr) => pr.id)).toEqual(ids)
+    expect(peak).toBe(6)
+  })
+
+  it('keeps the same request limit when failed batches split for a retry', async () => {
+    const ids = Array.from({ length: 70 }, (_, i) => `PR_${i}`)
+    const pending: Array<{ ids: string[]; resolve: (value: unknown) => void }> = []
+    let active = 0
+    let peak = 0
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === SEARCH_QUERY) {
+        const q = variables.q as string
+        return { search: { nodes: q.includes('author:@me') ? ids.map((id) => ({ id })) : [] } }
+      }
+      if (query !== DETAILS_QUERY) throw new Error(`unexpected query: ${query}`)
+      active += 1
+      peak = Math.max(peak, active)
+      const batch = variables.ids as string[]
+      try {
+        if (batch.length === 10) throw httpError(502)
+        const response = deferred<unknown>()
+        pending.push({ ids: batch, resolve: response.resolve })
+        return await response.promise
+      } finally {
+        active -= 1
+      }
+    })
+
+    const result = fetchPullRequests(client, 'vlad')
+    for (let released = 0; released < 14; released++) {
+      await vi.waitFor(() => expect(pending.length).toBeGreaterThan(released))
+      expect(active).toBeLessThanOrEqual(6)
+      const request = pending[released]!
+      request.resolve({ nodes: request.ids.map((id) => detailNode(id)) })
+    }
+
+    expect((await result).prs.map((pr) => pr.id)).toEqual(ids)
+    expect(peak).toBe(6)
+  })
+
   it('rebuilds the result in the order ids were collected, not the order detail batches resolve', async () => {
     // Two batches of ids collected in a fixed order; resolve the SECOND
     // batch first to prove the output order follows collection order, not
@@ -550,6 +621,40 @@ describe('fetchPullRequests', () => {
     expect(result.restrictedOrgs.length).toBeGreaterThan(0)
   })
 
+  it('warns when a salvaged restricted search has more pages', async () => {
+    let round = 0
+    const client = vi.fn(async (query: string) => {
+      if (query === SEARCH_QUERY) {
+        round += 1
+        throw new GraphqlResponseError(
+          { method: 'POST', url: 'https://api.github.com/graphql' },
+          {},
+          {
+            data: {
+              search: {
+                nodes: [{ id: 'PR_1' }],
+                pageInfo: { hasNextPage: true, endCursor: 'next-page' },
+              },
+            },
+            errors: [
+              {
+                message: `the \`org-${round}\` organization has enabled OAuth App access restrictions`,
+              },
+            ],
+          } as never,
+        )
+      }
+      if (query === DETAILS_QUERY) return { nodes: [detailNode('PR_1')] }
+      throw new Error(`unexpected query: ${query}`)
+    })
+
+    const result = await fetchPullRequests(client, 'vlad')
+
+    expect(result.prs.map((pr) => pr.id)).toEqual(['PR_1'])
+    expect(result.restrictedOrgs.length).toBeGreaterThan(0)
+    expect(result.incompleteReasons).toEqual(['pagination'])
+  })
+
   it('recovers a restriction that only shows up on a detail batch second try', async () => {
     // Eleven ids split into ten and one. The singleton fails transiently, and
     // the retry is the request that hits the restriction — the one path where
@@ -620,5 +725,100 @@ describe('fetchPullRequests', () => {
     const result = await fetchPullRequests(client, 'vlad')
     expect(result.prs.map((pr) => pr.id)).toEqual(['PR_1'])
     expect(result.restrictedOrgs).toEqual(['status-im'])
+  })
+})
+
+describe('fetchPullRequests search pagination', () => {
+  const MAX_SEARCH_PAGES = 2
+
+  /**
+   * Serves `author:@me` in pages of `pageSize`, keyed by the cursor it handed
+   * out last, and every other bucket empty. `remaining` is what each search
+   * reports is left of the hourly quota.
+   */
+  function pagedClient(ids: string[], pageSize: number, remaining: () => number = () => 5000) {
+    return vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === SEARCH_QUERY) {
+        const rateLimit = { cost: 1, remaining: remaining(), resetAt: '2026-08-10T13:00:00Z' }
+        if (!(variables.q as string).includes('author:@me')) {
+          return {
+            rateLimit,
+            search: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
+          }
+        }
+        const start = variables.after === null ? 0 : Number(variables.after)
+        const end = start + pageSize
+        return {
+          rateLimit,
+          search: {
+            pageInfo: { hasNextPage: end < ids.length, endCursor: String(end) },
+            nodes: ids.slice(start, end).map((id) => ({ id })),
+          },
+        }
+      }
+      if (query === DETAILS_QUERY) {
+        return { nodes: (variables.ids as string[]).map((id) => detailNode(id)) }
+      }
+      throw new Error(`unexpected query: ${query}`)
+    })
+  }
+
+  function authorSearches(client: ReturnType<typeof pagedClient>) {
+    return client.mock.calls.filter(
+      ([query, variables]) =>
+        query === SEARCH_QUERY && (variables.q as string).includes('author:@me'),
+    )
+  }
+
+  it('follows the cursor past the first page until the bucket is exhausted', async () => {
+    const ids = Array.from({ length: 130 }, (_, i) => `PR_${i}`)
+    const client = pagedClient(ids, 100)
+
+    const { prs } = await fetchPullRequests(client, 'vlad')
+
+    expect(prs.map((pr) => pr.id)).toEqual(ids)
+    expect(authorSearches(client).map(([, variables]) => variables.after)).toEqual([null, '100'])
+  })
+
+  it('stops after a bounded number of pages however many results GitHub claims', async () => {
+    const ids = Array.from({ length: 5000 }, (_, i) => `PR_${i}`)
+    const client = pagedClient(ids, 100)
+
+    const { prs, incompleteReasons } = await fetchPullRequests(client, 'vlad')
+
+    expect(authorSearches(client)).toHaveLength(MAX_SEARCH_PAGES)
+    expect(prs).toHaveLength(MAX_SEARCH_PAGES * 100)
+    expect(incompleteReasons).toEqual(['page-limit'])
+  })
+
+  it('stops paging while the rate limit still leaves room for the details it needs', async () => {
+    const ids = Array.from({ length: 500 }, (_, i) => `PR_${i}`)
+    const client = pagedClient(ids, 100, () => 400)
+
+    const { prs, incompleteReasons } = await fetchPullRequests(client, 'vlad')
+
+    expect(authorSearches(client)).toHaveLength(1)
+    expect(prs).toHaveLength(100)
+    expect(incompleteReasons).toEqual(['rate-limit'])
+  })
+
+  it('does not loop when GitHub hands back the same cursor twice', async () => {
+    const client = vi.fn(async (query: string, variables: Record<string, unknown>) => {
+      if (query === SEARCH_QUERY) {
+        return {
+          search: {
+            pageInfo: { hasNextPage: true, endCursor: 'same' },
+            nodes: [{ id: `PR_${String(variables.after)}` }],
+          },
+        }
+      }
+      return { nodes: (variables.ids as string[]).map((id) => detailNode(id)) }
+    })
+
+    const { incompleteReasons } = await fetchPullRequests(client, 'vlad')
+
+    const searches = client.mock.calls.filter(([query]) => query === SEARCH_QUERY)
+    expect(searches).toHaveLength(8)
+    expect(incompleteReasons).toEqual(['pagination'])
   })
 })

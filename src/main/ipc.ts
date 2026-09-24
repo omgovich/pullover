@@ -25,6 +25,10 @@ export interface IpcDeps {
   store: AppStore
   getWindow: () => BrowserWindow | null
   signIn: (onDeviceCode: (payload: DeviceCodePayload) => void) => Promise<void>
+  cancelSignIn: () => void
+  connectGitLab: (serverUrl: string, token: string) => Promise<void>
+  switchProvider: (provider: Settings['provider']) => void
+  canUseGitHubDeviceFlow: () => boolean
   signOut: () => void
   restartPolling: () => void
   getUpdate: () => UpdateState
@@ -79,16 +83,18 @@ export function registerIpc(deps: IpcDeps): void {
   ipcMain.handle(IPC.showPrMenu, (_event, request: PrMenuRequest) => {
     return new Promise<PrMenuAction | null>((resolve) => {
       let chosen: PrMenuAction | null = null
-      const template: MenuItemConstructorOptions[] = prMenuEntries(request.isSnoozed).map(
-        (entry) =>
-          entry.type === 'separator'
-            ? { type: 'separator' }
-            : {
-                label: entry.label,
-                click: () => {
-                  chosen = entry.action
-                },
+      const template: MenuItemConstructorOptions[] = prMenuEntries(
+        request.isSnoozed,
+        request.provider,
+      ).map((entry) =>
+        entry.type === 'separator'
+          ? { type: 'separator' }
+          : {
+              label: entry.label,
+              click: () => {
+                chosen = entry.action
               },
+            },
       )
 
       Menu.buildFromTemplate(template).popup({
@@ -120,6 +126,7 @@ export function registerIpc(deps: IpcDeps): void {
   ipcMain.handle(IPC.getSettings, () => deps.store.getSettings())
 
   ipcMain.handle(IPC.setSettings, async (_event, patch: Partial<Settings>) => {
+    if (patch.provider !== undefined) throw new Error('Use account switching to change provider')
     deps.store.updateSettings(patch)
     if (patch.pollIntervalMinutes !== undefined) deps.restartPolling()
     if (patch.watchAllRepositories !== undefined) deps.inbox.reclassify()
@@ -146,11 +153,29 @@ export function registerIpc(deps: IpcDeps): void {
     pushSettings()
   })
 
-  ipcMain.handle(IPC.startAuth, () =>
-    deps.signIn((payload) => {
+  ipcMain.handle(IPC.startAuth, async () => {
+    await deps.signIn((payload) => {
       deps.getWindow()?.webContents.send(IPC.deviceCode, payload)
-    }),
-  )
+    })
+    pushSettings()
+  })
+
+  ipcMain.handle(IPC.cancelAuth, () => deps.cancelSignIn())
+
+  ipcMain.handle(IPC.canUseGitHubDeviceFlow, () => deps.canUseGitHubDeviceFlow())
+
+  ipcMain.handle(IPC.connectGitLab, async (_event, serverUrl: string, token: string) => {
+    if (typeof serverUrl !== 'string' || typeof token !== 'string') {
+      throw new Error('GitLab URL and token are required')
+    }
+    await deps.connectGitLab(serverUrl, token)
+    pushSettings()
+  })
+
+  ipcMain.handle(IPC.switchProvider, (_event, provider: Settings['provider']) => {
+    deps.switchProvider(provider)
+    pushSettings()
+  })
 
   ipcMain.handle(IPC.signOut, () => deps.signOut())
 

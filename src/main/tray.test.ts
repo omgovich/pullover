@@ -18,6 +18,11 @@ describe('formatBadgeTitle', () => {
   it('reads "<n> PRs" for anything else', () => {
     expect(formatBadgeTitle(16)).toBe('16 PRs')
   })
+
+  it('uses MR terminology for GitLab', () => {
+    expect(formatBadgeTitle(1, 'gitlab')).toBe('1 MR')
+    expect(formatBadgeTitle(16, 'gitlab')).toBe('16 MRs')
+  })
 })
 
 describe('formatRefreshItem', () => {

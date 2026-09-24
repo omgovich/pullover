@@ -40,6 +40,29 @@ describe('settings', () => {
     expect(store.getSettings().watchAllRepositories).toBe(true)
   })
 
+  it('remembers repository filters independently for GitLab and GitHub', () => {
+    store.switchProvider('gitlab')
+    store.updateSettings({ repositories: ['viewst/app'], watchAllRepositories: false })
+
+    store.switchProvider('github')
+    expect(store.getSettings()).toMatchObject({
+      provider: 'github',
+      repositories: [],
+      watchAllRepositories: true,
+    })
+
+    store.updateSettings({ repositories: ['acme/web'], watchAllRepositories: false })
+    store.switchProvider('gitlab')
+    expect(store.getSettings()).toMatchObject({
+      provider: 'gitlab',
+      repositories: ['viewst/app'],
+      watchAllRepositories: false,
+    })
+
+    store.switchProvider('github')
+    expect(store.getSettings().repositories).toEqual(['acme/web'])
+  })
+
   it('defaults to following the system theme', () => {
     expect(store.getSettings().theme).toBe('system')
   })
@@ -81,6 +104,7 @@ describe('settings', () => {
   it('preserves an explicit false rather than resurrecting it to true', () => {
     const backend = new MemoryStore()
     backend.set('settings', {
+      ...DEFAULT_SETTINGS,
       pollIntervalMinutes: 5,
       repositories: ['acme/web'],
       watchAllRepositories: false,
@@ -101,6 +125,7 @@ describe('settings', () => {
     } as unknown as PersistedState['settings'])
     store = new AppStore(backend)
     expect(store.getSettings()).toEqual({
+      ...DEFAULT_SETTINGS,
       pollIntervalMinutes: 42,
       repositories: ['acme/web', 'acme/api'],
       watchAllRepositories: true,
@@ -179,24 +204,25 @@ describe('repositories', () => {
     expect(store.getSettings().repositories).toEqual(['acme/web'])
   })
 
-  it('rejects a value that is not owner/repo', () => {
-    expect(() => store.addRepository('acme')).toThrow(/owner\/repo/)
+  it('rejects a value with no namespace', () => {
+    expect(() => store.addRepository('acme')).toThrow(/namespace\/repo/)
   })
 
-  it('rejects a value with more than one slash', () => {
-    expect(() => store.addRepository('acme/web/extra')).toThrow(/owner\/repo/)
+  it('accepts a repository in a nested GitLab group', () => {
+    store.addRepository('acme/team/web')
+    expect(store.getSettings().repositories).toEqual(['acme/team/web'])
   })
 
   it('rejects a value with a trailing slash', () => {
-    expect(() => store.addRepository('acme/')).toThrow(/owner\/repo/)
+    expect(() => store.addRepository('acme/')).toThrow(/namespace\/repo/)
   })
 
   it('rejects a value with a leading slash', () => {
-    expect(() => store.addRepository('/web')).toThrow(/owner\/repo/)
+    expect(() => store.addRepository('/web')).toThrow(/namespace\/repo/)
   })
 
   it('rejects an empty string', () => {
-    expect(() => store.addRepository('')).toThrow(/owner\/repo/)
+    expect(() => store.addRepository('')).toThrow(/namespace\/repo/)
   })
 
   it('accepts owner/repo names with dots, hyphens and underscores', () => {

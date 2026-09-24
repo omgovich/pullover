@@ -23,6 +23,22 @@ body {
   background: transparent;
 }
 
+.pv-auth-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--rs-unit-x2) var(--rs-unit-x3);
+  border: 1px solid var(--rs-color-border-neutral);
+  border-radius: var(--rs-radius-small);
+  background: var(--rs-color-background-elevation-overlay);
+  color: var(--rs-color-foreground-neutral);
+  font: inherit;
+  font-size: var(--rs-font-size-body-2);
+}
+
+.pv-auth-input:focus {
+  outline: 2px solid var(--rs-color-border-primary);
+}
+
 /* Scroll area */
 
 /* `ScrollArea` (App.tsx) has no `grow` prop, so filling the rest of the

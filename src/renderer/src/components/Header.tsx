@@ -11,6 +11,7 @@ interface Props {
   onRefresh: () => void
   onOpenSettings: () => void
   onInstallUpdate: () => void
+  noGitLabMrs?: boolean
 }
 
 /**
@@ -47,6 +48,7 @@ export default function Header({
   onRefresh,
   onOpenSettings,
   onInstallUpdate,
+  noGitLabMrs = false,
 }: Props): React.JSX.Element {
   const updateReady = update.status === 'ready' && update.version !== null
   const updateLabel = `Restart to update to ${update.version}`
@@ -89,7 +91,13 @@ export default function Header({
         )}
         <View direction="column" grow minWidth={0}>
           <Text as="span" variant="body-2" weight="semibold" color="neutral" maxLines={1}>
-            {snapshot.attentionCount > 0 ? 'waiting on you' : 'All clear'}
+            {snapshot.status === 'ready' && snapshot.errorMessage !== null
+              ? 'Partial inbox'
+              : snapshot.attentionCount > 0
+                ? 'waiting on you'
+                : noGitLabMrs
+                  ? 'No MRs found'
+                  : 'All clear'}
           </Text>
           <Text as="span" variant="caption-1" color="neutral-faded" maxLines={1}>
             {statusText(snapshot, now)}

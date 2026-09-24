@@ -26,7 +26,7 @@ export interface AgentPullRequestSummary {
   ci: CiStatus
   reviewDecision: ReviewDecision
   mergeable: MergeableState
-  size: { additions: number; deletions: number }
+  size: { additions: number; deletions: number } | null
   updatedAt: string
 }
 
@@ -64,7 +64,7 @@ export function describePullRequest(item: ClassifiedPullRequest): AgentPullReque
     ci: pr.ciStatus,
     reviewDecision: pr.reviewDecision,
     mergeable: pr.mergeable,
-    size: { additions: pr.additions, deletions: pr.deletions },
+    size: pr.provider === 'gitlab' ? null : { additions: pr.additions, deletions: pr.deletions },
     updatedAt: pr.updatedAt,
   }
 }
@@ -72,7 +72,7 @@ export function describePullRequest(item: ClassifiedPullRequest): AgentPullReque
 function noticeFor(snapshot: InboxSnapshot): string | null {
   switch (snapshot.status) {
     case 'signed-out':
-      return 'Pullover is signed out. Sign in from its menu-bar window to see pull requests.'
+      return 'Pullover is signed out. Sign in from its menu-bar window to see requests.'
     case 'error':
       return snapshot.errorMessage
     case 'loading':
@@ -80,9 +80,7 @@ function noticeFor(snapshot: InboxSnapshot): string | null {
         ? 'The first fetch is still running; there is nothing to show yet.'
         : 'A refresh is in progress; this is the last completed result.'
     case 'ready':
-      // Usually nothing to say. A restricted org is the exception: the fetch
-      // succeeded, so the list is real, but a whole organization is missing
-      // from it — and an agent that isn't told reads the gap as "no PRs".
+      // A successful fetch may still be partial; agents need the warning too.
       return snapshot.errorMessage
   }
 }

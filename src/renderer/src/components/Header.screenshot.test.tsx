@@ -20,7 +20,11 @@ function snapshot(overrides: Partial<InboxSnapshot> = {}): InboxSnapshot {
 
 const NO_UPDATE: UpdateState = { status: 'idle', version: null }
 
-function header(snap: InboxSnapshot, update: UpdateState = NO_UPDATE): React.JSX.Element {
+function header(
+  snap: InboxSnapshot,
+  update: UpdateState = NO_UPDATE,
+  noGitLabMrs = false,
+): React.JSX.Element {
   return (
     <Header
       snapshot={snap}
@@ -29,6 +33,7 @@ function header(snap: InboxSnapshot, update: UpdateState = NO_UPDATE): React.JSX
       onRefresh={noop}
       onOpenSettings={noop}
       onInstallUpdate={noop}
+      noGitLabMrs={noGitLabMrs}
     />
   )
 }
@@ -37,6 +42,20 @@ visualCase('default', header(snapshot()))
 
 // No badge at all, not a badge reading zero.
 visualCase('inbox-zero', header(snapshot({ attentionCount: 0 })))
+visualCase('no-gitlab-mrs', header(snapshot({ attentionCount: 0 }), NO_UPDATE, true))
+visualCase(
+  'partial-gitlab-inbox',
+  header(snapshot({ errorMessage: 'Some MRs may be missing' }), NO_UPDATE, true),
+)
+visualCase(
+  'partial-inbox',
+  header(
+    snapshot({
+      attentionCount: 0,
+      errorMessage: 'GitHub search capped; older PRs may be missing',
+    }),
+  ),
+)
 
 // `statusText` folds the error and the staleness into one line, so the user
 // can still tell how old the list on screen is.

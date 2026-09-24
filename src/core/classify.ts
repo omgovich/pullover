@@ -185,14 +185,15 @@ export function classify(
   pr: PullRequest,
   ctx: ClassifyContext,
 ): Omit<ClassifiedPullRequest, 'stack'> {
-  if (pr.isDraft) {
+  if (pr.isDraft && (!pr.attentionOverride || pr.attentionOverride.category === 'waiting')) {
     return { pr, category: 'hidden', reason: '', waitingSince: null, isSnoozed: false }
   }
 
   const verdict =
-    pr.authorLogin === ctx.myLogin
+    pr.attentionOverride ??
+    (pr.authorLogin === ctx.myLogin
       ? classifyOwnPr(pr, ctx.myLogin)
-      : classifyReviewPr(pr, ctx.myLogin)
+      : classifyReviewPr(pr, ctx.myLogin))
 
   if (verdict.category === 'hidden') {
     return { pr, ...verdict, isSnoozed: false }

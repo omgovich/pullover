@@ -1,6 +1,7 @@
 import {
   DEFAULT_SETTINGS,
   LAYOUT_OPTIONS,
+  type Provider,
   type Settings,
   SHORTCUT_OPTIONS,
   type Snooze,
@@ -18,7 +19,7 @@ export interface KeyValueStore {
   set<K extends keyof PersistedState>(key: K, value: PersistedState[K]): void
 }
 
-const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/
+const REPO_PATTERN = /^[\w.-]+(?:\/[\w.-]+)+$/
 
 export class AppStore {
   constructor(private readonly backend: KeyValueStore) {}
@@ -52,10 +53,29 @@ export class AppStore {
     this.backend.set('settings', { ...this.getSettings(), ...patch })
   }
 
+  switchProvider(provider: Provider): void {
+    const current = this.getSettings()
+    if (current.provider === provider) return
+    const repositoryFilters = {
+      ...current.repositoryFilters,
+      [current.provider]: {
+        repositories: [...current.repositories],
+        watchAllRepositories: current.watchAllRepositories,
+      },
+    }
+    const target = repositoryFilters[provider] ?? { repositories: [], watchAllRepositories: true }
+    this.updateSettings({
+      provider,
+      repositoryFilters,
+      repositories: [...target.repositories],
+      watchAllRepositories: target.watchAllRepositories,
+    })
+  }
+
   addRepository(fullName: string): void {
     const normalised = fullName.trim().toLowerCase()
     if (!REPO_PATTERN.test(normalised)) {
-      throw new Error(`Repository needs to look like owner/repo — got "${fullName}"`)
+      throw new Error(`Repository needs to look like namespace/repo — got "${fullName}"`)
     }
     const current = this.getSettings().repositories
     if (current.includes(normalised)) return

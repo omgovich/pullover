@@ -24,16 +24,15 @@ export function chunk<T>(items: T[], size: number): T[][] {
  *
  * Archived repositories are excluded: they are read-only, so nothing there is
  * ever anyone's move, and filtering them out server-side also keeps them from
- * eating slots in the 50-result cap and from reaching the settings picker.
+ * eating slots in the page cap and from reaching the settings picker.
  *
  * `excludeOrgs` drops organizations that have not approved the OAuth app: GitHub
  * fails the whole search rather than omitting them, so asking again without
  * them is the only way to see everything else.
  *
- * Sorted by most-recently-updated: `SEARCH_QUERY` fetches only the first 50
- * results with no pagination, so this ordering makes the truncation
- * predictable (freshest activity survives) when an unfiltered search exceeds
- * that limit.
+ * Sorted by most-recently-updated: `fetchPullRequests` reads a bounded number
+ * of pages, so this ordering makes the truncation predictable (freshest
+ * activity survives) when an unfiltered search exceeds that limit.
  */
 export function buildSearchQuery(bucket: SearchBucket, excludeOrgs: string[] = []): string {
   return [

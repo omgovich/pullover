@@ -112,7 +112,8 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
                 color="neutral-faded"
                 attributes={attributes}
               >
-                #{pr.number}
+                {pr.provider === 'gitlab' ? '!' : '#'}
+                {pr.number}
               </Text>
             )}
           </Tooltip>

@@ -3,18 +3,26 @@ import { formatWait } from '@core/format'
 import { collectRepositories, filterByRepositories } from '@core/repo-filter'
 import { computeStackPositions } from '@core/stack'
 import type { InboxSnapshot } from '@shared/ipc'
-import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
+import type { ClassifiedPullRequest, Provider, PullRequest } from '@shared/types'
 import { isAuthError } from './github/auth-error'
 import { describeError } from './github/error-message'
-import { fetchPullRequests, fetchViewerLogin, type GraphQLClient } from './github/fetch-prs'
+import {
+  fetchPullRequests,
+  fetchViewerLogin,
+  type GraphQLClient,
+  type SearchStopReason,
+} from './github/fetch-prs'
 import { formatRestrictedOrgs } from './github/org-restriction'
 import { rateLimitResetAt } from './github/rate-limit'
+import { type GitLabClient, GitLabHttpError } from './gitlab/client'
+import { fetchGitLabMergeRequests, fetchGitLabViewer } from './gitlab/fetch-mrs'
 import type { AppStore } from './store'
 
 export interface InboxDeps {
   store: AppStore
   /** Returns null while the user is signed out. */
   getClient: () => GraphQLClient | null
+  getGitLabClient?: () => GitLabClient | null
   onChange: (snapshot: InboxSnapshot) => void
   /**
    * Called from the refresh catch block when the failure looks like a dead
@@ -22,10 +30,23 @@ export interface InboxDeps {
    * touches token storage itself — it only knows `getClient` — so it hands
    * the decision of what "sign out" means back to the caller.
    */
-  onAuthError?: () => void
+  onAuthError?: (failed: FailedAccount) => void
   now?: () => string
   fetchPrs?: typeof fetchPullRequests
   fetchLogin?: typeof fetchViewerLogin
+}
+
+/** The account a dead-token error came from, so the caller can tell whether it is still active. */
+export interface FailedAccount {
+  provider: Provider
+  client: GraphQLClient | GitLabClient
+}
+
+function searchWarning(reasons: SearchStopReason[]): string | null {
+  if (reasons.includes('rate-limit')) return 'GitHub quota low; some PRs may be missing'
+  if (reasons.includes('page-limit')) return 'GitHub search capped; older PRs may be missing'
+  if (reasons.includes('pagination')) return 'GitHub search interrupted; some PRs may be missing'
+  return null
 }
 
 export class Inbox {
@@ -36,11 +57,14 @@ export class Inbox {
     lastUpdatedAt: null,
     errorMessage: null,
     myLogin: null,
+    accountVersion: 0,
     knownRepositories: [],
   }
 
   private prs: PullRequest[] = []
   private myLogin: string | null = null
+  /** Invalidates results from a refresh started for a previous account. */
+  private generation = 0
   private timer: ReturnType<typeof setInterval> | null = null
   /** The pass currently running, if any. */
   private inFlightRefresh: Promise<void> | null = null
@@ -65,6 +89,28 @@ export class Inbox {
 
   getSnapshot(): InboxSnapshot {
     return this.snapshot
+  }
+
+  /** Clears the previous account immediately, even while its fetch is in flight. */
+  reset(connected: boolean): void {
+    this.generation += 1
+    // Forgotten rather than awaited: a pass for the previous account that
+    // never settles would otherwise hold every pass for the new one behind it.
+    this.inFlightRefresh = null
+    this.queuedRefresh = null
+    this.prs = []
+    this.myLogin = null
+    this.rateLimitedUntil = null
+    this.emit({
+      status: connected ? 'loading' : 'signed-out',
+      items: [],
+      attentionCount: 0,
+      lastUpdatedAt: null,
+      errorMessage: null,
+      myLogin: null,
+      accountVersion: this.generation,
+      knownRepositories: [],
+    })
   }
 
   private emit(patch: Partial<InboxSnapshot>): void {
@@ -142,16 +188,16 @@ export class Inbox {
    * one follow-up (see queuedRefresh).
    */
   async refresh(): Promise<void> {
-    if (this.inFlightRefresh === null) {
-      this.inFlightRefresh = this.runPass()
-      return this.inFlightRefresh
-    }
+    if (this.inFlightRefresh === null) return this.runPass()
 
-    this.queuedRefresh ??= this.inFlightRefresh
-      // A failed pass must not strand the callers queued behind it — still
-      // run the follow-up pass they asked for.
-      .catch(() => undefined)
-      .then(() => this.startQueuedPass())
+    if (this.queuedRefresh === null) {
+      const queued: Promise<void> = this.inFlightRefresh
+        // A failed pass must not strand the callers queued behind it — still
+        // run the follow-up pass they asked for.
+        .catch(() => undefined)
+        .then(() => (this.queuedRefresh === queued ? this.startQueuedPass() : undefined))
+      this.queuedRefresh = queued
+    }
 
     return this.queuedRefresh
   }
@@ -170,20 +216,22 @@ export class Inbox {
 
   private startQueuedPass(): Promise<void> {
     this.queuedRefresh = null
-    this.inFlightRefresh = this.runPass()
-    return this.inFlightRefresh
+    return this.runPass()
   }
 
-  private async runPass(): Promise<void> {
-    try {
-      await this.doRefresh()
-    } finally {
-      this.inFlightRefresh = null
-    }
+  private runPass(): Promise<void> {
+    const pass: Promise<void> = this.doRefresh().finally(() => {
+      if (this.inFlightRefresh === pass) this.inFlightRefresh = null
+    })
+    this.inFlightRefresh = pass
+    return pass
   }
 
   private async doRefresh(): Promise<void> {
-    const client = this.deps.getClient()
+    const generation = this.generation
+    const provider = this.deps.store.getSettings().provider
+    const gitlab = provider === 'gitlab'
+    const client = gitlab ? (this.deps.getGitLabClient?.() ?? null) : this.deps.getClient()
     if (client === null) {
       // Sign-out: drop the cached identity and in-memory PRs so a
       // subsequent sign-in (possibly as a different account) starts clean
@@ -217,12 +265,24 @@ export class Inbox {
     this.emit({ status: 'loading', errorMessage: null })
 
     try {
-      this.myLogin ??= await this.fetchLogin(client)
-      const myLogin = this.myLogin
+      const viewer = gitlab ? await fetchGitLabViewer(client as GitLabClient) : null
+      if (generation !== this.generation) return
+      const myLogin =
+        viewer?.username ?? this.myLogin ?? (await this.fetchLogin(client as GraphQLClient))
+      if (generation !== this.generation) return
+      this.myLogin = myLogin
       // Always fetch unfiltered: the picker's options come from what shows
       // up in the inbox, so the search itself must never be narrowed by the
       // repository selection.
-      const { prs, restrictedOrgs } = await this.fetchPrs(client, myLogin)
+      const { prs, restrictedOrgs, incompleteReasons } =
+        viewer !== null
+          ? {
+              prs: await fetchGitLabMergeRequests(client as GitLabClient, viewer),
+              restrictedOrgs: [],
+              incompleteReasons: [],
+            }
+          : await this.fetchPrs(client as GraphQLClient, myLogin)
+      if (generation !== this.generation) return
       this.prs = prs
 
       const settings = this.deps.store.getSettings()
@@ -241,31 +301,46 @@ export class Inbox {
       )
 
       this.rateLimitedUntil = null
+      const warnings = [
+        searchWarning(incompleteReasons ?? []),
+        formatRestrictedOrgs(restrictedOrgs),
+      ].filter((warning): warning is string => warning !== null)
       this.emit({
         status: 'ready',
         items,
         attentionCount: countAttention(items),
         lastUpdatedAt: now,
-        errorMessage: formatRestrictedOrgs(restrictedOrgs),
+        errorMessage: warnings.length > 0 ? warnings.join(' · ') : null,
         myLogin: this.myLogin,
         knownRepositories: collectRepositories(this.prs),
       })
     } catch (error) {
-      const resetAt = rateLimitResetAt(error, this.now())
+      if (generation !== this.generation) return
+      const resetAt = gitlab
+        ? error instanceof GitLabHttpError && error.status === 429
+          ? (error.retryAt ?? new Date(Date.parse(this.now()) + 60_000).toISOString())
+          : null
+        : rateLimitResetAt(error, this.now())
       this.rateLimitedUntil = resetAt
       // Keep the last good list on screen; the header shows the staleness.
       this.emit({
         status: 'error',
         errorMessage:
-          resetAt === null
-            ? describeError(error)
-            : `GitHub's rate limit is reached — try again in ${formatWait(resetAt, this.now())}`,
+          resetAt !== null
+            ? gitlab
+              ? `GitLab rate limit reached — try again in ${formatWait(resetAt, this.now())}`
+              : `GitHub's rate limit is reached — try again in ${formatWait(resetAt, this.now())}`
+            : gitlab && !(error instanceof GitLabHttpError)
+              ? "Couldn't reach GitLab"
+              : describeError(error),
       })
       // A dead token fails every refresh the same way forever, so recognise
       // it specifically and hand off to whatever "sign out" means to the
       // caller instead of leaving the user staring at a permanently stale
       // list with a red line in the header.
-      if (isAuthError(error)) this.deps.onAuthError?.()
+      if (gitlab ? error instanceof GitLabHttpError && error.status === 401 : isAuthError(error)) {
+        this.deps.onAuthError?.({ provider, client })
+      }
     }
   }
 

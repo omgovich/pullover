@@ -27,6 +27,20 @@ function fetched(prs: PullRequest[]): FetchedPullRequests {
   return { prs, restrictedOrgs: [] }
 }
 
+function deferred<T>(): {
+  promise: Promise<T>
+  resolve: (value: T) => void
+  reject: (error: unknown) => void
+} {
+  let resolve!: (value: T) => void
+  let reject!: (error: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
 const NOW = '2026-08-10T12:00:00Z'
 const CLIENT = (async () => ({})) as never
 
@@ -179,6 +193,27 @@ describe('Inbox.refresh', () => {
     expect(snapshot.status).toBe('ready')
     expect(snapshot.items.map((item) => item.pr.id)).toEqual(['PR_1'])
     expect(snapshot.errorMessage).toBe("status-im hasn't approved Pullover")
+  })
+
+  it.each([
+    ['page-limit', 'GitHub search capped; older PRs may be missing'],
+    ['rate-limit', 'GitHub quota low; some PRs may be missing'],
+    ['pagination', 'GitHub search interrupted; some PRs may be missing'],
+  ] as const)('keeps the inbox ready and reports %s', async (reason, warning) => {
+    const fetchPrs = vi.fn(async () => ({
+      prs: [],
+      restrictedOrgs: [],
+      incompleteReasons: [reason],
+    }))
+    const inbox = build([], { fetchPrs })
+
+    await inbox.refresh()
+
+    expect(inbox.getSnapshot()).toMatchObject({
+      status: 'ready',
+      attentionCount: 0,
+      errorMessage: warning,
+    })
   })
 
   it('classifies fetched PRs and counts the ones needing attention', async () => {
@@ -414,6 +449,44 @@ describe('Inbox.refresh', () => {
     expect(inbox.getSnapshot().attentionCount).toBe(1)
   })
 
+  it('discards a previous account response when the account changes during a refresh', async () => {
+    let releaseOld = (_result: FetchedPullRequests): void => {}
+    let releaseNew = (_result: FetchedPullRequests): void => {}
+    const oldResponse = new Promise<FetchedPullRequests>((resolve) => {
+      releaseOld = resolve
+    })
+    const newResponse = new Promise<FetchedPullRequests>((resolve) => {
+      releaseNew = resolve
+    })
+    let login = 'old-user'
+    const fetchLogin = vi.fn(async () => login)
+    const fetchPrs = vi.fn().mockReturnValueOnce(oldResponse).mockReturnValueOnce(newResponse)
+    const inbox = build([], { fetchLogin, fetchPrs })
+
+    const first = inbox.refresh()
+    while (fetchPrs.mock.calls.length < 1) await Promise.resolve()
+
+    inbox.reset(true)
+    login = 'new-user'
+    const second = inbox.refresh()
+    releaseOld(fetched([makePullRequest({ id: 'old', buckets: ['review-requested'] })]))
+    await first
+    while (fetchPrs.mock.calls.length < 2) await Promise.resolve()
+
+    expect(inbox.getSnapshot()).toMatchObject({
+      status: 'loading',
+      myLogin: null,
+      items: [],
+      attentionCount: 0,
+    })
+
+    releaseNew(fetched([makePullRequest({ id: 'new', buckets: ['review-requested'] })]))
+    await second
+    expect(fetchLogin).toHaveBeenCalledTimes(2)
+    expect(inbox.getSnapshot().myLogin).toBe('new-user')
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id)).toEqual(['new'])
+  })
+
   it('reflects a repository selection changed while the fetch is in flight, since filtering happens at classify time', async () => {
     // The fetch itself never narrows, so what matters here is that the
     // classify step — which runs after the fetch resolves — reads settings
@@ -563,6 +636,81 @@ describe('Inbox.refresh', () => {
 
     expect(inbox.getSnapshot().status).toBe('error')
     expect(onAuthError).toHaveBeenCalledTimes(1)
+  })
+
+  it('names the provider and client whose token failed', async () => {
+    const authError = Object.assign(new Error('Bad credentials'), { status: 401 })
+    const onAuthError = vi.fn()
+    const inbox = build([], { fetchPrs: vi.fn().mockRejectedValueOnce(authError), onAuthError })
+
+    await inbox.refresh()
+
+    expect(onAuthError).toHaveBeenCalledWith({ provider: 'github', client: CLIENT })
+  })
+
+  it('ignores a dead-token error from the account that was active before a reset', async () => {
+    const old = deferred<FetchedPullRequests>()
+    const fetchPrs = vi
+      .fn()
+      .mockReturnValueOnce(old.promise)
+      .mockResolvedValueOnce(
+        fetched([makePullRequest({ id: 'new', buckets: ['review-requested'] })]),
+      )
+    const onAuthError = vi.fn()
+    const inbox = build([], { fetchPrs, onAuthError })
+
+    const first = inbox.refresh()
+    while (fetchPrs.mock.calls.length < 1) await Promise.resolve()
+    inbox.reset(true)
+    const second = inbox.refresh()
+    old.reject(Object.assign(new Error('Bad credentials'), { status: 401 }))
+    await Promise.all([first, second])
+
+    expect(onAuthError).not.toHaveBeenCalled()
+    expect(inbox.getSnapshot().status).toBe('ready')
+    expect(inbox.getSnapshot().items.map((item) => item.pr.id)).toEqual(['new'])
+  })
+
+  it('does not reuse a login fetched before an account reset', async () => {
+    const oldLogin = deferred<string>()
+    const fetchLogin = vi
+      .fn()
+      .mockReturnValueOnce(oldLogin.promise)
+      .mockResolvedValueOnce('new-user')
+    const fetchPrs = vi.fn(async () => fetched([]))
+    const inbox = build([], { fetchLogin, fetchPrs })
+
+    const first = inbox.refresh()
+    await vi.waitFor(() => expect(fetchLogin).toHaveBeenCalledTimes(1))
+    inbox.reset(true)
+    oldLogin.resolve('old-user')
+    await first
+    await inbox.refresh()
+
+    expect(fetchLogin).toHaveBeenCalledTimes(2)
+    expect(fetchPrs).toHaveBeenCalledWith(CLIENT, 'new-user')
+    expect(inbox.getSnapshot().myLogin).toBe('new-user')
+    expect(inbox.getSnapshot().accountVersion).toBe(1)
+  })
+
+  it('does not let a hung pass for the previous account block the next one', async () => {
+    const hung = new Promise<FetchedPullRequests>(() => {})
+    const fetchPrs = vi
+      .fn()
+      .mockReturnValueOnce(hung)
+      .mockResolvedValueOnce(
+        fetched([makePullRequest({ id: 'new', buckets: ['review-requested'] })]),
+      )
+    const inbox = build([], { fetchPrs })
+
+    void inbox.refresh()
+    while (fetchPrs.mock.calls.length < 1) await Promise.resolve()
+    inbox.reset(true)
+    await inbox.refresh()
+
+    expect(fetchPrs).toHaveBeenCalledTimes(2)
+    expect(inbox.getSnapshot().status).toBe('ready')
+    await expect(inbox.whenIdle()).resolves.toBeUndefined()
   })
 
   it('does not call onAuthError for an ordinary network failure', async () => {
