@@ -69,3 +69,10 @@ describe('DETAILS_QUERY', () => {
     expect(SEARCH_QUERY).toContain('rateLimit { cost remaining resetAt }')
   })
 })
+
+describe('SEARCH_QUERY', () => {
+  it('asks for a full page and the cursor to the next one', () => {
+    expect(SEARCH_QUERY).toContain('first: 100, after: $after')
+    expect(SEARCH_QUERY).toContain('pageInfo { hasNextPage endCursor }')
+  })
+})

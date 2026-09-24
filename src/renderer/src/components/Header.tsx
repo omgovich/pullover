@@ -26,7 +26,7 @@ function statusText(snapshot: InboxSnapshot, now: string): string {
   if (snapshot.lastUpdatedAt === null) {
     return snapshot.errorMessage
   }
-  return `${snapshot.errorMessage} · last updated ${formatAge(snapshot.lastUpdatedAt, now)}`
+  return `Updated ${formatAge(snapshot.lastUpdatedAt, now)} · ${snapshot.errorMessage}`
 }
 
 // Button's size steps don't land on 32×32 with a 9px radius, so the box
@@ -89,7 +89,11 @@ export default function Header({
         )}
         <View direction="column" grow minWidth={0}>
           <Text as="span" variant="body-2" weight="semibold" color="neutral" maxLines={1}>
-            {snapshot.attentionCount > 0 ? 'waiting on you' : 'All clear'}
+            {snapshot.status === 'ready' && snapshot.errorMessage !== null
+              ? 'Partial inbox'
+              : snapshot.attentionCount > 0
+                ? 'waiting on you'
+                : 'All clear'}
           </Text>
           <Text as="span" variant="caption-1" color="neutral-faded" maxLines={1}>
             {statusText(snapshot, now)}

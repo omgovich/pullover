@@ -20,6 +20,7 @@ function screenshotBrowser(
 ): BrowserConfigOptions {
   return {
     enabled: true,
+    api: { host: '127.0.0.1' },
     // 2x is the only density this app ships at, and a hairline, a half-pixel
     // offset and a hinted glyph all resolve differently at 1x. Fidelity, not
     // sensitivity — it barely helps detection.

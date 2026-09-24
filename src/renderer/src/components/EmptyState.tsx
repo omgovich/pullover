@@ -1,12 +1,14 @@
-import { Check, CloudOff } from 'lucide-react'
+import { Check, CloudOff, TriangleAlert } from 'lucide-react'
 import { Icon, Text, View } from 'reshaped/bundle'
 
 interface Props {
   /** True when the empty state is empty because a refresh failed, not because there's nothing to do. */
   isError: boolean
+  isPartial?: boolean
 }
 
-export default function EmptyState({ isError }: Props): React.JSX.Element {
+export default function EmptyState({ isError, isPartial = false }: Props): React.JSX.Element {
+  const partial = !isError && isPartial
   return (
     // Grows into whatever room the list leaves, which is what pushes a
     // collapsed section onto the bottom edge of the scroll area; the paddings
@@ -21,14 +23,14 @@ export default function EmptyState({ isError }: Props): React.JSX.Element {
       paddingInline={8}
     >
       <Icon
-        svg={isError ? CloudOff : Check}
+        svg={isError ? CloudOff : partial ? TriangleAlert : Check}
         size="28px"
-        color={isError ? 'critical' : 'positive'}
+        color={isError || partial ? 'critical' : 'positive'}
       />
 
       <View.Item gapBefore={3.5}>
         <Text as="div" variant="body-2" weight="semibold" color="neutral">
-          {isError ? "Couldn't refresh" : 'Inbox zero'}
+          {isError ? "Couldn't refresh" : partial ? 'Partial inbox' : 'Inbox zero'}
         </Text>
       </View.Item>
 
@@ -36,7 +38,9 @@ export default function EmptyState({ isError }: Props): React.JSX.Element {
         <Text as="div" variant="caption-1" color="neutral-faded">
           {isError
             ? 'What you see may be stale or incomplete.'
-            : 'Nothing waiting on you. Great job, buddy.'}
+            : partial
+              ? 'Some PRs may be missing. Try refreshing later.'
+              : 'Nothing waiting on you. Great job, buddy.'}
         </Text>
       </View.Item>
     </View>

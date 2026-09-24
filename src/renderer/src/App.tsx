@@ -227,7 +227,12 @@ export default function App(): React.JSX.Element {
           className="pv-scroll"
           scrollableClassName="pv-scroll-content"
         >
-          {showEmptyState && <EmptyState isError={snapshot.status === 'error'} />}
+          {showEmptyState && (
+            <EmptyState
+              isError={snapshot.status === 'error'}
+              isPartial={snapshot.status === 'ready' && snapshot.errorMessage !== null}
+            />
+          )}
 
           {/* The rules live between the blocks rather than on them: a seam
               belongs to neither side, and only out here is it known what a

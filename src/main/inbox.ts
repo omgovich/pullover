@@ -6,10 +6,22 @@ import type { InboxSnapshot } from '@shared/ipc'
 import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
 import { isAuthError } from './github/auth-error'
 import { describeError } from './github/error-message'
-import { fetchPullRequests, fetchViewerLogin, type GraphQLClient } from './github/fetch-prs'
+import {
+  fetchPullRequests,
+  fetchViewerLogin,
+  type GraphQLClient,
+  type SearchStopReason,
+} from './github/fetch-prs'
 import { formatRestrictedOrgs } from './github/org-restriction'
 import { rateLimitResetAt } from './github/rate-limit'
 import type { AppStore } from './store'
+
+function searchWarning(reasons: SearchStopReason[]): string | null {
+  if (reasons.includes('rate-limit')) return 'GitHub quota low; some PRs may be missing'
+  if (reasons.includes('page-limit')) return 'GitHub search capped; older PRs may be missing'
+  if (reasons.includes('pagination')) return 'GitHub search interrupted; some PRs may be missing'
+  return null
+}
 
 export interface InboxDeps {
   store: AppStore
@@ -222,7 +234,7 @@ export class Inbox {
       // Always fetch unfiltered: the picker's options come from what shows
       // up in the inbox, so the search itself must never be narrowed by the
       // repository selection.
-      const { prs, restrictedOrgs } = await this.fetchPrs(client, myLogin)
+      const { prs, restrictedOrgs, incompleteReasons } = await this.fetchPrs(client, myLogin)
       this.prs = prs
 
       const settings = this.deps.store.getSettings()
@@ -241,12 +253,16 @@ export class Inbox {
       )
 
       this.rateLimitedUntil = null
+      const warnings = [
+        searchWarning(incompleteReasons ?? []),
+        formatRestrictedOrgs(restrictedOrgs),
+      ].filter((warning): warning is string => warning !== null)
       this.emit({
         status: 'ready',
         items,
         attentionCount: countAttention(items),
         lastUpdatedAt: now,
-        errorMessage: formatRestrictedOrgs(restrictedOrgs),
+        errorMessage: warnings.length > 0 ? warnings.join(' · ') : null,
         myLogin: this.myLogin,
         knownRepositories: collectRepositories(this.prs),
       })
