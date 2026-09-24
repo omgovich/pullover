@@ -7,38 +7,17 @@ on:
 
 jobs:
   test:
-    # macOS, not ubuntu: the screenshot baselines are of this app as it looks
-    # on a Mac, and a Linux runner has none of the same fonts to compare them
-    # against. Pinned rather than `macos-latest` so a runner image upgrade
-    # can't silently redraw every baseline. Same image release.yml builds on.
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - run: swift --version
+      - run: ./scripts/test.sh
+      # The client ID is public (Device Flow has no secret), so a repository
+      # variable is enough; without it the build can't sign anyone in.
+      - run: ./scripts/bundle.sh
+        env:
+          PULLOVER_GITHUB_CLIENT_ID: ${{ vars.PULLOVER_GITHUB_CLIENT_ID }}
+      - uses: actions/upload-artifact@v4
         with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/Library/Caches/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install chromium
-
-      - run: npm run typecheck
-      - run: npm test
-
-      # Without these a red screenshot test says only that something moved,
-      # not what: the trio is the baseline, what was rendered, and the pixels
-      # between them.
-      - name: Upload screenshot diffs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshot-diffs
-          path: .vitest-attachments/
-          if-no-files-found: ignore
+          name: Pullover
+          path: dist/Pullover-*.zip
