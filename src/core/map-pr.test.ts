@@ -23,6 +23,7 @@ function node(overrides: Partial<PullRequestNode> = {}): PullRequestNode {
     reviews: { nodes: [] },
     reviewThreads: { nodes: [] },
     comments: { nodes: [] },
+    body: '',
     bodyText: '',
     commits: { nodes: [] },
     timelineItems: { nodes: [] },
@@ -51,6 +52,13 @@ describe('mapPullRequest', () => {
       'CONFLICTING',
     )
     expect(mapPullRequest(node({ mergeable: 'UNKNOWN' }), [], 'vlad').mergeable).toBe('UNKNOWN')
+  })
+
+  it('reads the pull requests the raw description links to, not only the ones its text names', () => {
+    const linked = node({ body: 'After [the API change](https://github.com/acme/api/pull/12)' })
+    expect(mapPullRequest(linked, [], 'vlad').references).toEqual([
+      { repository: 'acme/api', number: 12 },
+    ])
   })
 
   it('reads auto-merge as armed exactly when the request exists', () => {

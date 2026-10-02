@@ -143,7 +143,7 @@ export default function App(): React.JSX.Element {
           // away with "until new activity" — the keyboard shortcut is
           // for speed, not for picking a duration. Still raises the same
           // toast as the mouse path so Undo keeps working.
-          void window.api.snooze(selectedId, 'until-activity').then(() => showToast(item))
+          void window.api.snooze(selectedId, { type: 'until-activity' }).then(() => showToast(item))
         }
       },
       r: (event?: KeyboardEvent) => {

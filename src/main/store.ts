@@ -4,7 +4,7 @@ import {
   type Settings,
   SHORTCUT_OPTIONS,
   type Snooze,
-  type SnoozeType,
+  type SnoozeRequest,
   TRIGGER_OPTIONS,
   type Trigger,
 } from '@shared/types'
@@ -86,18 +86,13 @@ export class AppStore {
     return this.backend.get('snoozes')
   }
 
-  snooze(prId: string, type: SnoozeType, now: string, hours?: number): void {
-    let until: string | undefined
-    if (type === 'until-time') {
-      if (hours === undefined) {
-        throw new Error('until-time snooze requires hours')
-      }
-      until = new Date(Date.parse(now) + hours * 3_600_000).toISOString()
+  snooze({ prId, request, now }: { prId: string; request: SnoozeRequest; now: string }): void {
+    const snooze: Snooze = { prId, type: request.type, snoozedAt: now }
+    if (request.type === 'until-time') {
+      snooze.until = new Date(Date.parse(now) + request.hours * 3_600_000).toISOString()
     }
-    this.backend.set('snoozes', {
-      ...this.getSnoozes(),
-      [prId]: { prId, type, snoozedAt: now, until },
-    })
+    if (request.type === 'until-merged') snooze.blocker = request.blocker
+    this.backend.set('snoozes', { ...this.getSnoozes(), [prId]: snooze })
   }
 
   unsnooze(prId: string): void {

@@ -20,13 +20,20 @@ const STATUS_ACCENTS: Record<string, Accent> = {
   'Ready to merge': 'positive',
   'Waiting on author': 'neutral-faded',
   'Waiting on reviewers': 'neutral-faded',
-  Snoozed: 'neutral-faded',
   Mentioned: 'warning',
 }
 
 const DEFAULT_STATUS_ACCENT: Accent = 'primary'
 
-export function statusAccent(reason: string): Accent {
+/** A snooze mutes the row whatever its reason says. */
+export function statusAccent({
+  reason,
+  isSnoozed,
+}: {
+  reason: string
+  isSnoozed: boolean
+}): Accent {
+  if (isSnoozed) return 'neutral-faded'
   return STATUS_ACCENTS[reason] ?? DEFAULT_STATUS_ACCENT
 }
 

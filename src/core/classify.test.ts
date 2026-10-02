@@ -8,7 +8,7 @@ const ME = 'vlad'
 const NOW = '2026-08-10T12:00:00Z'
 
 function ctx(snoozes: Record<string, Snooze> = {}): ClassifyContext {
-  return { myLogin: ME, snoozes, now: NOW }
+  return { myLogin: ME, snoozes, now: NOW, pullRequestStates: new Map() }
 }
 
 describe('classify — visibility overrides', () => {
@@ -671,6 +671,28 @@ describe('classify — snooze override', () => {
       },
     }
     expect(classify(pr, ctx(snoozes)).category).toBe('hidden')
+  })
+
+  it('holds an approved pull request back until the one it waits on merges', () => {
+    const pr = makePullRequest({ authorLogin: ME, reviewDecision: 'APPROVED' })
+    const snoozes: Record<string, Snooze> = {
+      PR_1: {
+        prId: 'PR_1',
+        type: 'until-merged',
+        snoozedAt: '2026-08-10T10:00:00Z',
+        blocker: { repository: 'acme/api', number: 12 },
+      },
+    }
+    const at = (state: 'OPEN' | 'MERGED') => ({
+      ...ctx(snoozes),
+      pullRequestStates: new Map([['acme/api#12', state]]),
+    })
+
+    const held = classify(pr, at('OPEN'))
+    expect(held.category).toBe('waiting')
+    expect(held.reason).toBe('After api#12')
+
+    expect(classify(pr, at('MERGED')).reason).toBe('Ready to merge')
   })
 })
 

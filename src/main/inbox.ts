@@ -1,12 +1,19 @@
 import { type ClassifyContext, classify, classifyAll, countAttention } from '@core/classify'
 import { formatWait } from '@core/format'
+import { refKey } from '@core/pr-refs'
 import { collectRepositories, filterByRepositories } from '@core/repo-filter'
 import { computeStackPositions } from '@core/stack'
 import type { InboxSnapshot } from '@shared/ipc'
-import type { ClassifiedPullRequest, PullRequest } from '@shared/types'
+import type {
+  ClassifiedPullRequest,
+  PullRequest,
+  PullRequestRef,
+  PullRequestState,
+} from '@shared/types'
 import { isAuthError } from './github/auth-error'
 import { describeError } from './github/error-message'
 import { fetchPullRequests, fetchViewerLogin, type GraphQLClient } from './github/fetch-prs'
+import { fetchRefStates } from './github/fetch-ref-states'
 import { formatRestrictedOrgs } from './github/org-restriction'
 import { rateLimitResetAt } from './github/rate-limit'
 import type { AppStore } from './store'
@@ -26,7 +33,15 @@ export interface InboxDeps {
   now?: () => string
   fetchPrs?: typeof fetchPullRequests
   fetchLogin?: typeof fetchViewerLogin
+  fetchStates?: typeof fetchRefStates
 }
+
+/**
+ * How many links from descriptions one pass looks up. Snooze blockers are not
+ * counted: a capped one would never wake, and the user only has as many as
+ * they set.
+ */
+const MAX_LINKED_LOOKUPS = 30
 
 export class Inbox {
   private snapshot: InboxSnapshot = {
@@ -40,6 +55,8 @@ export class Inbox {
   }
 
   private prs: PullRequest[] = []
+  /** By `refKey`: every fetched pull request, plus the ones `lookUpReferences` asked about. */
+  private pullRequestStates = new Map<string, PullRequestState>()
   private myLogin: string | null = null
   private timer: ReturnType<typeof setInterval> | null = null
   /** The pass currently running, if any. */
@@ -56,11 +73,13 @@ export class Inbox {
   private readonly now: () => string
   private readonly fetchPrs: typeof fetchPullRequests
   private readonly fetchLogin: typeof fetchViewerLogin
+  private readonly fetchStates: typeof fetchRefStates
 
   constructor(private readonly deps: InboxDeps) {
     this.now = deps.now ?? (() => new Date().toISOString())
     this.fetchPrs = deps.fetchPrs ?? fetchPullRequests
     this.fetchLogin = deps.fetchLogin ?? fetchViewerLogin
+    this.fetchStates = deps.fetchStates ?? fetchRefStates
   }
 
   getSnapshot(): InboxSnapshot {
@@ -89,6 +108,7 @@ export class Inbox {
       snoozes: this.deps.store.getSnoozes(),
       now,
       mutedTriggers: this.deps.store.getSettings().mutedTriggers,
+      pullRequestStates: this.pullRequestStates,
     }
   }
 
@@ -112,6 +132,21 @@ export class Inbox {
       items,
       attentionCount: countAttention(items),
     })
+  }
+
+  /**
+   * The open pull requests the description of one of the user's own links
+   * to — what it can be snoozed until merged — and the repository they are
+   * named relative to. Someone else's pull request gets none: its links are
+   * never looked up, so nothing is known about them.
+   */
+  snoozeBlockers(prId: string): { repository: string; blockers: PullRequestRef[] } {
+    const pr = this.prs.find((p) => p.id === prId)
+    if (pr === undefined || pr.authorLogin !== this.myLogin) return { repository: '', blockers: [] }
+    return {
+      repository: pr.repository,
+      blockers: pr.references.filter((ref) => this.pullRequestStates.get(refKey(ref)) === 'OPEN'),
+    }
   }
 
   /**
@@ -189,6 +224,7 @@ export class Inbox {
       // instead of classifying against the previous user's login.
       this.myLogin = null
       this.prs = []
+      this.pullRequestStates = new Map()
       this.rateLimitedUntil = null
       this.emit({
         status: 'signed-out',
@@ -223,6 +259,7 @@ export class Inbox {
       // repository selection.
       const { prs, restrictedOrgs } = await this.fetchPrs(client, myLogin)
       this.prs = prs
+      this.pullRequestStates = await this.lookUpReferences(client, myLogin)
 
       const settings = this.deps.store.getSettings()
       const filtered = filterByRepositories(
@@ -260,6 +297,44 @@ export class Inbox {
       // list with a red line in the header.
       if (isAuthError(error)) this.deps.onAuthError?.()
     }
+  }
+
+  /**
+   * States for what an until-merged snooze waits on and for what the user's
+   * own descriptions link to. A fetched pull request needs no lookup: only
+   * open ones are fetched. Nor does one already seen merged, which no event
+   * can undo — unlike a close.
+   */
+  private async lookUpReferences(
+    client: GraphQLClient,
+    myLogin: string,
+  ): Promise<Map<string, PullRequestState>> {
+    const states = new Map([...this.pullRequestStates].filter(([, state]) => state === 'MERGED'))
+    for (const pr of this.prs) states.set(refKey(pr), 'OPEN')
+    const fetchedIds = new Set(this.prs.map((pr) => pr.id))
+    const blockers = Object.values(this.deps.store.getSnoozes()).flatMap((snooze) =>
+      snooze.blocker !== undefined && fetchedIds.has(snooze.prId) ? [snooze.blocker] : [],
+    )
+    const linked = this.prs
+      .filter((pr) => pr.authorLogin === myLogin)
+      .flatMap((pr) => pr.references)
+
+    const unknown = (refs: PullRequestRef[], seen: Set<string>): PullRequestRef[] =>
+      refs.filter((ref) => {
+        const key = refKey(ref)
+        if (states.has(key) || seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+    const seen = new Set<string>()
+    const wanted = [
+      ...unknown(blockers, seen),
+      ...unknown(linked, seen).slice(0, MAX_LINKED_LOOKUPS),
+    ]
+
+    const looked = await this.fetchStates(client, wanted)
+    for (const [key, state] of looked) states.set(key, state)
+    return states
   }
 
   start(): void {

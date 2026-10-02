@@ -1,4 +1,11 @@
-import type { ClassifiedPullRequest, Settings, SnoozeType, Trigger, UpdateState } from './types'
+import type {
+  ClassifiedPullRequest,
+  PullRequestRef,
+  Settings,
+  SnoozeRequest,
+  Trigger,
+  UpdateState,
+} from './types'
 
 export interface InboxSnapshot {
   status: 'signed-out' | 'loading' | 'ready' | 'error'
@@ -17,16 +24,18 @@ export interface InboxSnapshot {
  * it out, so a snooze from the menu raises the same undo toast as the pill.
  */
 export type PrMenuAction =
-  | 'snooze-until-activity'
-  | 'snooze-4-hours'
-  | 'snooze-until-tomorrow'
-  | 'unsnooze'
-  | 'open'
-  | 'open-files'
-  | 'copy-link'
-  | 'copy-branch'
+  | { type: 'snooze-until-activity' }
+  | { type: 'snooze-4-hours' }
+  | { type: 'snooze-until-tomorrow' }
+  | { type: 'snooze-until-merged'; blocker: PullRequestRef }
+  | { type: 'unsnooze' }
+  | { type: 'open' }
+  | { type: 'open-files' }
+  | { type: 'copy-link' }
+  | { type: 'copy-branch' }
 
 export interface PrMenuRequest {
+  prId: string
   /** Collapses the snooze options into a single Unsnooze, as the card's pill does. */
   isSnoozed: boolean
   /** Where to pop the menu, in window coordinates. */
@@ -83,7 +92,7 @@ export interface RendererApi {
   openPr: (url: string) => Promise<void>
   showPrMenu: (request: PrMenuRequest) => Promise<PrMenuAction | null>
   copyText: (text: string) => Promise<void>
-  snooze: (prId: string, type: SnoozeType, hours?: number) => Promise<void>
+  snooze: (prId: string, request: SnoozeRequest) => Promise<void>
   unsnooze: (prId: string) => Promise<void>
   getSettings: () => Promise<Settings>
   setSettings: (patch: Partial<Settings>) => Promise<void>

@@ -31,6 +31,7 @@ function detailNode(id: string, overrides: Record<string, unknown> = {}) {
     reviews: { nodes: [] },
     reviewThreads: { nodes: [] },
     comments: { nodes: [] },
+    body: '',
     bodyText: '',
     commits: { nodes: [] },
     timelineItems: { nodes: [] },

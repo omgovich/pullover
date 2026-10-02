@@ -98,6 +98,17 @@ body {
   margin-inline-end: var(--rs-unit-x1);
 }
 
+.pv-status-ref {
+  display: inline-flex;
+  white-space: nowrap;
+}
+
+.pv-status-ref-head {
+  max-width: 12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* The card's actions button. `Actionable` brings no resting or hover skin of
    its own, and the sizes here are smaller than any Reshaped button offers. */
 .pv-card-menu {

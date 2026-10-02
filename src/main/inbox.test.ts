@@ -1,6 +1,12 @@
+import { refKey } from '@core/pr-refs'
 import { makePullRequest } from '@core/test-factory'
 import type { InboxSnapshot } from '@shared/ipc'
-import { DEFAULT_SETTINGS, type PullRequest } from '@shared/types'
+import {
+  DEFAULT_SETTINGS,
+  type PullRequest,
+  type PullRequestRef,
+  type PullRequestState,
+} from '@shared/types'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FetchedPullRequests } from './github/fetch-prs'
 import { Inbox } from './inbox'
@@ -46,6 +52,7 @@ function build(prs: PullRequest[], overrides: Record<string, unknown> = {}) {
     now: () => NOW,
     fetchLogin: async () => 'vlad',
     fetchPrs: async () => fetched(prs),
+    fetchStates: async () => new Map(),
     ...overrides,
   })
 }
@@ -938,7 +945,7 @@ describe('Inbox.reclassify', () => {
     await inbox.refresh()
     expect(inbox.getSnapshot().attentionCount).toBe(1)
 
-    store.snooze('PR_1', 'until-time', NOW, 2)
+    store.snooze({ prId: 'PR_1', request: { type: 'until-time', hours: 2 }, now: NOW })
     inbox.reclassify()
 
     expect(inbox.getSnapshot().items[0]!.category).toBe('waiting')
@@ -1068,12 +1075,114 @@ describe('Inbox.reclassify', () => {
     const inbox = build([], { fetchPrs })
     await inbox.refresh()
 
-    store.snooze('PR_1', 'until-time', NOW, 2)
+    store.snooze({ prId: 'PR_1', request: { type: 'until-time', hours: 2 }, now: NOW })
     inbox.reclassify()
 
     const byId = new Map(inbox.getSnapshot().items.map((item) => [item.pr.id, item]))
     expect(byId.get('PR_1')?.stack).toEqual({ id: 'PR_1', index: 1, total: 2 })
     expect(byId.get('PR_2')?.stack).toEqual({ id: 'PR_1', index: 2, total: 2 })
     expect(fetchPrs).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('Inbox — pull requests a description links to', () => {
+  const API_12: PullRequestRef = { repository: 'acme/api', number: 12 }
+
+  /** Answers every lookup from `states`, and records what was asked. */
+  function lookups(states: Record<string, PullRequestState>) {
+    return vi.fn(async (_client: unknown, refs: PullRequestRef[]) => {
+      const known = refs.flatMap((ref) => {
+        const state = states[refKey(ref)]
+        return state === undefined ? [] : [[refKey(ref), state] as const]
+      })
+      return new Map<string, PullRequestState>(known)
+    })
+  }
+
+  const mine = (overrides: Partial<PullRequest> = {}) =>
+    makePullRequest({
+      id: 'PR_1',
+      authorLogin: 'vlad',
+      reviewDecision: 'APPROVED',
+      references: [API_12],
+      ...overrides,
+    })
+
+  it("looks up what the user's own descriptions link to, and not what anyone else's do", async () => {
+    const fetchStates = lookups({})
+    const theirs = makePullRequest({
+      id: 'PR_2',
+      number: 2,
+      references: [{ repository: 'acme/api', number: 99 }],
+    })
+    await build([mine(), theirs], { fetchStates }).refresh()
+
+    expect(fetchStates).toHaveBeenCalledWith(CLIENT, [API_12])
+  })
+
+  it('does not look up a pull request the fetch already holds', async () => {
+    const fetchStates = lookups({})
+    const sibling = makePullRequest({ id: 'PR_2', repository: 'acme/web', number: 5 })
+    const inbox = build([mine({ references: [{ repository: 'acme/web', number: 5 }] }), sibling], {
+      fetchStates,
+    })
+    await inbox.refresh()
+
+    expect(fetchStates).toHaveBeenCalledWith(CLIENT, [])
+    expect(inbox.snoozeBlockers('PR_1').blockers).toEqual([{ repository: 'acme/web', number: 5 }])
+  })
+
+  it('offers only the links that are open pull requests, and only on my own', async () => {
+    const issue = { repository: 'acme/api', number: 13 }
+    const merged = { repository: 'acme/api', number: 14 }
+    const fetchStates = lookups({ 'acme/api#12': 'OPEN', 'acme/api#14': 'MERGED' })
+    const theirs = makePullRequest({ id: 'PR_2', number: 2, references: [API_12] })
+    const inbox = build([mine({ references: [API_12, issue, merged] }), theirs], { fetchStates })
+    await inbox.refresh()
+
+    expect(inbox.snoozeBlockers('PR_1')).toEqual({ repository: 'acme/web', blockers: [API_12] })
+    expect(inbox.snoozeBlockers('PR_2').blockers).toEqual([])
+  })
+
+  it('caps the links it looks up, but never a snooze blocker', async () => {
+    const fetchStates = lookups({})
+    const many = Array.from({ length: 40 }, (_, i) => ({ repository: 'acme/api', number: 100 + i }))
+    store.snooze({ prId: 'PR_1', request: { type: 'until-merged', blocker: API_12 }, now: NOW })
+    await build([mine({ references: many })], { fetchStates }).refresh()
+
+    const asked = fetchStates.mock.calls[0]![1]
+    expect(asked[0]).toEqual(API_12)
+    expect(asked).toHaveLength(31)
+  })
+
+  it('asks about a merged pull request only once, since nothing can unmerge it', async () => {
+    const closed = { repository: 'acme/api', number: 13 }
+    const fetchStates = lookups({ 'acme/api#12': 'MERGED', 'acme/api#13': 'CLOSED' })
+    const inbox = build([mine({ references: [API_12, closed] })], { fetchStates })
+    await inbox.refresh()
+    await inbox.refresh()
+
+    expect(fetchStates.mock.calls[1]![1]).toEqual([closed])
+  })
+
+  it('holds the pull request back until the blocker merges, then shows it ready', async () => {
+    let state: PullRequestState = 'OPEN'
+    const fetchStates = vi.fn(async () => new Map([['acme/api#12', state]]))
+    const inbox = build([mine()], { fetchStates })
+    await inbox.refresh()
+    store.snooze({ prId: 'PR_1', request: { type: 'until-merged', blocker: API_12 }, now: NOW })
+    inbox.reclassify()
+
+    expect(inbox.getSnapshot().items[0]).toMatchObject({
+      category: 'waiting',
+      reason: 'After api#12',
+    })
+
+    state = 'MERGED'
+    await inbox.refresh()
+    expect(inbox.getSnapshot().items[0]).toMatchObject({
+      category: 'my-pr-action',
+      reason: 'Ready to merge',
+    })
   })
 })

@@ -8,6 +8,10 @@ describe('DETAILS_QUERY', () => {
     expect(DETAILS_QUERY).toContain('state submittedAt bodyText')
   })
 
+  it('fetches the raw description, whose links name the pull requests to snooze until', () => {
+    expect(DETAILS_QUERY).toMatch(/^\s+body$/m)
+  })
+
   it('fetches mergeability, which decides the merge-conflict reason', () => {
     expect(DETAILS_QUERY).toContain('mergeable')
   })

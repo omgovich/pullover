@@ -248,14 +248,14 @@ describe('pull request context menu', () => {
     const { menu, action } = popMenu(false)
     menu.options.callback()
     clickItem(menu, 'Copy branch name')
-    await expect(action).resolves.toBe('copy-branch')
+    await expect(action).resolves.toEqual({ type: 'copy-branch' })
   })
 
   it('reports the clicked item when the click lands first', async () => {
     const { menu, action } = popMenu(false)
     clickItem(menu, 'Open files changed')
     menu.options.callback()
-    await expect(action).resolves.toBe('open-files')
+    await expect(action).resolves.toEqual({ type: 'open-files' })
   })
 
   it('resolves with null when the menu is dismissed', async () => {
@@ -269,7 +269,7 @@ describe('pull request context menu', () => {
     expect(menu.items.filter((entry) => entry.type === 'separator')).toHaveLength(2)
     clickItem(menu, 'Unsnooze')
     menu.options.callback()
-    await expect(action).resolves.toBe('unsnooze')
+    await expect(action).resolves.toEqual({ type: 'unsnooze' })
   })
 })
 

@@ -1,4 +1,5 @@
-import type { CiStatus } from '@shared/types'
+import { refRepositoryLabel } from '@core/pr-refs'
+import type { CiStatus, ClassifiedPullRequest, PullRequestRef } from '@shared/types'
 import { Check, Clock, X } from 'lucide-react'
 import { Icon, Text, View } from 'reshaped/bundle'
 import { accentTint, CI_BADGES, statusAccent } from './pr-colors'
@@ -50,19 +51,45 @@ export function CiChip({ status }: { status: CiStatus }): React.JSX.Element | nu
   )
 }
 
+type StatusTextProps = Pick<
+  ClassifiedPullRequest,
+  'pr' | 'reason' | 'isSnoozed' | 'snoozedUntilMerged'
+>
+
 /**
  * Why the row is in the inbox, as plain coloured text.
  *
  * Uncapped, so the title yields instead: a clipped reason ("Re-review
- * reque…") says less than the title it was protecting, and every reason
- * `classify` produces is short — the longest is "Waiting on reviewers".
+ * reque…") says less than the title it was protecting. The one reason that
+ * can run long names another pull request, and only its repository is
+ * clipped — the number is what tells two of them apart.
  */
-export function StatusText({ reason }: { reason: string }): React.JSX.Element | null {
+export function StatusText({ item }: { item: StatusTextProps }): React.JSX.Element | null {
+  const { reason, snoozedUntilMerged: blocker } = item
   if (reason === '') return null
 
   return (
-    <Text as="span" variant="caption-1" weight="semibold" color={statusAccent(reason)}>
-      {reason}
+    <Text
+      as="span"
+      variant="caption-1"
+      weight="semibold"
+      color={statusAccent(item)}
+      attributes={{
+        title: blocker && `Snoozed until ${blocker.repository}#${blocker.number} merges or closes`,
+      }}
+    >
+      {blocker === undefined ? reason : <AfterRef blocker={blocker} from={item.pr.repository} />}
     </Text>
+  )
+}
+
+function AfterRef({ blocker, from }: { blocker: PullRequestRef; from: string }): React.JSX.Element {
+  const repository = refRepositoryLabel(blocker, from)
+  return (
+    <span className="pv-status-ref">
+      After{'\u00a0'}
+      {repository !== '' && <span className="pv-status-ref-head">{repository}</span>}#
+      {blocker.number}
+    </span>
   )
 }

@@ -27,22 +27,25 @@ export async function showPrMenu(
   anchor: MenuAnchor,
   onSnoozed: (item: ClassifiedPullRequest) => void,
 ): Promise<void> {
-  const action = await window.api.showPrMenu({ isSnoozed: item.isSnoozed, ...anchor })
   const { pr } = item
+  const action = await window.api.showPrMenu({ prId: pr.id, isSnoozed: item.isSnoozed, ...anchor })
+  if (action === null) return
 
-  switch (action) {
-    case null:
-      return
+  switch (action.type) {
     case 'snooze-until-activity':
-      await window.api.snooze(pr.id, 'until-activity')
+      await window.api.snooze(pr.id, { type: 'until-activity' })
       onSnoozed(item)
       return
     case 'snooze-4-hours':
-      await window.api.snooze(pr.id, 'until-time', 4)
+      await window.api.snooze(pr.id, { type: 'until-time', hours: 4 })
       onSnoozed(item)
       return
     case 'snooze-until-tomorrow':
-      await window.api.snooze(pr.id, 'until-time', 24)
+      await window.api.snooze(pr.id, { type: 'until-time', hours: 24 })
+      onSnoozed(item)
+      return
+    case 'snooze-until-merged':
+      await window.api.snooze(pr.id, { type: 'until-merged', blocker: action.blocker })
       onSnoozed(item)
       return
     case 'unsnooze':

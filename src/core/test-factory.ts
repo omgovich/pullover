@@ -49,6 +49,7 @@ export function makePullRequest(overrides: Partial<PullRequest> = {}): PullReque
     readyForReviewAt: null,
     mentionsAt: [],
     buckets: [],
+    references: [],
     ...overrides,
   }
 }

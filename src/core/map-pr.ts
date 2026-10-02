@@ -1,3 +1,4 @@
+import { parseReferences } from '@core/pr-refs'
 import { compareIso } from '@core/threads'
 import type {
   CiStatus,
@@ -37,6 +38,8 @@ export interface PullRequestNode {
   reviewDecision: ReviewDecision
   mergeable: MergeableState
   autoMergeRequest: { enabledAt: string } | null
+  /** Raw markdown: `bodyText` keeps a link's text and drops where it points. */
+  body: string
   bodyText: string
   author: ActorNode | null
   repository: { nameWithOwner: string }
@@ -265,5 +268,9 @@ export function mapPullRequest(
       myLogin,
     ),
     buckets,
+    references: parseReferences(node.body, {
+      repository: node.repository.nameWithOwner,
+      number: node.number,
+    }),
   }
 }

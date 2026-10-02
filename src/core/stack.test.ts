@@ -309,6 +309,7 @@ describe('orderSection', () => {
       myLogin: 'vlad',
       snoozes: {},
       now: '2026-08-10T12:00:00Z',
+      pullRequestStates: new Map(),
     }).map((item) => ({ ...item, stack: stacks.get(item.pr.id) ?? null }))
 
     // The sort alone puts PR_tip (waiting longest) first, then PR_lone, then

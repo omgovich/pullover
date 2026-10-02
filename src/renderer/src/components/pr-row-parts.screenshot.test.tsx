@@ -1,5 +1,5 @@
 import type { CiStatus } from '@shared/types'
-import { visualCase } from '../test/visual'
+import { makeItem, visualCase } from '../test/visual'
 import { CiChip, StatusText } from './pr-row-parts'
 
 /**
@@ -13,7 +13,7 @@ const CI_STATUSES: CiStatus[] = ['success', 'failure', 'pending', 'none']
 
 // Every key of `STATUS_ACCENTS` in pr-colors.ts, plus one that isn't in it —
 // the counted reasons fall through to the default accent, and that fallback
-// is as worth holding as the table.
+// is as worth holding as the table. "Snoozed" is muted by `isSnoozed` instead.
 const REASONS = [
   'CI is red',
   'Changes requested',
@@ -39,7 +39,7 @@ visualCase(
   'status-text',
   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: 12 }}>
     {REASONS.map((reason) => (
-      <StatusText key={reason} reason={reason} />
+      <StatusText key={reason} item={makeItem({ reason, isSnoozed: reason === 'Snoozed' })} />
     ))}
   </div>,
 )

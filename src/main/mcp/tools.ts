@@ -142,8 +142,11 @@ export function registerTools(server: McpServer, deps: McpServerDeps): void {
       if (item === null) return notFound(repository, number)
       const hidden = refuseIfHidden(item)
       if (hidden !== null) return hidden
-      if (hours === undefined) store.snooze(item.pr.id, 'until-activity', now())
-      else store.snooze(item.pr.id, 'until-time', now(), hours)
+      store.snooze({
+        prId: item.pr.id,
+        request: hours === undefined ? { type: 'until-activity' } : { type: 'until-time', hours },
+        now: now(),
+      })
       return reportAfterChange(repository, number)
     },
   )

@@ -134,7 +134,7 @@ const CompactPullRequestCard = forwardRef<PullRequestCardHandle, Props>(
             )}
 
             <CiChip status={pr.ciStatus} />
-            <StatusText reason={item.reason} />
+            <StatusText item={item} />
           </View>
         </View>
       </div>

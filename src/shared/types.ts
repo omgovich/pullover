@@ -103,7 +103,19 @@ export interface PullRequest {
   /** Every @-mention of the user on this PR, oldest first. */
   mentionsAt: string[]
   buckets: SearchBucket[]
+  /**
+   * Pull requests the description names, in the order it names them. A bare
+   * `#N` may still turn out to be an issue: only GitHub can say which it is.
+   */
+  references: PullRequestRef[]
 }
+
+export interface PullRequestRef {
+  repository: string
+  number: number
+}
+
+export type PullRequestState = 'OPEN' | 'MERGED' | 'CLOSED'
 
 export type Category =
   | 'needs-review'
@@ -140,6 +152,8 @@ export interface ClassifiedPullRequest {
   pr: PullRequest
   category: Category
   reason: string
+  /** What an active until-merged snooze waits on; `reason` names it in short. */
+  snoozedUntilMerged?: PullRequestRef
   /**
    * When the ball landed in the user's court, which is what each category is
    * ordered by. Null exactly for the categories where nothing is waiting on
@@ -151,7 +165,12 @@ export interface ClassifiedPullRequest {
   stack: StackPosition | null
 }
 
-export type SnoozeType = 'until-activity' | 'until-time'
+export type SnoozeType = 'until-activity' | 'until-time' | 'until-merged'
+
+export type SnoozeRequest =
+  | { type: 'until-activity' }
+  | { type: 'until-time'; hours: number }
+  | { type: 'until-merged'; blocker: PullRequestRef }
 
 export interface Snooze {
   prId: string
@@ -160,6 +179,8 @@ export interface Snooze {
   snoozedAt: string
   /** ISO timestamp; only set when `type === 'until-time'`. */
   until?: string
+  /** Only set when `type === 'until-merged'`. */
+  blocker?: PullRequestRef
 }
 
 export type ThemePreference = 'system' | 'light' | 'dark'

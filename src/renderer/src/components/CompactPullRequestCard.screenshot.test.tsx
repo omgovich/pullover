@@ -36,6 +36,21 @@ visualCase('long-title', card(makeRow({ title: LONG_TITLE })))
 visualCase('long-title-active', card(makeRow({ title: LONG_TITLE }), true))
 
 visualCase(
+  'snoozed-until-merged-foreign-owner',
+  card(
+    makeRow(
+      { title: LONG_TITLE },
+      {
+        reason: 'After globex/platform-infrastructure#482',
+        category: 'waiting',
+        isSnoozed: true,
+        snoozedUntilMerged: { repository: 'globex/platform-infrastructure', number: 482 },
+      },
+    ),
+  ),
+)
+
+visualCase(
   'ci-failure',
   card(makeRow({ ciStatus: 'failure' }, { reason: 'CI is red', category: 'my-pr-action' })),
 )

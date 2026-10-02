@@ -241,7 +241,7 @@ describe('repositories', () => {
 
 describe('snoozes', () => {
   it('records a timed snooze with a deadline', () => {
-    store.snooze('PR_1', 'until-time', NOW, 3)
+    store.snooze({ prId: 'PR_1', request: { type: 'until-time', hours: 3 }, now: NOW })
     const snooze = store.getSnoozes()['PR_1']
     expect(snooze?.type).toBe('until-time')
     expect(snooze?.snoozedAt).toBe(NOW)
@@ -249,18 +249,23 @@ describe('snoozes', () => {
   })
 
   it('records a conditional snooze with no deadline', () => {
-    store.snooze('PR_1', 'until-activity', NOW)
+    store.snooze({ prId: 'PR_1', request: { type: 'until-activity' }, now: NOW })
     const snooze = store.getSnoozes()['PR_1']
     expect(snooze?.type).toBe('until-activity')
     expect(snooze?.until).toBeUndefined()
   })
 
-  it('requires hours for a timed snooze', () => {
-    expect(() => store.snooze('PR_1', 'until-time', NOW)).toThrow(/hours/)
+  it('records what an until-merged snooze waits on', () => {
+    const blocker = { repository: 'acme/api', number: 12 }
+    store.snooze({ prId: 'PR_1', request: { type: 'until-merged', blocker }, now: NOW })
+    const snooze = store.getSnoozes()['PR_1']
+    expect(snooze?.type).toBe('until-merged')
+    expect(snooze?.blocker).toEqual(blocker)
+    expect(snooze?.until).toBeUndefined()
   })
 
   it('removes a snooze', () => {
-    store.snooze('PR_1', 'until-activity', NOW)
+    store.snooze({ prId: 'PR_1', request: { type: 'until-activity' }, now: NOW })
     store.unsnooze('PR_1')
     expect(store.getSnoozes()['PR_1']).toBeUndefined()
   })

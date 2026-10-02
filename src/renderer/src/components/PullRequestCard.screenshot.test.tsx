@@ -54,6 +54,38 @@ visualCase(
   ),
 )
 
+// The one reason that names another pull request. Same owner, so GitHub's
+// own spelling drops it; a foreign owner is where the repository gets clipped.
+visualCase(
+  'snoozed-until-merged',
+  card(
+    makeRow(
+      {},
+      {
+        reason: 'After billing-service#482',
+        category: 'waiting',
+        isSnoozed: true,
+        snoozedUntilMerged: { repository: 'acme/billing-service', number: 482 },
+      },
+    ),
+  ),
+)
+
+visualCase(
+  'snoozed-until-merged-foreign-owner',
+  card(
+    makeRow(
+      { title: LONG_TITLE },
+      {
+        reason: 'After globex/platform-infrastructure#482',
+        category: 'waiting',
+        isSnoozed: true,
+        snoozedUntilMerged: { repository: 'globex/platform-infrastructure', number: 482 },
+      },
+    ),
+  ),
+)
+
 // A long title with nothing on its right to yield to: the widest the title
 // ever gets, and the only case where its own clip is what ends it.
 visualCase(

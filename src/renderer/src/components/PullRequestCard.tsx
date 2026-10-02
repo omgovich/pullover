@@ -288,7 +288,7 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
 
               <View direction="row" align="center" gap={1.75} wrap={false}>
                 <CiChip status={pr.ciStatus} />
-                <StatusText reason={item.reason} />
+                <StatusText item={item} />
               </View>
             </View>
           </View>

@@ -5,7 +5,7 @@ import {
   type PrMenuAction,
   type PrMenuRequest,
 } from '@shared/ipc'
-import type { Settings, SnoozeType, Trigger, UpdateState } from '@shared/types'
+import type { Settings, SnoozeRequest, Trigger, UpdateState } from '@shared/types'
 import {
   app,
   type BrowserWindow,
@@ -16,7 +16,7 @@ import {
   shell,
 } from 'electron'
 import type { Inbox } from './inbox'
-import { prMenuEntries } from './pr-menu'
+import { type PrMenuEntry, prMenuEntries } from './pr-menu'
 import { isSafeExternalUrl } from './safe-url'
 import type { AppStore } from './store'
 
@@ -79,17 +79,26 @@ export function registerIpc(deps: IpcDeps): void {
   ipcMain.handle(IPC.showPrMenu, (_event, request: PrMenuRequest) => {
     return new Promise<PrMenuAction | null>((resolve) => {
       let chosen: PrMenuAction | null = null
-      const template: MenuItemConstructorOptions[] = prMenuEntries(request.isSnoozed).map(
-        (entry) =>
-          entry.type === 'separator'
-            ? { type: 'separator' }
-            : {
-                label: entry.label,
-                click: () => {
-                  chosen = entry.action
-                },
+      const entries = prMenuEntries({
+        isSnoozed: request.isSnoozed,
+        ...deps.inbox.snoozeBlockers(request.prId),
+      })
+      const toTemplate = (entry: PrMenuEntry): MenuItemConstructorOptions => {
+        switch (entry.type) {
+          case 'separator':
+            return { type: 'separator' }
+          case 'submenu':
+            return { label: entry.label, submenu: entry.entries.map(toTemplate) }
+          case 'item':
+            return {
+              label: entry.label,
+              click: () => {
+                chosen = entry.action
               },
-      )
+            }
+        }
+      }
+      const template = entries.map(toTemplate)
 
       Menu.buildFromTemplate(template).popup({
         window: deps.getWindow() ?? undefined,
@@ -107,8 +116,8 @@ export function registerIpc(deps: IpcDeps): void {
     clipboard.writeText(text)
   })
 
-  ipcMain.handle(IPC.snooze, (_event, prId: string, type: SnoozeType, hours?: number) => {
-    deps.store.snooze(prId, type, now(), hours)
+  ipcMain.handle(IPC.snooze, (_event, prId: string, request: SnoozeRequest) => {
+    deps.store.snooze({ prId, request, now: now() })
     deps.inbox.reclassify()
   })
 
