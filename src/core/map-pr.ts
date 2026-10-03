@@ -169,13 +169,13 @@ function computeReviewRequestedAt(node: PullRequestNode, myLogin: string): strin
   )
 }
 
-function computeLastReviewRequestAt(node: PullRequestNode, myLogin: string): string | null {
-  return latestIso(
-    reviewRequests(node).flatMap((e) => {
+function computeReviewRequestsAt(node: PullRequestNode, myLogin: string): string[] {
+  return reviewRequests(node)
+    .flatMap((e) => {
       const login = e.requestedReviewer?.login
       return login === myLogin || login === undefined ? [e.createdAt] : []
-    }),
-  )
+    })
+    .sort(compareIso)
 }
 
 function computeReadyForReviewAt(node: PullRequestNode): string | null {
@@ -265,7 +265,7 @@ export function mapPullRequest(
     reviewThreads,
     conversationComments,
     reviewRequestedAt: computeReviewRequestedAt(node, myLogin),
-    lastReviewRequestAt: computeLastReviewRequestAt(node, myLogin),
+    reviewRequestsAt: computeReviewRequestsAt(node, myLogin),
     readyForReviewAt: computeReadyForReviewAt(node),
     mentionsAt: computeMentionsAt(
       node,

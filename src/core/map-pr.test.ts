@@ -458,17 +458,20 @@ describe('mapPullRequest', () => {
       expect(mapPullRequest(n, [], 'vlad').reviewRequestedAt).toBe('2026-08-01T10:00:00Z')
     })
 
-    it('keeps a later team request as the last one, where reviewRequestedAt prefers mine', () => {
+    it('lists every request naming me or nobody, oldest first, and none naming others', () => {
       const n = node({
         timelineItems: {
           nodes: [
-            requested('vlad', '2026-08-01T10:00:00Z'),
             requestedAnonymously('2026-08-08T10:00:00Z'),
             requested('bob', '2026-08-09T10:00:00Z'),
+            requested('vlad', '2026-08-01T10:00:00Z'),
           ],
         },
       })
-      expect(mapPullRequest(n, [], 'vlad').lastReviewRequestAt).toBe('2026-08-08T10:00:00Z')
+      expect(mapPullRequest(n, [], 'vlad').reviewRequestsAt).toEqual([
+        '2026-08-01T10:00:00Z',
+        '2026-08-08T10:00:00Z',
+      ])
     })
 
     it('does not read a request naming nobody out of a ready-for-review event', () => {

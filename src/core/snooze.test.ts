@@ -1,7 +1,7 @@
 import { isSnoozeActive } from '@core/snooze'
 import type { Snooze } from '@shared/types'
 import { describe, expect, it } from 'vitest'
-import { makeComment, makePullRequest, makeThread } from './test-factory'
+import { makeComment, makePullRequest, makeReview, makeThread } from './test-factory'
 
 const ME = 'vlad'
 const NOW = '2026-08-10T12:00:00Z'
@@ -105,8 +105,9 @@ describe('isSnoozeActive — until-review-requested', () => {
     snoozedAt: '2026-08-10T10:00:00Z',
   }
 
-  const asked = (lastReviewRequestAt: string) =>
-    makePullRequest({ buckets: ['review-requested'], lastReviewRequestAt })
+  const asked = (...reviewRequestsAt: string[]) =>
+    makePullRequest({ buckets: ['review-requested'], reviewRequestsAt })
+  const answeredAt = (submittedAt: string) => [makeReview(ME, submittedAt, { state: 'COMMENTED' })]
 
   it('stays asleep while I have not been asked since', () => {
     expect(isSnoozeActive(asked('2026-08-09T10:00:00Z'), snooze, ME, NOW)).toBe(true)
@@ -116,27 +117,46 @@ describe('isSnoozeActive — until-review-requested', () => {
     expect(isSnoozeActive(makePullRequest(), snooze, ME, NOW)).toBe(true)
   })
 
-  it('wakes on a review request newer than the snooze', () => {
+  it('wakes on a review request newer than the snooze while it is pending', () => {
     expect(isSnoozeActive(asked('2026-08-10T11:00:00Z'), snooze, ME, NOW)).toBe(false)
-  })
-
-  it('wakes on a later team request even when an older one named me', () => {
-    const pr = makePullRequest({
-      buckets: ['review-requested'],
-      reviewRequestedAt: '2026-08-01T10:00:00Z',
-      lastReviewRequestAt: '2026-08-10T11:00:00Z',
-    })
-    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(false)
   })
 
   it('does not wake on a request in the same second', () => {
     expect(isSnoozeActive(asked('2026-08-10T10:00:00Z'), snooze, ME, NOW)).toBe(true)
   })
 
-  it('does not wake on a newer request GitHub no longer lists as pending on me', () => {
+  it('stays awake once I review the request, though GitHub then drops it as pending', () => {
     const pr = makePullRequest({
       buckets: ['involves'],
-      lastReviewRequestAt: '2026-08-10T11:00:00Z',
+      reviewRequestsAt: ['2026-08-10T11:00:00Z'],
+      reviews: answeredAt('2026-08-10T12:00:00Z'),
+    })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(false)
+  })
+
+  it('stays awake when another team is asked after I answered', () => {
+    const pr = makePullRequest({
+      buckets: ['involves'],
+      reviewRequestsAt: ['2026-08-10T11:00:00Z', '2026-08-10T13:00:00Z'],
+      reviews: answeredAt('2026-08-10T12:00:00Z'),
+    })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(false)
+  })
+
+  it('goes back to sleep when a teammate answered the team request instead of me', () => {
+    const pr = makePullRequest({
+      buckets: ['involves'],
+      reviewRequestsAt: ['2026-08-10T11:00:00Z'],
+      reviews: answeredAt('2026-08-09T10:00:00Z'),
+    })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
+  })
+
+  it('does not wake on my review alone, with no request since the snooze', () => {
+    const pr = makePullRequest({
+      buckets: ['involves'],
+      reviewRequestsAt: ['2026-08-09T10:00:00Z'],
+      reviews: answeredAt('2026-08-10T12:00:00Z'),
     })
     expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
   })
