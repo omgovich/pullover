@@ -147,7 +147,10 @@ describe('isSnoozeActive — until-review-requested', () => {
     const pr = makePullRequest({
       buckets: ['involves'],
       reviewRequestsAt: ['2026-08-10T11:00:00Z'],
-      reviews: answeredAt('2026-08-09T10:00:00Z'),
+      reviews: [
+        ...answeredAt('2026-08-09T10:00:00Z'),
+        makeReview('bob', '2026-08-10T11:30:00Z', { state: 'APPROVED' }),
+      ],
     })
     expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
   })
