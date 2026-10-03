@@ -96,6 +96,11 @@ export interface PullRequest {
   /** When the user was last asked to review this PR, or null if never. */
   reviewRequestedAt: string | null
   /**
+   * The newest review request naming the user or a team. Unlike
+   * `reviewRequestedAt`, an older request naming the user does not hide it.
+   */
+  lastReviewRequestAt: string | null
+  /**
    * When the pull request stopped being a draft, or null if it never was one.
    * The floor on any waiting time: before it, the PR was hidden.
    */

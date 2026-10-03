@@ -20,7 +20,13 @@ export function isSnoozeActive(
         pr.lastCommitPushedAt <= snooze.snoozedAt
       )
     case 'until-review-requested':
-      return pr.reviewRequestedAt === null || pr.reviewRequestedAt <= snooze.snoozedAt
+      // A team request names nobody, so it may be another team's: only one
+      // GitHub still lists as pending on the user counts.
+      return !(
+        pr.buckets.includes('review-requested') &&
+        pr.lastReviewRequestAt !== null &&
+        pr.lastReviewRequestAt > snooze.snoozedAt
+      )
   }
   // A snooze persisted by an older build can carry a type no longer in the
   // union — treat it as expired rather than returning `undefined`.

@@ -679,7 +679,11 @@ describe('classify — snooze override', () => {
       isSnoozed: true,
     })
 
-    const asked = { ...pr, reviewRequestedAt: '2026-08-10T11:00:00Z' }
+    const asked = {
+      ...pr,
+      reviewRequestedAt: '2026-08-10T11:00:00Z',
+      lastReviewRequestAt: '2026-08-10T11:00:00Z',
+    }
     expect(classify(asked, ctx(snoozes)).reason).toBe('Re-review requested')
   })
 

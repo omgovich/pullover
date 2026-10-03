@@ -105,9 +105,11 @@ describe('isSnoozeActive — until-review-requested', () => {
     snoozedAt: '2026-08-10T10:00:00Z',
   }
 
+  const asked = (lastReviewRequestAt: string) =>
+    makePullRequest({ buckets: ['review-requested'], lastReviewRequestAt })
+
   it('stays asleep while I have not been asked since', () => {
-    const pr = makePullRequest({ reviewRequestedAt: '2026-08-09T10:00:00Z' })
-    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
+    expect(isSnoozeActive(asked('2026-08-09T10:00:00Z'), snooze, ME, NOW)).toBe(true)
   })
 
   it('stays asleep when I was never asked at all', () => {
@@ -115,12 +117,27 @@ describe('isSnoozeActive — until-review-requested', () => {
   })
 
   it('wakes on a review request newer than the snooze', () => {
-    const pr = makePullRequest({ reviewRequestedAt: '2026-08-10T11:00:00Z' })
+    expect(isSnoozeActive(asked('2026-08-10T11:00:00Z'), snooze, ME, NOW)).toBe(false)
+  })
+
+  it('wakes on a later team request even when an older one named me', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested'],
+      reviewRequestedAt: '2026-08-01T10:00:00Z',
+      lastReviewRequestAt: '2026-08-10T11:00:00Z',
+    })
     expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(false)
   })
 
   it('does not wake on a request in the same second', () => {
-    const pr = makePullRequest({ reviewRequestedAt: '2026-08-10T10:00:00Z' })
+    expect(isSnoozeActive(asked('2026-08-10T10:00:00Z'), snooze, ME, NOW)).toBe(true)
+  })
+
+  it('does not wake on a newer request GitHub no longer lists as pending on me', () => {
+    const pr = makePullRequest({
+      buckets: ['involves'],
+      lastReviewRequestAt: '2026-08-10T11:00:00Z',
+    })
     expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
   })
 

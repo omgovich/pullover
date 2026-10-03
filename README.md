@@ -32,7 +32,7 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 - 🧑‍💻 **Your own PRs, too.** They surface only when there's something for you to do: changes requested, a comment you haven't answered, red CI, merge conflicts, or approved and ready to merge.
 - 🔒 **Private repos and team requests.** Both land in the inbox like anything else — nothing to configure.
 - 🧬 **Stacks stay together.** A stacked PR shows its place in the chain (`4/8`), and the stack is drawn as one connected run.
-- 💤 **Snooze until new activity.** Park a PR and it comes back on its own — a new push, or a reply in a thread you're in. Reviewed someone's PR? Snooze it until they re-request your review, and pushes and comments won't bring it back early.
+- 💤 **Snooze until new activity.** Park a PR and it comes back on its own — a new push, or a reply in a thread you're in. Reviewed someone's PR? Snooze it until your review is requested again — from you or your team — and pushes and comments won't bring it back early.
 - 📌 **Lives in the menu bar.** A quiet count of PRs waiting on you; no Dock icon, no window to manage.
 - ⚡ **Open it from anywhere.** One keystroke — `⌃⌥P` — and the inbox is in front of you, whatever app you're in.
 - ⌨️ **Drive it from the keyboard.** Get through the list without reaching for the mouse.
