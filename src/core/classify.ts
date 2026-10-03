@@ -1,4 +1,4 @@
-import { isSnoozeActive } from '@core/snooze'
+import { isSnoozeActive, snoozeReason } from '@core/snooze'
 import {
   approvedSince,
   compareIso,
@@ -270,7 +270,13 @@ export function classify(
 
   const snooze = ctx.snoozes[pr.id]
   if (snooze !== undefined && isSnoozeActive(pr, snooze, ctx.myLogin, ctx.now)) {
-    return { pr, category: 'waiting', reason: 'Snoozed', waitingSince: null, isSnoozed: true }
+    return {
+      pr,
+      category: 'waiting',
+      reason: snoozeReason(snooze),
+      waitingSince: null,
+      isSnoozed: true,
+    }
   }
 
   // Clamped once here rather than in every branch above: no verdict may name

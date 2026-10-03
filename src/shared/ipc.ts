@@ -20,6 +20,7 @@ export type PrMenuAction =
   | 'snooze-until-activity'
   | 'snooze-4-hours'
   | 'snooze-until-tomorrow'
+  | 'snooze-until-review-requested'
   | 'unsnooze'
   | 'open'
   | 'open-files'
@@ -27,6 +28,8 @@ export type PrMenuAction =
   | 'copy-branch'
 
 export interface PrMenuRequest {
+  /** Whose pull request it is: only someone else's can be snoozed until it asks for you again. */
+  authorLogin: string
   /** Collapses the snooze options into a single Unsnooze, as the card's pill does. */
   isSnoozed: boolean
   /** Where to pop the menu, in window coordinates. */

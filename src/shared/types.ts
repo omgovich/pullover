@@ -151,7 +151,7 @@ export interface ClassifiedPullRequest {
   stack: StackPosition | null
 }
 
-export type SnoozeType = 'until-activity' | 'until-time'
+export type SnoozeType = 'until-activity' | 'until-time' | 'until-review-requested'
 
 export interface Snooze {
   prId: string

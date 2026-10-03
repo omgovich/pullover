@@ -6,6 +6,13 @@ export type PrMenuEntry =
 
 const SEPARATOR: PrMenuEntry = { type: 'separator' }
 
+// Only on someone else's pull request: nobody asks you to review your own.
+const UNTIL_RE_REQUESTED: PrMenuEntry = {
+  type: 'item',
+  label: 'Snooze until re-requested',
+  action: 'snooze-until-review-requested',
+}
+
 /**
  * The card's context menu, top to bottom: opens, then copies, then snooze.
  *
@@ -17,7 +24,13 @@ const SEPARATOR: PrMenuEntry = { type: 'separator' }
  * Kept apart from the `Menu.popup` call in `ipc.ts` so the wording and the
  * ordering can be tested without an Electron runtime.
  */
-export function prMenuEntries(isSnoozed: boolean): PrMenuEntry[] {
+export function prMenuEntries({
+  isSnoozed,
+  isOwn,
+}: {
+  isSnoozed: boolean
+  isOwn: boolean
+}): PrMenuEntry[] {
   // "New activity" is deliberately vaguer than the wake condition in
   // `snooze.ts`, which is a push or a reply in a thread you are already in —
   // not every comment on the pull request.
@@ -27,6 +40,7 @@ export function prMenuEntries(isSnoozed: boolean): PrMenuEntry[] {
         { type: 'item', label: 'Snooze until new activity', action: 'snooze-until-activity' },
         { type: 'item', label: 'Snooze for 4 hours', action: 'snooze-4-hours' },
         { type: 'item', label: 'Snooze until tomorrow', action: 'snooze-until-tomorrow' },
+        ...(isOwn ? [] : [UNTIL_RE_REQUESTED]),
       ]
 
   return [

@@ -259,6 +259,13 @@ describe('snoozes', () => {
     expect(() => store.snooze('PR_1', 'until-time', NOW)).toThrow(/hours/)
   })
 
+  it('records a snooze until re-requested with no deadline', () => {
+    store.snooze('PR_1', 'until-review-requested', NOW)
+    const snooze = store.getSnoozes()['PR_1']
+    expect(snooze?.type).toBe('until-review-requested')
+    expect(snooze?.until).toBeUndefined()
+  })
+
   it('removes a snooze', () => {
     store.snooze('PR_1', 'until-activity', NOW)
     store.unsnooze('PR_1')

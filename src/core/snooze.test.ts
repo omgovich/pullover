@@ -98,6 +98,48 @@ describe('isSnoozeActive — until-activity', () => {
   })
 })
 
+describe('isSnoozeActive — until-review-requested', () => {
+  const snooze: Snooze = {
+    prId: 'PR_1',
+    type: 'until-review-requested',
+    snoozedAt: '2026-08-10T10:00:00.000Z',
+  }
+
+  it('stays asleep while I have not been asked since', () => {
+    const pr = makePullRequest({ reviewRequestedAt: '2026-08-09T10:00:00Z' })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
+  })
+
+  it('stays asleep when I was never asked at all', () => {
+    expect(isSnoozeActive(makePullRequest(), snooze, ME, NOW)).toBe(true)
+  })
+
+  it('wakes on a review request newer than the snooze', () => {
+    const pr = makePullRequest({ reviewRequestedAt: '2026-08-10T11:00:00Z' })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(false)
+  })
+
+  it('does not wake on a request in the same second, whatever the precision', () => {
+    const pr = makePullRequest({ reviewRequestedAt: '2026-08-10T10:00:00Z' })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
+  })
+
+  it('ignores new commits and replies', () => {
+    const pr = makePullRequest({
+      lastCommitPushedAt: '2026-08-10T11:00:00Z',
+      reviewThreads: [
+        makeThread({
+          comments: [
+            makeComment(ME, '2026-08-09T10:00:00Z'),
+            makeComment('alice', '2026-08-10T11:00:00Z'),
+          ],
+        }),
+      ],
+    })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
+  })
+})
+
 describe('isSnoozeActive — unknown legacy type', () => {
   it('treats a type no longer in the union as expired', () => {
     const snooze = {

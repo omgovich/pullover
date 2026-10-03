@@ -21,6 +21,7 @@ const STATUS_ACCENTS: Record<string, Accent> = {
   'Waiting on author': 'neutral-faded',
   'Waiting on reviewers': 'neutral-faded',
   Snoozed: 'neutral-faded',
+  'Until re-requested': 'neutral-faded',
   Mentioned: 'warning',
 }
 

@@ -223,8 +223,12 @@ describe('hidePopup', () => {
 })
 
 describe('pull request context menu', () => {
-  function popMenu(isSnoozed: boolean): { menu: PoppedMenu; action: Promise<unknown> } {
+  function popMenu(
+    isSnoozed: boolean,
+    authorLogin = 'alice',
+  ): { menu: PoppedMenu; action: Promise<unknown> } {
     const action = call(IPC.showPrMenu, {
+      authorLogin,
       isSnoozed,
       x: 12.4,
       y: 40.6,
@@ -262,6 +266,26 @@ describe('pull request context menu', () => {
     const { menu, action } = popMenu(false)
     menu.options.callback()
     await expect(action).resolves.toBeNull()
+  })
+
+  it("offers to wait for a re-request only on someone else's pull request", () => {
+    vi.spyOn(Inbox.prototype, 'getSnapshot').mockReturnValue({
+      status: 'ready',
+      items: [],
+      attentionCount: 0,
+      lastUpdatedAt: null,
+      errorMessage: null,
+      myLogin: 'vlad',
+      knownRepositories: [],
+    })
+    const labelsFor = (authorLogin: string) => {
+      poppedMenus.length = 0
+      return popMenu(false, authorLogin).menu.items.map((entry) => entry.label)
+    }
+
+    expect(labelsFor('alice')).toContain('Snooze until re-requested')
+    expect(labelsFor('vlad')).not.toContain('Snooze until re-requested')
+    vi.restoreAllMocks()
   })
 
   it('offers Unsnooze in place of the snooze options for a snoozed pull request', async () => {

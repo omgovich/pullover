@@ -27,7 +27,11 @@ export async function showPrMenu(
   anchor: MenuAnchor,
   onSnoozed: (item: ClassifiedPullRequest) => void,
 ): Promise<void> {
-  const action = await window.api.showPrMenu({ isSnoozed: item.isSnoozed, ...anchor })
+  const action = await window.api.showPrMenu({
+    authorLogin: item.pr.authorLogin,
+    isSnoozed: item.isSnoozed,
+    ...anchor,
+  })
   const { pr } = item
 
   switch (action) {
@@ -43,6 +47,10 @@ export async function showPrMenu(
       return
     case 'snooze-until-tomorrow':
       await window.api.snooze(pr.id, 'until-time', 24)
+      onSnoozed(item)
+      return
+    case 'snooze-until-review-requested':
+      await window.api.snooze(pr.id, 'until-review-requested')
       onSnoozed(item)
       return
     case 'unsnooze':

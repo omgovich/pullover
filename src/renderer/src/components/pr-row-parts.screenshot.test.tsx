@@ -22,6 +22,7 @@ const REASONS = [
   'Waiting on author',
   'Waiting on reviewers',
   'Snoozed',
+  'Until re-requested',
   'Mentioned',
   '3 new replies',
 ]

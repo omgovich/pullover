@@ -79,16 +79,18 @@ export function registerIpc(deps: IpcDeps): void {
   ipcMain.handle(IPC.showPrMenu, (_event, request: PrMenuRequest) => {
     return new Promise<PrMenuAction | null>((resolve) => {
       let chosen: PrMenuAction | null = null
-      const template: MenuItemConstructorOptions[] = prMenuEntries(request.isSnoozed).map(
-        (entry) =>
-          entry.type === 'separator'
-            ? { type: 'separator' }
-            : {
-                label: entry.label,
-                click: () => {
-                  chosen = entry.action
-                },
+      const template: MenuItemConstructorOptions[] = prMenuEntries({
+        isSnoozed: request.isSnoozed,
+        isOwn: request.authorLogin === deps.inbox.getSnapshot().myLogin,
+      }).map((entry) =>
+        entry.type === 'separator'
+          ? { type: 'separator' }
+          : {
+              label: entry.label,
+              click: () => {
+                chosen = entry.action
               },
+            },
       )
 
       Menu.buildFromTemplate(template).popup({
