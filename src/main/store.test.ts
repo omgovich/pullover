@@ -259,6 +259,11 @@ describe('snoozes', () => {
     expect(() => store.snooze('PR_1', 'until-time', NOW)).toThrow(/hours/)
   })
 
+  it('records when it snoozed to the second, the precision GitHub dates everything in', () => {
+    store.snooze('PR_1', 'until-activity', '2026-08-10T12:00:00.500Z')
+    expect(store.getSnoozes()['PR_1']?.snoozedAt).toBe('2026-08-10T12:00:00Z')
+  })
+
   it('records a snooze until re-requested with no deadline', () => {
     store.snooze('PR_1', 'until-review-requested', NOW)
     const snooze = store.getSnoozes()['PR_1']

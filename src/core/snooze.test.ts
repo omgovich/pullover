@@ -102,7 +102,7 @@ describe('isSnoozeActive — until-review-requested', () => {
   const snooze: Snooze = {
     prId: 'PR_1',
     type: 'until-review-requested',
-    snoozedAt: '2026-08-10T10:00:00.000Z',
+    snoozedAt: '2026-08-10T10:00:00Z',
   }
 
   it('stays asleep while I have not been asked since', () => {
@@ -119,7 +119,7 @@ describe('isSnoozeActive — until-review-requested', () => {
     expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(false)
   })
 
-  it('does not wake on a request in the same second, whatever the precision', () => {
+  it('does not wake on a request in the same second', () => {
     const pr = makePullRequest({ reviewRequestedAt: '2026-08-10T10:00:00Z' })
     expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
   })

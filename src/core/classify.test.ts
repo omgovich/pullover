@@ -670,7 +670,7 @@ describe('classify — snooze override', () => {
       PR_1: {
         prId: 'PR_1',
         type: 'until-review-requested' as const,
-        snoozedAt: '2026-08-10T10:00:00.000Z',
+        snoozedAt: '2026-08-10T10:00:00Z',
       },
     }
     expect(classify(pr, ctx(snoozes))).toMatchObject({

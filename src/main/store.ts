@@ -94,9 +94,12 @@ export class AppStore {
       }
       until = new Date(Date.parse(now) + hours * 3_600_000).toISOString()
     }
+    // To the second, like every timestamp GitHub sends: the wake rules compare
+    // ISO strings, and `.500Z` sorts before `Z` within the same second.
+    const snoozedAt = now.replace(/\.\d+Z$/, 'Z')
     this.backend.set('snoozes', {
       ...this.getSnoozes(),
-      [prId]: { prId, type, snoozedAt: now, until },
+      [prId]: { prId, type, snoozedAt, until },
     })
   }
 

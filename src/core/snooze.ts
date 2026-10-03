@@ -1,5 +1,5 @@
 import { hasNewReplyInMyThreadsSince } from '@core/threads'
-import type { PullRequest, Snooze } from '@shared/types'
+import type { PullRequest, Snooze, SnoozeType } from '@shared/types'
 
 /**
  * A snooze parks a PR in the "waiting" section. It stays active until its own
@@ -20,18 +20,20 @@ export function isSnoozeActive(
         pr.lastCommitPushedAt <= snooze.snoozedAt
       )
     case 'until-review-requested':
-      // Parsed: `snoozedAt` carries milliseconds and GitHub's timestamps do
-      // not, so as strings a request in the same second would sort after it.
-      return (
-        pr.reviewRequestedAt === null ||
-        Date.parse(pr.reviewRequestedAt) <= Date.parse(snooze.snoozedAt)
-      )
+      return pr.reviewRequestedAt === null || pr.reviewRequestedAt <= snooze.snoozedAt
   }
   // A snooze persisted by an older build can carry a type no longer in the
   // union — treat it as expired rather than returning `undefined`.
   return false
 }
 
+const SNOOZE_REASONS: Record<SnoozeType, string> = {
+  'until-activity': 'Snoozed',
+  'until-time': 'Snoozed',
+  'until-review-requested': 'Until re-requested',
+}
+
 export function snoozeReason(snooze: Snooze): string {
-  return snooze.type === 'until-review-requested' ? 'Until re-requested' : 'Snoozed'
+  // A type persisted by an older build may be missing from the table.
+  return SNOOZE_REASONS[snooze.type] ?? 'Snoozed'
 }

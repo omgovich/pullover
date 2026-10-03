@@ -6,7 +6,6 @@ export type PrMenuEntry =
 
 const SEPARATOR: PrMenuEntry = { type: 'separator' }
 
-// Only on someone else's pull request: nobody asks you to review your own.
 const UNTIL_RE_REQUESTED: PrMenuEntry = {
   type: 'item',
   label: 'Snooze until re-requested',

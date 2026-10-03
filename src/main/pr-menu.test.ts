@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { prMenuEntries } from './pr-menu'
 
-function labels(isSnoozed: boolean, isOwn = true): string[] {
+function labels({ isSnoozed, isOwn = true }: { isSnoozed: boolean; isOwn?: boolean }): string[] {
   return prMenuEntries({ isSnoozed, isOwn })
     .filter((entry) => entry.type === 'item')
     .map((entry) => entry.label)
@@ -9,7 +9,7 @@ function labels(isSnoozed: boolean, isOwn = true): string[] {
 
 describe('prMenuEntries', () => {
   it('leads with the opens, then the copies, then snooze', () => {
-    expect(labels(false)).toEqual([
+    expect(labels({ isSnoozed: false })).toEqual([
       'Open on GitHub',
       'Open files changed',
       'Copy link',
@@ -21,28 +21,28 @@ describe('prMenuEntries', () => {
   })
 
   it("offers to wait for a re-request on someone else's pull request, last", () => {
-    expect(labels(false, false).slice(-2)).toEqual([
+    expect(labels({ isSnoozed: false, isOwn: false }).slice(-2)).toEqual([
       'Snooze until tomorrow',
       'Snooze until re-requested',
     ])
   })
 
   it('never offers it on your own pull request, which nobody asks you to review', () => {
-    expect(labels(false, true)).not.toContain('Snooze until re-requested')
+    expect(labels({ isSnoozed: false, isOwn: true })).not.toContain('Snooze until re-requested')
   })
 
   it('collapses it into Unsnooze like the rest while snoozed', () => {
-    expect(labels(true, false)).not.toContain('Snooze until re-requested')
+    expect(labels({ isSnoozed: true, isOwn: false })).not.toContain('Snooze until re-requested')
   })
 
   it('gives every item its own verb, so none leans on the section above it', () => {
-    for (const label of labels(false, false)) {
+    for (const label of labels({ isSnoozed: false, isOwn: false })) {
       expect(label).toMatch(/^(Open|Copy|Snooze) /)
     }
   })
 
   it('collapses the snooze options to Unsnooze when the pull request is snoozed', () => {
-    expect(labels(true)).toEqual([
+    expect(labels({ isSnoozed: true })).toEqual([
       'Open on GitHub',
       'Open files changed',
       'Copy link',
