@@ -33,7 +33,7 @@ Categories, in the order the app shows them:
 - needs-review: somebody asked the user for review and they have not reviewed yet.
 - new-replies: somebody replied in a review thread the user took part in; the reason says how many.
 - re-review: the user reviewed already and the author pushed new commits or asked again.
-- my-pr-action: the user's own pull request needs them — changes requested, open threads, new comments on the pull request, red CI, merge conflicts, or approved and ready to merge; the reason says which.
+- my-pr-action: the user's own pull request needs them — changes requested, open threads, new comments, red CI, merge conflicts, or approved and ready to merge; the reason says which.
 - mentioned: the user was @-mentioned and has not responded since.
 - waiting: nothing is waiting on the user — it is on the author or on other reviewers, or it is snoozed; listed only when includeWaiting is true.
 
