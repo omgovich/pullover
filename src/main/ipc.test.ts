@@ -118,6 +118,13 @@ describe('settings push', () => {
     expect(send).toHaveBeenLastCalledWith(IPC.settingsChanged, store.getSettings())
   })
 
+  it('reclassifies when muted reasons arrive through setSettings', async () => {
+    const reclassify = vi.spyOn(Inbox.prototype, 'reclassify')
+    await call(IPC.setSettings, { mutedTriggers: ['new-commits'] } as never)
+    expect(reclassify).toHaveBeenCalledTimes(1)
+    reclassify.mockRestore()
+  })
+
   // What the inbox reads when it reclassifies, not merely that it did: a
   // reclassify ahead of the write would show the old inbox until next refresh.
   it('reclassifies after the muted reason is stored', async () => {

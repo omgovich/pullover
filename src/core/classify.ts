@@ -105,9 +105,15 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
     }
   }
 
-  // A request outranks a mention, unless its own reason is muted: the request
-  // is then off screen, and the mention would vanish along with it.
-  const requestShown = requested && isOn(participated ? 're-review-requested' : 'review-requested')
+  // A request outranks a mention, unless the reason that shows it is muted: the
+  // request is then off screen, and the mention would vanish along with it.
+  // Having only commented, no reason shows it, and it outranks as before.
+  const requestReason: Trigger | null = !participated
+    ? 'review-requested'
+    : myReview !== null
+      ? 're-review-requested'
+      : null
+  const requestShown = requested && (requestReason === null || isOn(requestReason))
   if (pr.buckets.includes('mentions') && !requestShown && isOn('mentioned')) {
     const lastActivity = myLastActivityAt(pr, myLogin)
     // `mentionsAt` is empty when our own text scan couldn't find where (a
@@ -211,6 +217,11 @@ function classifyOwnPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
       reason: 'Ready to merge',
       waitingSince: approvedSince(pr) ?? pr.updatedAt,
     }
+  }
+
+  // Muted, so off the user's plate, but the reviewers are waiting on them.
+  if (pr.reviewDecision === 'CHANGES_REQUESTED') {
+    return { category: 'waiting', reason: 'Changes requested', waitingSince: null }
   }
 
   return { category: 'waiting', reason: 'Waiting on reviewers', waitingSince: null }

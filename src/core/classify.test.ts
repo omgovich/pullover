@@ -415,6 +415,19 @@ describe('classify — muted reasons', () => {
     expect(classify(pr, muting('re-review-requested')).category).toBe('mentioned')
   })
 
+  it.each<Trigger>(['review-requested', 're-review-requested'])(
+    'keeps a mention behind a request I only commented on, with %s muted',
+    (trigger) => {
+      const pr = makePullRequest({
+        buckets: ['review-requested', 'involves', 'mentions'],
+        conversationComments: [makeComment(ME, '2026-08-01T10:00:00Z')],
+        mentionsAt: ['2026-08-02T10:00:00Z'],
+      })
+      expect(classify(pr, ctx()).category).toBe('waiting')
+      expect(classify(pr, muting(trigger)).category).toBe('waiting')
+    },
+  )
+
   it('hides a review request nobody has touched', () => {
     const pr = makePullRequest({ buckets: ['review-requested'] })
     expect(classify(pr, muting('review-requested')).category).toBe('hidden')
@@ -476,6 +489,17 @@ describe('classify — muted reasons', () => {
       ciStatus: 'failure',
     })
     expect(classify(pr, muting('ci-failed')).category).toBe('waiting')
+  })
+
+  it('says my pull request waits on me when changes requested is muted', () => {
+    const pr = makePullRequest({
+      authorLogin: ME,
+      buckets: ['author'],
+      reviewDecision: 'CHANGES_REQUESTED',
+    })
+    const result = classify(pr, muting('changes-requested'))
+    expect(result.category).toBe('waiting')
+    expect(result.reason).toBe('Changes requested')
   })
 
   it('leaves every other reason alone', () => {
