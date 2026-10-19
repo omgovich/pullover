@@ -340,6 +340,14 @@ describe('mapPullRequest', () => {
     expect(pushed('2026-08-04T10:00:00Z', ['2026-08-04T12:00:01Z'])).toBe('2026-08-04T12:00:01Z')
   })
 
+  // A manual run hours later adds a suite of its own; returned first, it
+  // would make every comment in between look answered by the push.
+  it('takes the earliest suite whatever order GitHub returns them in', () => {
+    expect(pushed('2026-08-04T10:00:00Z', ['2026-08-04T18:00:00Z', '2026-08-04T12:00:01Z'])).toBe(
+      '2026-08-04T12:00:01Z',
+    )
+  })
+
   it('keeps the commit date when no check ran', () => {
     expect(pushed('2026-08-04T10:00:00Z', [])).toBe('2026-08-04T10:00:00Z')
   })

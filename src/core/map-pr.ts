@@ -196,12 +196,15 @@ export function mapCiStatus(state: string | null | undefined): CiStatus {
 
 /**
  * When the commit reached GitHub. Its own date can predate the push by hours,
- * while GitHub creates check suites within seconds of it, so any one will do.
+ * while GitHub creates check suites within seconds of it. The earliest suite
+ * is taken: a manual run or a later-opened pull request adds suites after it.
  */
 function pushedAt(commit: CommitNode): string {
-  const suiteCreatedAt = commit.checkSuites?.nodes[0]?.createdAt
-  return suiteCreatedAt !== undefined && compareIso(suiteCreatedAt, commit.committedDate) > 0
-    ? suiteCreatedAt
+  const [earliestSuiteAt] = (commit.checkSuites?.nodes ?? [])
+    .flatMap((suite) => (suite === null ? [] : [suite.createdAt]))
+    .sort(compareIso)
+  return earliestSuiteAt !== undefined && compareIso(earliestSuiteAt, commit.committedDate) > 0
+    ? earliestSuiteAt
     : commit.committedDate
 }
 
