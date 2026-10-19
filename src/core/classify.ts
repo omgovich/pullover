@@ -136,7 +136,10 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
 }
 
 /** What stands between the user's own pull request and a merge, in the order the inbox names them. */
-function mergeBlockers(pr: PullRequest, myLogin: string): { trigger: Trigger; verdict: Verdict }[] {
+function getMergeBlockers(
+  pr: PullRequest,
+  myLogin: string,
+): { trigger: Trigger; verdict: Verdict }[] {
   const blockers: { trigger: Trigger; verdict: Verdict }[] = []
 
   // Only CONFLICTING: GitHub reports UNKNOWN while it is still computing, and
@@ -187,7 +190,7 @@ function classifyOwnPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
     }
   }
 
-  const blockers = mergeBlockers(pr, myLogin)
+  const blockers = getMergeBlockers(pr, myLogin)
   const shown = blockers.find((blocker) => isOn(blocker.trigger))
   if (shown !== undefined) return shown.verdict
 
