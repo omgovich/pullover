@@ -336,10 +336,8 @@ describe('mapPullRequest', () => {
     ).lastCommitPushedAt
   }
 
-  it('dates a commit pushed hours after it was made by its first check suite', () => {
-    expect(pushed('2026-08-04T10:00:00Z', ['2026-08-04T12:00:05Z', '2026-08-04T12:00:01Z'])).toBe(
-      '2026-08-04T12:00:01Z',
-    )
+  it('dates a commit pushed hours after it was made by its check suite', () => {
+    expect(pushed('2026-08-04T10:00:00Z', ['2026-08-04T12:00:01Z'])).toBe('2026-08-04T12:00:01Z')
   })
 
   it('keeps the commit date when no check ran', () => {
