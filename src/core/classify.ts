@@ -198,11 +198,11 @@ function classifyOwnPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
   if (shown !== undefined) return shown.verdict
 
   if (pr.reviewDecision === 'APPROVED') {
-    // Muting a blocker takes it off the user's plate, not out of the way of
-    // the merge: the pull request waits, under the name of what stops it.
-    const [muted] = blockers
-    if (muted !== undefined) {
-      return { category: 'waiting', reason: muted.verdict.reason, waitingSince: null }
+    // Any blocker left here is muted: off the user's plate, but still in the
+    // way of the merge. The row names the first, as it would with none muted.
+    const mutedBlocker = blockers[0]
+    if (mutedBlocker !== undefined) {
+      return { category: 'waiting', reason: mutedBlocker.verdict.reason, waitingSince: null }
     }
     // Merging is genuinely all that is left, so with auto-merge armed the pull
     // request is already on its way out, worth nobody's slot in the inbox.

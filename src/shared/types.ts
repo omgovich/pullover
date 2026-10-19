@@ -186,8 +186,8 @@ export const LAYOUT_OPTIONS: { value: Layout; label: string }[] = [
 /** Each reason the classifier can put a pull request in front of the user for. */
 export type Trigger =
   | 'review-requested'
-  | 'new-replies'
   | 're-review-requested'
+  | 'new-replies'
   | 'new-commits'
   | 'mentioned'
   | 'changes-requested'
@@ -213,15 +213,15 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
     side: 'review',
   },
   {
-    value: 'new-replies',
-    label: 'New replies',
-    description: 'Somebody answered a thread you are in.',
-    side: 'review',
-  },
-  {
     value: 're-review-requested',
     label: 'Re-review requested',
     description: 'The author asked for another pass after your review.',
+    side: 'review',
+  },
+  {
+    value: 'new-replies',
+    label: 'New replies',
+    description: 'Somebody answered a thread you are in.',
     side: 'review',
   },
   {
