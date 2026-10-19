@@ -10,6 +10,13 @@ import type {
   ThreadComment,
 } from '@shared/types'
 
+interface CommitNode {
+  committedDate: string
+  /** Optional so fixtures that predate it keep compiling; `DETAILS_QUERY` always asks for it. */
+  checkSuites?: { nodes: Array<{ createdAt: string } | null> } | null
+  statusCheckRollup: { state: string } | null
+}
+
 interface ActorNode {
   __typename?: string
   login: string
@@ -61,12 +68,7 @@ export interface PullRequestNode {
     nodes: Array<CommentNode | null>
   }
   commits: {
-    nodes: Array<{
-      commit: {
-        committedDate: string
-        statusCheckRollup: { state: string } | null
-      }
-    } | null>
+    nodes: Array<{ commit: CommitNode } | null>
   }
   /** Review-requested and ready-for-review events only; see `DETAILS_QUERY`. */
   timelineItems: {
@@ -192,6 +194,19 @@ export function mapCiStatus(state: string | null | undefined): CiStatus {
   }
 }
 
+/**
+ * When the commit reached GitHub. Its own date can predate the push by hours,
+ * so the first check suite, which GitHub creates on the push, stands in for it.
+ */
+function pushedAt(commit: CommitNode): string {
+  const [firstSuite] = (commit.checkSuites?.nodes ?? [])
+    .flatMap((suite) => (suite === null ? [] : [suite.createdAt]))
+    .sort(compareIso)
+  return firstSuite !== undefined && compareIso(firstSuite, commit.committedDate) > 0
+    ? firstSuite
+    : commit.committedDate
+}
+
 export function mapPullRequest(
   node: PullRequestNode,
   buckets: SearchBucket[],
@@ -248,7 +263,7 @@ export function mapPullRequest(
     headRefName: node.headRefName,
     baseRefName: node.baseRefName,
     ciStatus: mapCiStatus(lastCommit?.statusCheckRollup?.state),
-    lastCommitPushedAt: lastCommit?.committedDate ?? node.createdAt,
+    lastCommitPushedAt: lastCommit === null ? node.createdAt : pushedAt(lastCommit),
     reviewDecision: node.reviewDecision,
     mergeable: node.mergeable,
     hasAutoMerge: node.autoMergeRequest !== null,

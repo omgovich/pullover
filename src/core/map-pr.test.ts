@@ -316,6 +316,40 @@ describe('mapPullRequest', () => {
     expect(pr.ciStatus).toBe('success')
   })
 
+  function pushed(committedDate: string, suites: string[]) {
+    return mapPullRequest(
+      node({
+        commits: {
+          nodes: [
+            {
+              commit: {
+                committedDate,
+                checkSuites: { nodes: suites.map((createdAt) => ({ createdAt })) },
+                statusCheckRollup: null,
+              },
+            },
+          ],
+        },
+      }),
+      [],
+      'vlad',
+    ).lastCommitPushedAt
+  }
+
+  it('dates a commit pushed hours after it was made by its first check suite', () => {
+    expect(pushed('2026-08-04T10:00:00Z', ['2026-08-04T12:00:05Z', '2026-08-04T12:00:01Z'])).toBe(
+      '2026-08-04T12:00:01Z',
+    )
+  })
+
+  it('keeps the commit date when no check ran', () => {
+    expect(pushed('2026-08-04T10:00:00Z', [])).toBe('2026-08-04T10:00:00Z')
+  })
+
+  it('keeps the commit date when a skewed clock puts it after the first check suite', () => {
+    expect(pushed('2026-08-04T10:00:00Z', ['2026-08-04T09:59:00Z'])).toBe('2026-08-04T10:00:00Z')
+  })
+
   it('falls back to createdAt when the commit list is empty', () => {
     const pr = mapPullRequest(node(), [], 'vlad')
     expect(pr.lastCommitPushedAt).toBe('2026-08-01T10:00:00Z')

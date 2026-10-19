@@ -56,6 +56,7 @@ export const DETAILS_QUERY = `
           nodes {
             commit {
               committedDate
+              checkSuites(first: 10) { nodes { createdAt } }
               statusCheckRollup { state }
             }
           }
