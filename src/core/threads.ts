@@ -94,7 +94,7 @@ export function unansweredPrCommentsAt(pr: PullRequest, myLogin: string): string
   const since =
     compareIso(lastActivity, pr.lastCommitPushedAt) > 0 ? lastActivity : pr.lastCommitPushedAt
   const byOthers = (c: { authorLogin: string; authorIsBot?: boolean }): boolean =>
-    c.authorLogin !== myLogin && c.authorIsBot !== true
+    c.authorLogin !== myLogin && !c.authorIsBot
 
   // Only a COMMENTED review: an approval's text rides along with the approval,
   // and a request for changes already has its own reason.
