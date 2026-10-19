@@ -316,7 +316,8 @@ describe('mapPullRequest', () => {
     expect(pr.ciStatus).toBe('success')
   })
 
-  function pushed(committedDate: string, suites: (string | null)[]) {
+  /** `suites` are ones a push created; `unpushed` came from anything else. */
+  function pushed(committedDate: string, suites: (string | null)[], unpushed: string[] = []) {
     return mapPullRequest(
       node({
         commits: {
@@ -325,7 +326,12 @@ describe('mapPullRequest', () => {
               commit: {
                 committedDate,
                 checkSuites: {
-                  nodes: suites.map((createdAt) => (createdAt === null ? null : { createdAt })),
+                  nodes: [
+                    ...suites.map((createdAt) =>
+                      createdAt === null ? null : { createdAt, push: { id: 'PSH_1' } },
+                    ),
+                    ...unpushed.map((createdAt) => ({ createdAt, push: null })),
+                  ],
                 },
                 statusCheckRollup: null,
               },
@@ -342,11 +348,18 @@ describe('mapPullRequest', () => {
     expect(pushed('2026-08-04T10:00:00Z', ['2026-08-04T12:00:01Z'])).toBe('2026-08-04T12:00:01Z')
   })
 
-  // A manual run hours later adds a suite of its own; returned first, it
-  // would make every comment in between look answered by the push.
+  // Pushing the same commit again, to another branch, adds later suites.
   it('takes the earliest suite whatever order GitHub returns them in', () => {
     expect(pushed('2026-08-04T10:00:00Z', ['2026-08-04T18:00:00Z', '2026-08-04T12:00:01Z'])).toBe(
       '2026-08-04T12:00:01Z',
+    )
+  })
+
+  // A workflow on pull_request_review would otherwise date the push just after
+  // the review, and every review would be followed by New commits.
+  it('ignores a suite that no push created', () => {
+    expect(pushed('2026-08-04T10:00:00Z', [], ['2026-08-04T15:00:00Z'])).toBe(
+      '2026-08-04T10:00:00Z',
     )
   })
 

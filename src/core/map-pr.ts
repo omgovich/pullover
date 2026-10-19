@@ -13,7 +13,7 @@ import type {
 interface CommitNode {
   committedDate: string
   /** Optional so fixtures that predate it keep compiling; `DETAILS_QUERY` always asks for it. */
-  checkSuites?: { nodes: Array<{ createdAt: string } | null> } | null
+  checkSuites?: { nodes: Array<{ createdAt: string; push: { id: string } | null } | null> } | null
   statusCheckRollup: { state: string } | null
 }
 
@@ -196,12 +196,13 @@ export function mapCiStatus(state: string | null | undefined): CiStatus {
 
 /**
  * When the commit reached GitHub. Its own date can predate the push by hours,
- * while GitHub creates check suites within seconds of it. The earliest suite
- * is taken: a manual run or a later-opened pull request adds suites after it.
+ * while GitHub creates check suites within seconds of it. Only suites a push
+ * created count, since a review or a manual run adds its own later, and the
+ * earliest is taken in case the same commit was pushed again.
  */
 function pushedAt(commit: CommitNode): string {
   const [earliestSuiteAt] = (commit.checkSuites?.nodes ?? [])
-    .flatMap((suite) => (suite === null ? [] : [suite.createdAt]))
+    .flatMap((suite) => (suite === null || suite.push === null ? [] : [suite.createdAt]))
     .sort(compareIso)
   return earliestSuiteAt !== undefined && compareIso(earliestSuiteAt, commit.committedDate) > 0
     ? earliestSuiteAt
