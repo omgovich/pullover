@@ -432,18 +432,19 @@ describe('classify — muted reasons', () => {
     expect(result.reason).toBe('Approved')
   })
 
-  const approvedButBlocked: [Trigger, Partial<PullRequest>][] = [
-    ['ci-failed', { ciStatus: 'failure' }],
-    ['merge-conflicts', { mergeable: 'CONFLICTING' }],
+  const approvedButBlocked: [Trigger, Partial<PullRequest>, string][] = [
+    ['ci-failed', { ciStatus: 'failure' }, 'CI is red'],
+    ['merge-conflicts', { mergeable: 'CONFLICTING' }, 'Merge conflicts'],
     [
       'open-threads',
       { reviewThreads: [makeThread({ comments: [makeComment('alice', '2026-08-02T10:00:00Z')] })] },
+      '1 open thread',
     ],
   ]
 
   it.each(approvedButBlocked)(
-    'never calls an approved pull request ready to merge while muted %s still blocks it',
-    (trigger, blocker) => {
+    'leaves an approved pull request waiting under the muted %s that blocks it',
+    (trigger, blocker, reason) => {
       const pr = makePullRequest({
         authorLogin: ME,
         buckets: ['author'],
@@ -452,9 +453,19 @@ describe('classify — muted reasons', () => {
       })
       const result = classify(pr, muting(trigger))
       expect(result.category).toBe('waiting')
-      expect(result.reason).toBe('Approved')
+      expect(result.reason).toBe(reason)
     },
   )
+
+  it('names the first blocker still on, even when an earlier one is muted', () => {
+    const pr = makePullRequest({
+      authorLogin: ME,
+      buckets: ['author'],
+      mergeable: 'CONFLICTING',
+      ciStatus: 'failure',
+    })
+    expect(classify(pr, muting('merge-conflicts')).reason).toBe('CI is red')
+  })
 
   it('keeps an approved, blocked pull request with auto-merge armed in view', () => {
     const pr = makePullRequest({

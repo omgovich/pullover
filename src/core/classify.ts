@@ -135,6 +135,49 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
   return { category: 'hidden', reason: '', waitingSince: null }
 }
 
+/** What stands between the user's own pull request and a merge, in the order the inbox names them. */
+function mergeBlockers(pr: PullRequest, myLogin: string): { trigger: Trigger; verdict: Verdict }[] {
+  const blockers: { trigger: Trigger; verdict: Verdict }[] = []
+
+  // Only CONFLICTING: GitHub reports UNKNOWN while it is still computing, and
+  // a freshly pushed PR would otherwise flash this reason.
+  if (pr.mergeable === 'CONFLICTING') {
+    // Conflicts usually arrive when the base branch moves, which is not an
+    // event on this pull request and does not touch `updatedAt` — so there is
+    // nothing to date this from and the last activity merely stands in.
+    blockers.push({
+      trigger: 'merge-conflicts',
+      verdict: { category: 'my-pr-action', reason: 'Merge conflicts', waitingSince: pr.updatedAt },
+    })
+  }
+
+  const unanswered = unansweredThreads(pr, myLogin)
+  if (unanswered.length > 0) {
+    const word = pluralize(unanswered.length, 'open thread', 'open threads')
+    blockers.push({
+      trigger: 'open-threads',
+      verdict: {
+        category: 'my-pr-action',
+        reason: `${unanswered.length} ${word}`,
+        waitingSince: oldestPendingReplyAt(unanswered, myLogin) ?? pr.updatedAt,
+      },
+    })
+  }
+
+  if (pr.ciStatus === 'failure') {
+    blockers.push({
+      trigger: 'ci-failed',
+      verdict: {
+        category: 'my-pr-action',
+        reason: 'CI is red',
+        waitingSince: pr.lastCommitPushedAt,
+      },
+    })
+  }
+
+  return blockers
+}
+
 function classifyOwnPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
   if (pr.reviewDecision === 'CHANGES_REQUESTED' && isOn('changes-requested')) {
     return {
@@ -144,40 +187,16 @@ function classifyOwnPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
     }
   }
 
-  // Only CONFLICTING: GitHub reports UNKNOWN while it is still computing, and
-  // a freshly pushed PR would otherwise flash this reason.
-  if (pr.mergeable === 'CONFLICTING' && isOn('merge-conflicts')) {
-    // Conflicts usually arrive when the base branch moves, which is not an
-    // event on this pull request and does not touch `updatedAt` — so there is
-    // nothing to date this from and the last activity merely stands in.
-    return { category: 'my-pr-action', reason: 'Merge conflicts', waitingSince: pr.updatedAt }
-  }
-
-  const unanswered = unansweredThreads(pr, myLogin)
-  if (unanswered.length > 0 && isOn('open-threads')) {
-    const word = pluralize(unanswered.length, 'open thread', 'open threads')
-    return {
-      category: 'my-pr-action',
-      reason: `${unanswered.length} ${word}`,
-      waitingSince: oldestPendingReplyAt(unanswered, myLogin) ?? pr.updatedAt,
-    }
-  }
-
-  if (pr.ciStatus === 'failure' && isOn('ci-failed')) {
-    return {
-      category: 'my-pr-action',
-      reason: 'CI is red',
-      waitingSince: pr.lastCommitPushedAt,
-    }
-  }
+  const blockers = mergeBlockers(pr, myLogin)
+  const shown = blockers.find((blocker) => isOn(blocker.trigger))
+  if (shown !== undefined) return shown.verdict
 
   if (pr.reviewDecision === 'APPROVED') {
-    // Checked again rather than assumed gone: a blocker muted above still
-    // stands between this pull request and a merge.
-    const blocked =
-      pr.mergeable === 'CONFLICTING' || unanswered.length > 0 || pr.ciStatus === 'failure'
-    if (blocked) {
-      return { category: 'waiting', reason: 'Approved', waitingSince: null }
+    // Muting a blocker takes it off the user's plate, not out of the way of
+    // the merge: the pull request waits, under the name of what stops it.
+    const [muted] = blockers
+    if (muted !== undefined) {
+      return { category: 'waiting', reason: muted.verdict.reason, waitingSince: null }
     }
     // Merging is genuinely all that is left, so with auto-merge armed the pull
     // request is already on its way out, worth nobody's slot in the inbox.
