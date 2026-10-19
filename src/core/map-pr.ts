@@ -199,9 +199,9 @@ export function mapCiStatus(state: string | null | undefined): CiStatus {
  * while GitHub creates check suites within seconds of it, so any one will do.
  */
 function pushedAt(commit: CommitNode): string {
-  const firstSuite = commit.checkSuites?.nodes[0]?.createdAt
-  return firstSuite !== undefined && compareIso(firstSuite, commit.committedDate) > 0
-    ? firstSuite
+  const suiteCreatedAt = commit.checkSuites?.nodes[0]?.createdAt
+  return suiteCreatedAt !== undefined && compareIso(suiteCreatedAt, commit.committedDate) > 0
+    ? suiteCreatedAt
     : commit.committedDate
 }
 
