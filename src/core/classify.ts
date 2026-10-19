@@ -105,16 +105,10 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
     }
   }
 
-  // A request outranks a mention, unless the reason that shows it is muted: the
-  // request is then off screen, and the mention would vanish along with it.
-  // Having only commented, no reason shows it, and it outranks as before.
-  const requestReason: Trigger | null = !participated
-    ? 'review-requested'
-    : myReview !== null
-      ? 're-review-requested'
-      : null
-  const requestShown = requested && (requestReason === null || isOn(requestReason))
-  if (pr.buckets.includes('mentions') && !requestShown && isOn('mentioned')) {
+  // Asked to review and only commented so far: a newer mention does not pull
+  // that into Mentions. Any other request reaching here has its reason muted.
+  const commentedOnRequest = requested && participated && myReview === null
+  if (pr.buckets.includes('mentions') && !commentedOnRequest && isOn('mentioned')) {
     const lastActivity = myLastActivityAt(pr, myLogin)
     // `mentionsAt` is empty when our own text scan couldn't find where (a
     // team mention, etc.) even though GitHub's search matched — fall back to
