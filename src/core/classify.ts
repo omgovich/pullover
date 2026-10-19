@@ -136,12 +136,16 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
   return { category: 'hidden', reason: '', waitingSince: null }
 }
 
-/** What stands between the user's own pull request and a merge, in the order the inbox names them. */
-function getMergeBlockers(
-  pr: PullRequest,
-  myLogin: string,
-): { trigger: Trigger; verdict: Verdict }[] {
-  const blockers: { trigger: Trigger; verdict: Verdict }[] = []
+interface OwnPrReason {
+  trigger: Trigger
+  verdict: Verdict
+  /** Whether it stands in the way of a merge, and so outlives being muted on an approved PR. */
+  blocksMerge: boolean
+}
+
+/** What the user's own pull request needs from them, in the order the inbox names them. */
+function getOwnPrReasons(pr: PullRequest, myLogin: string): OwnPrReason[] {
+  const reasons: OwnPrReason[] = []
 
   // Only CONFLICTING: GitHub reports UNKNOWN while it is still computing, and
   // a freshly pushed PR would otherwise flash this reason.
@@ -149,47 +153,54 @@ function getMergeBlockers(
     // Conflicts usually arrive when the base branch moves, which is not an
     // event on this pull request and does not touch `updatedAt` — so there is
     // nothing to date this from and the last activity merely stands in.
-    blockers.push({
+    reasons.push({
       trigger: 'merge-conflicts',
       verdict: { category: 'my-pr-action', reason: 'Merge conflicts', waitingSince: pr.updatedAt },
+      blocksMerge: true,
     })
   }
 
   const unanswered = unansweredThreads(pr, myLogin)
   if (unanswered.length > 0) {
     const word = pluralize(unanswered.length, 'open thread', 'open threads')
-    blockers.push({
+    reasons.push({
       trigger: 'open-threads',
       verdict: {
         category: 'my-pr-action',
         reason: `${unanswered.length} ${word}`,
         waitingSince: oldestPendingReplyAt(unanswered, myLogin) ?? pr.updatedAt,
       },
+      blocksMerge: true,
     })
   }
 
   const comments = unansweredPrCommentsAt(pr, myLogin)
   if (comments.length > 0) {
     const word = pluralize(comments.length, 'new comment', 'new comments')
-    return {
-      category: 'my-pr-action',
-      reason: `${comments.length} ${word}`,
-      waitingSince: comments[0] ?? pr.updatedAt,
-    }
+    reasons.push({
+      trigger: 'new-comments',
+      verdict: {
+        category: 'my-pr-action',
+        reason: `${comments.length} ${word}`,
+        waitingSince: comments[0] ?? pr.updatedAt,
+      },
+      blocksMerge: false,
+    })
   }
 
   if (pr.ciStatus === 'failure') {
-    blockers.push({
+    reasons.push({
       trigger: 'ci-failed',
       verdict: {
         category: 'my-pr-action',
         reason: 'CI is red',
         waitingSince: pr.lastCommitPushedAt,
       },
+      blocksMerge: true,
     })
   }
 
-  return blockers
+  return reasons
 }
 
 function classifyOwnPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
@@ -201,14 +212,14 @@ function classifyOwnPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
     }
   }
 
-  const blockers = getMergeBlockers(pr, myLogin)
-  const shown = blockers.find((blocker) => isOn(blocker.trigger))
+  const reasons = getOwnPrReasons(pr, myLogin)
+  const shown = reasons.find((reason) => isOn(reason.trigger))
   if (shown !== undefined) return shown.verdict
 
   if (pr.reviewDecision === 'APPROVED') {
     // Any blocker left here is muted: off the user's plate, but still in the
     // way of the merge. The row names the first, as it would with none muted.
-    const mutedBlocker = blockers[0]
+    const mutedBlocker = reasons.find((reason) => reason.blocksMerge)
     if (mutedBlocker !== undefined) {
       return { category: 'waiting', reason: mutedBlocker.verdict.reason, waitingSince: null }
     }

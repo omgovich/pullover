@@ -197,6 +197,7 @@ export type Trigger =
   | 'changes-requested'
   | 'merge-conflicts'
   | 'open-threads'
+  | 'new-comments'
   | 'ci-failed'
   | 'ready-to-merge'
 
@@ -256,6 +257,12 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
     value: 'open-threads',
     label: 'Open threads',
     description: 'A review comment is waiting on your answer.',
+    side: 'own',
+  },
+  {
+    value: 'new-comments',
+    label: 'New comments',
+    description: 'Somebody commented on the pull request as a whole.',
     side: 'own',
   },
   {

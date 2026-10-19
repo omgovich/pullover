@@ -583,6 +583,23 @@ describe('classify — muted reasons', () => {
     expect(classify(pr, muting('merge-conflicts')).reason).toBe('CI is red')
   })
 
+  const commented = {
+    authorLogin: ME,
+    buckets: ['author' as const],
+    conversationComments: [makeComment('alice', '2026-08-02T10:00:00Z', 'Why not RQ?')],
+  }
+
+  it('lets the next reason speak when new comments are muted', () => {
+    const pr = makePullRequest({ ...commented, ciStatus: 'failure' })
+    expect(classify(pr, muting('new-comments')).reason).toBe('CI is red')
+  })
+
+  it('does not count a muted comment as standing in the way of a merge', () => {
+    const pr = makePullRequest({ ...commented, reviewDecision: 'APPROVED' })
+    expect(classify(pr, ctx()).reason).toBe('1 new comment')
+    expect(classify(pr, muting('new-comments')).reason).toBe('Ready to merge')
+  })
+
   it('keeps an approved, blocked pull request with auto-merge armed in view', () => {
     const pr = makePullRequest({
       authorLogin: ME,
