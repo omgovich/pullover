@@ -17,6 +17,7 @@ import {
   type ClassifiedPullRequest,
   type PullRequest,
   type Snooze,
+  type Trigger,
   VISIBLE_CATEGORIES,
 } from '@shared/types'
 
@@ -25,7 +26,14 @@ export interface ClassifyContext {
   snoozes: Record<string, Snooze>
   /** ISO timestamp treated as "now". Injected so the classifier stays pure. */
   now: string
+  /**
+   * Reasons switched off in settings. A muted reason's branch is skipped, so
+   * the pull request falls through to whatever else applies — often `waiting`.
+   */
+  mutedTriggers?: readonly Trigger[]
 }
+
+type IsOn = (trigger: Trigger) => boolean
 
 interface Verdict {
   category: Category
@@ -53,11 +61,11 @@ function visibleSince(pr: PullRequest): string {
     : pr.createdAt
 }
 
-function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
+function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
   const requested = pr.buckets.includes('review-requested')
   const participated = hasParticipated(pr, myLogin)
 
-  if (requested && !participated) {
+  if (requested && !participated && isOn('review-requested')) {
     return {
       category: 'needs-review',
       reason: 'Review requested',
@@ -66,7 +74,7 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
   }
 
   const awaiting = threadsAwaitingMyReply(pr, myLogin)
-  if (awaiting.length > 0) {
+  if (awaiting.length > 0 && isOn('new-replies')) {
     const word = pluralize(awaiting.length, 'new reply', 'new replies')
     return {
       category: 'new-replies',
@@ -79,7 +87,7 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
   if (myReview !== null) {
     // I already reviewed, so GitHub cleared me from the reviewer list.
     // Being requested again means the author asked for another pass.
-    if (requested) {
+    if (requested && isOn('re-review-requested')) {
       // Only a request made after my review can be the one that put this
       // back on me; an older timestamp is the request I already answered,
       // meaning this one came from a team and names nobody to date it by.
@@ -89,7 +97,7 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
           : pr.updatedAt
       return { category: 're-review', reason: 'Re-review requested', waitingSince: asked }
     }
-    if (pr.lastCommitPushedAt > myReview.submittedAt) {
+    if (pr.lastCommitPushedAt > myReview.submittedAt && isOn('new-commits')) {
       return {
         category: 're-review',
         reason: 'New commits',
@@ -98,7 +106,10 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
     }
   }
 
-  if (pr.buckets.includes('mentions') && !requested) {
+  // Asked to review and only commented so far: a newer mention does not pull
+  // that into Mentions. Any other request reaching here has its reason muted.
+  const commentedOnRequest = requested && participated && myReview === null
+  if (pr.buckets.includes('mentions') && !commentedOnRequest && isOn('mentioned')) {
     const lastActivity = myLastActivityAt(pr, myLogin)
     // `mentionsAt` is empty when our own text scan couldn't find where (a
     // team mention, etc.) even though GitHub's search matched — fall back to
@@ -125,14 +136,12 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
   return { category: 'hidden', reason: '', waitingSince: null }
 }
 
-function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
-  if (pr.reviewDecision === 'CHANGES_REQUESTED') {
-    return {
-      category: 'my-pr-action',
-      reason: 'Changes requested',
-      waitingSince: oldestBlockingChangeRequestAt(pr) ?? pr.updatedAt,
-    }
-  }
+/** What stands between the user's own pull request and a merge, in the order the inbox names them. */
+function getMergeBlockers(
+  pr: PullRequest,
+  myLogin: string,
+): { trigger: Trigger; verdict: Verdict }[] {
+  const blockers: { trigger: Trigger; verdict: Verdict }[] = []
 
   // Only CONFLICTING: GitHub reports UNKNOWN while it is still computing, and
   // a freshly pushed PR would otherwise flash this reason.
@@ -140,17 +149,23 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
     // Conflicts usually arrive when the base branch moves, which is not an
     // event on this pull request and does not touch `updatedAt` — so there is
     // nothing to date this from and the last activity merely stands in.
-    return { category: 'my-pr-action', reason: 'Merge conflicts', waitingSince: pr.updatedAt }
+    blockers.push({
+      trigger: 'merge-conflicts',
+      verdict: { category: 'my-pr-action', reason: 'Merge conflicts', waitingSince: pr.updatedAt },
+    })
   }
 
   const unanswered = unansweredThreads(pr, myLogin)
   if (unanswered.length > 0) {
     const word = pluralize(unanswered.length, 'open thread', 'open threads')
-    return {
-      category: 'my-pr-action',
-      reason: `${unanswered.length} ${word}`,
-      waitingSince: oldestPendingReplyAt(unanswered, myLogin) ?? pr.updatedAt,
-    }
+    blockers.push({
+      trigger: 'open-threads',
+      verdict: {
+        category: 'my-pr-action',
+        reason: `${unanswered.length} ${word}`,
+        waitingSince: oldestPendingReplyAt(unanswered, myLogin) ?? pr.updatedAt,
+      },
+    })
   }
 
   const comments = unansweredPrCommentsAt(pr, myLogin)
@@ -164,26 +179,57 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
   }
 
   if (pr.ciStatus === 'failure') {
+    blockers.push({
+      trigger: 'ci-failed',
+      verdict: {
+        category: 'my-pr-action',
+        reason: 'CI is red',
+        waitingSince: pr.lastCommitPushedAt,
+      },
+    })
+  }
+
+  return blockers
+}
+
+function classifyOwnPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
+  if (pr.reviewDecision === 'CHANGES_REQUESTED' && isOn('changes-requested')) {
     return {
       category: 'my-pr-action',
-      reason: 'CI is red',
-      waitingSince: pr.lastCommitPushedAt,
+      reason: 'Changes requested',
+      waitingSince: oldestBlockingChangeRequestAt(pr) ?? pr.updatedAt,
     }
   }
 
+  const blockers = getMergeBlockers(pr, myLogin)
+  const shown = blockers.find((blocker) => isOn(blocker.trigger))
+  if (shown !== undefined) return shown.verdict
+
   if (pr.reviewDecision === 'APPROVED') {
-    // Everything above blocks auto-merge from ever firing, so it only gets to
-    // speak for the case where merging is genuinely all that is left — and
-    // then the pull request is already on its way out, worth nobody's slot in
-    // the inbox. If a check goes red later it lands back in `my-pr-action`.
+    // Any blocker left here is muted: off the user's plate, but still in the
+    // way of the merge. The row names the first, as it would with none muted.
+    const mutedBlocker = blockers[0]
+    if (mutedBlocker !== undefined) {
+      return { category: 'waiting', reason: mutedBlocker.verdict.reason, waitingSince: null }
+    }
+    // Merging is genuinely all that is left, so with auto-merge armed the pull
+    // request is already on its way out, worth nobody's slot in the inbox.
     if (pr.hasAutoMerge) {
       return { category: 'hidden', reason: '', waitingSince: null }
+    }
+    if (!isOn('ready-to-merge')) {
+      return { category: 'waiting', reason: 'Approved', waitingSince: null }
     }
     return {
       category: 'my-pr-action',
       reason: 'Ready to merge',
       waitingSince: approvedSince(pr) ?? pr.updatedAt,
     }
+  }
+
+  // Muted, so off the user's plate, but the reviewers are waiting on them.
+  if (pr.reviewDecision === 'CHANGES_REQUESTED') {
+    return { category: 'waiting', reason: 'Changes requested', waitingSince: null }
   }
 
   return { category: 'waiting', reason: 'Waiting on reviewers', waitingSince: null }
@@ -200,10 +246,12 @@ export function classify(
     return { pr, category: 'hidden', reason: '', waitingSince: null, isSnoozed: false }
   }
 
+  const muted = ctx.mutedTriggers ?? []
+  const isOn: IsOn = (trigger) => !muted.includes(trigger)
   const verdict =
     pr.authorLogin === ctx.myLogin
-      ? classifyOwnPr(pr, ctx.myLogin)
-      : classifyReviewPr(pr, ctx.myLogin)
+      ? classifyOwnPr(pr, ctx.myLogin, isOn)
+      : classifyReviewPr(pr, ctx.myLogin, isOn)
 
   if (verdict.category === 'hidden') {
     return { pr, ...verdict, isSnoozed: false }

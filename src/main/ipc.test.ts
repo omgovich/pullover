@@ -109,6 +109,34 @@ describe('settings push', () => {
     expect(send).toHaveBeenCalledWith(IPC.settingsChanged, store.getSettings())
   })
 
+  it('keeps both reasons when two are muted back to back', async () => {
+    await Promise.all([
+      call(IPC.setTriggerMuted, 'new-commits' as never, true as never),
+      call(IPC.setTriggerMuted, 'ci-failed' as never, true as never),
+    ])
+    expect(store.getSettings().mutedTriggers).toEqual(['new-commits', 'ci-failed'])
+    expect(send).toHaveBeenLastCalledWith(IPC.settingsChanged, store.getSettings())
+  })
+
+  it('reclassifies when muted reasons arrive through setSettings', async () => {
+    const reclassify = vi.spyOn(Inbox.prototype, 'reclassify')
+    await call(IPC.setSettings, { mutedTriggers: ['new-commits'] } as never)
+    expect(reclassify).toHaveBeenCalledTimes(1)
+    reclassify.mockRestore()
+  })
+
+  // What the inbox reads when it reclassifies, not merely that it did: a
+  // reclassify ahead of the write would show the old inbox until next refresh.
+  it('reclassifies after the muted reason is stored', async () => {
+    const seen: string[][] = []
+    const reclassify = vi
+      .spyOn(Inbox.prototype, 'reclassify')
+      .mockImplementation(() => seen.push(store.getSettings().mutedTriggers))
+    await call(IPC.setTriggerMuted, 'new-commits' as never, true as never)
+    expect(seen).toEqual([['new-commits']])
+    reclassify.mockRestore()
+  })
+
   it('re-registers the global shortcut when it changes', async () => {
     await call(IPC.setSettings, { globalShortcut: 'Control+Alt+R' } as never)
     expect(shortcutCalls).toEqual(['Control+Alt+R'])

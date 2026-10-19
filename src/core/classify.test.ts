@@ -1,6 +1,6 @@
 import type { ClassifyContext } from '@core/classify'
 import { classify, classifyAll, countAttention } from '@core/classify'
-import type { Snooze } from '@shared/types'
+import type { PullRequest, Snooze, Trigger } from '@shared/types'
 import { describe, expect, it } from 'vitest'
 import { makeComment, makePullRequest, makeReview, makeThread } from './test-factory'
 
@@ -464,6 +464,150 @@ describe('classify — author branch', () => {
       expect(result.category).toBe('my-pr-action')
       expect(result.reason).toBe(reason)
     }
+  })
+})
+
+describe('classify — muted reasons', () => {
+  const muting = (...mutedTriggers: Trigger[]): ClassifyContext => ({ ...ctx(), mutedTriggers })
+  const reviewedThenPushed = {
+    buckets: ['involves' as const],
+    reviews: [makeReview(ME, '2026-08-01T10:00:00Z', { state: 'CHANGES_REQUESTED' })],
+    lastCommitPushedAt: '2026-08-05T10:00:00Z',
+  }
+
+  it('leaves a pull request with only new commits waiting on the author', () => {
+    const result = classify(makePullRequest(reviewedThenPushed), muting('new-commits'))
+    expect(result.category).toBe('waiting')
+    expect(result.reason).toBe('Waiting on author')
+  })
+
+  it('still shows the next reason that applies', () => {
+    const pr = makePullRequest({
+      ...reviewedThenPushed,
+      buckets: ['involves', 'mentions'],
+      mentionsAt: ['2026-08-06T10:00:00Z'],
+    })
+    expect(classify(pr, muting('new-commits')).category).toBe('mentioned')
+  })
+
+  it('falls back to new commits when a re-review request is muted', () => {
+    const pr = makePullRequest({
+      ...reviewedThenPushed,
+      buckets: ['review-requested', 'involves'],
+      reviewRequestedAt: '2026-08-06T10:00:00Z',
+    })
+    expect(classify(pr, muting('re-review-requested')).reason).toBe('New commits')
+  })
+
+  it('shows the mention on a review request that is muted', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested', 'mentions'],
+      mentionsAt: ['2026-08-02T10:00:00Z'],
+    })
+    expect(classify(pr, muting('review-requested')).category).toBe('mentioned')
+  })
+
+  it('shows the mention on a re-review request that is muted', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested', 'involves', 'mentions'],
+      reviews: [makeReview(ME, '2026-08-01T10:00:00Z')],
+      lastCommitPushedAt: '2026-07-31T10:00:00Z',
+      reviewRequestedAt: '2026-08-02T10:00:00Z',
+      mentionsAt: ['2026-08-03T10:00:00Z'],
+    })
+    expect(classify(pr, muting('re-review-requested')).category).toBe('mentioned')
+  })
+
+  it.each<Trigger>(['review-requested', 're-review-requested'])(
+    'keeps a mention behind a request I only commented on, with %s muted',
+    (trigger) => {
+      const pr = makePullRequest({
+        buckets: ['review-requested', 'involves', 'mentions'],
+        conversationComments: [makeComment(ME, '2026-08-01T10:00:00Z')],
+        mentionsAt: ['2026-08-02T10:00:00Z'],
+      })
+      expect(classify(pr, ctx()).category).toBe('waiting')
+      expect(classify(pr, muting(trigger)).category).toBe('waiting')
+    },
+  )
+
+  it('hides a review request nobody has touched', () => {
+    const pr = makePullRequest({ buckets: ['review-requested'] })
+    expect(classify(pr, muting('review-requested')).category).toBe('hidden')
+  })
+
+  it('moves my red pull request to waiting', () => {
+    const pr = makePullRequest({ authorLogin: ME, buckets: ['author'], ciStatus: 'failure' })
+    expect(classify(pr, muting('ci-failed')).category).toBe('waiting')
+  })
+
+  it('keeps an approved pull request of mine in waiting, named for what it is', () => {
+    const pr = makePullRequest({ authorLogin: ME, buckets: ['author'], reviewDecision: 'APPROVED' })
+    const result = classify(pr, muting('ready-to-merge'))
+    expect(result.category).toBe('waiting')
+    expect(result.reason).toBe('Approved')
+  })
+
+  const approvedButBlocked: [Trigger, Partial<PullRequest>, string][] = [
+    ['ci-failed', { ciStatus: 'failure' }, 'CI is red'],
+    ['merge-conflicts', { mergeable: 'CONFLICTING' }, 'Merge conflicts'],
+    [
+      'open-threads',
+      { reviewThreads: [makeThread({ comments: [makeComment('alice', '2026-08-02T10:00:00Z')] })] },
+      '1 open thread',
+    ],
+  ]
+
+  it.each(approvedButBlocked)(
+    'leaves an approved pull request waiting under the muted %s that blocks it',
+    (trigger, blocker, reason) => {
+      const pr = makePullRequest({
+        authorLogin: ME,
+        buckets: ['author'],
+        reviewDecision: 'APPROVED',
+        ...blocker,
+      })
+      const result = classify(pr, muting(trigger))
+      expect(result.category).toBe('waiting')
+      expect(result.reason).toBe(reason)
+    },
+  )
+
+  it('names the first blocker still on, even when an earlier one is muted', () => {
+    const pr = makePullRequest({
+      authorLogin: ME,
+      buckets: ['author'],
+      mergeable: 'CONFLICTING',
+      ciStatus: 'failure',
+    })
+    expect(classify(pr, muting('merge-conflicts')).reason).toBe('CI is red')
+  })
+
+  it('keeps an approved, blocked pull request with auto-merge armed in view', () => {
+    const pr = makePullRequest({
+      authorLogin: ME,
+      buckets: ['author'],
+      reviewDecision: 'APPROVED',
+      hasAutoMerge: true,
+      ciStatus: 'failure',
+    })
+    expect(classify(pr, muting('ci-failed')).category).toBe('waiting')
+  })
+
+  it('says my pull request waits on me when changes requested is muted', () => {
+    const pr = makePullRequest({
+      authorLogin: ME,
+      buckets: ['author'],
+      reviewDecision: 'CHANGES_REQUESTED',
+    })
+    const result = classify(pr, muting('changes-requested'))
+    expect(result.category).toBe('waiting')
+    expect(result.reason).toBe('Changes requested')
+  })
+
+  it('leaves every other reason alone', () => {
+    const pr = makePullRequest(reviewedThenPushed)
+    expect(classify(pr, muting('ci-failed', 'mentioned')).reason).toBe('New commits')
   })
 })
 

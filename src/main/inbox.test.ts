@@ -946,6 +946,21 @@ describe('Inbox.reclassify', () => {
     expect(fetchPrs).toHaveBeenCalledTimes(1)
   })
 
+  it('applies a muted reason without refetching', async () => {
+    const fetchPrs = vi.fn(async () =>
+      fetched([makePullRequest({ id: 'PR_1', buckets: ['review-requested'] })]),
+    )
+    const inbox = build([], { fetchPrs })
+    await inbox.refresh()
+    expect(inbox.getSnapshot().items).toHaveLength(1)
+
+    store.updateSettings({ mutedTriggers: ['review-requested'] })
+    inbox.reclassify()
+
+    expect(inbox.getSnapshot().items).toEqual([])
+    expect(fetchPrs).toHaveBeenCalledTimes(1)
+  })
+
   it('applies a changed repository selection without refetching', async () => {
     // MemoryStore starts with repositories: ['acme/web'], watchAllRepositories: false.
     const fetchPrs = vi.fn(async () =>

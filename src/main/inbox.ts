@@ -1,4 +1,4 @@
-import { classify, classifyAll, countAttention } from '@core/classify'
+import { type ClassifyContext, classify, classifyAll, countAttention } from '@core/classify'
 import { formatWait } from '@core/format'
 import { collectRepositories, filterByRepositories } from '@core/repo-filter'
 import { computeStackPositions } from '@core/stack'
@@ -83,6 +83,15 @@ export class Inbox {
     return items.map((item) => ({ ...item, stack: stacks.get(item.pr.id) ?? null }))
   }
 
+  private classifyContext(myLogin: string, now: string): ClassifyContext {
+    return {
+      myLogin,
+      snoozes: this.deps.store.getSnoozes(),
+      now,
+      mutedTriggers: this.deps.store.getSettings().mutedTriggers,
+    }
+  }
+
   /**
    * Re-runs the classifier over PRs already in memory. No network. This is
    * also how a changed repository selection takes effect: `this.prs` always
@@ -97,11 +106,7 @@ export class Inbox {
       settings.watchAllRepositories ? null : settings.repositories,
     )
     const items = this.attachStacks(
-      classifyAll(filtered, {
-        myLogin: this.myLogin,
-        snoozes: this.deps.store.getSnoozes(),
-        now: this.now(),
-      }),
+      classifyAll(filtered, this.classifyContext(this.myLogin, this.now())),
     )
     this.emit({
       items,
@@ -119,13 +124,7 @@ export class Inbox {
     const wanted = repository.toLowerCase()
     const pr = this.prs.find((p) => p.number === number && p.repository.toLowerCase() === wanted)
     if (pr === undefined) return null
-    const [item] = this.attachStacks([
-      classify(pr, {
-        myLogin: this.myLogin,
-        snoozes: this.deps.store.getSnoozes(),
-        now: this.now(),
-      }),
-    ])
+    const [item] = this.attachStacks([classify(pr, this.classifyContext(this.myLogin, this.now()))])
     return item ?? null
   }
 
@@ -232,13 +231,7 @@ export class Inbox {
       )
 
       const now = this.now()
-      const items = this.attachStacks(
-        classifyAll(filtered, {
-          myLogin: this.myLogin,
-          snoozes: this.deps.store.getSnoozes(),
-          now,
-        }),
-      )
+      const items = this.attachStacks(classifyAll(filtered, this.classifyContext(myLogin, now)))
 
       this.rateLimitedUntil = null
       this.emit({

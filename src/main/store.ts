@@ -5,6 +5,8 @@ import {
   SHORTCUT_OPTIONS,
   type Snooze,
   type SnoozeType,
+  TRIGGER_OPTIONS,
+  type Trigger,
 } from '@shared/types'
 import Store from 'electron-store'
 
@@ -41,8 +43,14 @@ export class AppStore {
 
     const layoutKnown = LAYOUT_OPTIONS.some((option) => option.value === settings.layout)
 
+    // A reason a later build dropped would otherwise count as muted forever.
+    const mutedTriggers = settings.mutedTriggers.filter((trigger) =>
+      TRIGGER_OPTIONS.some((option) => option.value === trigger),
+    )
+
     return {
       ...settings,
+      mutedTriggers,
       globalShortcut: known ? settings.globalShortcut : DEFAULT_SETTINGS.globalShortcut,
       layout: layoutKnown ? settings.layout : DEFAULT_SETTINGS.layout,
     }
@@ -67,6 +75,11 @@ export class AppStore {
     this.updateSettings({
       repositories: this.getSettings().repositories.filter((repo) => repo !== normalised),
     })
+  }
+
+  setTriggerMuted(trigger: Trigger, muted: boolean): void {
+    const others = this.getSettings().mutedTriggers.filter((t) => t !== trigger)
+    this.updateSettings({ mutedTriggers: muted ? [...others, trigger] : others })
   }
 
   getSnoozes(): Record<string, Snooze> {

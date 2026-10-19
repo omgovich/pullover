@@ -88,6 +88,7 @@ describe('settings', () => {
       globalShortcut: 'Control+Alt+P',
       layout: 'comfortable',
       mcpServerEnabled: false,
+      mutedTriggers: [],
     })
     store = new AppStore(backend)
     expect(store.getSettings().watchAllRepositories).toBe(false)
@@ -108,7 +109,18 @@ describe('settings', () => {
       globalShortcut: 'Control+Alt+P',
       layout: 'comfortable',
       mcpServerEnabled: false,
+      mutedTriggers: [],
     })
+  })
+
+  it('drops a muted reason this build no longer knows', () => {
+    const backend = new MemoryStore()
+    backend.set('settings', {
+      ...DEFAULT_SETTINGS,
+      mutedTriggers: ['new-commits', 'stars' as never],
+    })
+    store = new AppStore(backend)
+    expect(store.getSettings().mutedTriggers).toEqual(['new-commits'])
   })
 
   it('replaces a shortcut this build no longer offers', () => {
@@ -159,6 +171,21 @@ describe('settings', () => {
     store = new AppStore(backend)
     store.updateSettings({ watchAllRepositories: false })
     expect(store.getSettings().watchAllRepositories).toBe(false)
+  })
+})
+
+describe('muted reasons', () => {
+  it('mutes a reason once, however often it is asked', () => {
+    store.setTriggerMuted('new-commits', true)
+    store.setTriggerMuted('new-commits', true)
+    expect(store.getSettings().mutedTriggers).toEqual(['new-commits'])
+  })
+
+  it('unmutes only the reason named', () => {
+    store.setTriggerMuted('new-commits', true)
+    store.setTriggerMuted('ci-failed', true)
+    store.setTriggerMuted('new-commits', false)
+    expect(store.getSettings().mutedTriggers).toEqual(['ci-failed'])
   })
 })
 
