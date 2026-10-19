@@ -5,7 +5,7 @@ import {
   type PrMenuAction,
   type PrMenuRequest,
 } from '@shared/ipc'
-import type { Settings, SnoozeType, UpdateState } from '@shared/types'
+import type { Settings, SnoozeType, Trigger, UpdateState } from '@shared/types'
 import {
   app,
   type BrowserWindow,
@@ -122,9 +122,7 @@ export function registerIpc(deps: IpcDeps): void {
   ipcMain.handle(IPC.setSettings, async (_event, patch: Partial<Settings>) => {
     deps.store.updateSettings(patch)
     if (patch.pollIntervalMinutes !== undefined) deps.restartPolling()
-    if (patch.watchAllRepositories !== undefined || patch.mutedTriggers !== undefined) {
-      deps.inbox.reclassify()
-    }
+    if (patch.watchAllRepositories !== undefined) deps.inbox.reclassify()
     // From the store, not the patch: it may correct an accelerator this build
     // no longer offers, and the OS must hold whatever the picker shows.
     if (patch.globalShortcut !== undefined) {
@@ -144,6 +142,14 @@ export function registerIpc(deps: IpcDeps): void {
 
   ipcMain.handle(IPC.removeRepository, (_event, fullName: string) => {
     deps.store.removeRepository(fullName)
+    deps.inbox.reclassify()
+    pushSettings()
+  })
+
+  // Toggled here rather than patched from the renderer: two switches flipped
+  // before the first push lands would each send a list missing the other.
+  ipcMain.handle(IPC.setTriggerMuted, (_event, trigger: Trigger, muted: boolean) => {
+    deps.store.setTriggerMuted(trigger, muted)
     deps.inbox.reclassify()
     pushSettings()
   })

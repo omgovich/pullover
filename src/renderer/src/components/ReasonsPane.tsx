@@ -20,11 +20,6 @@ const SECTIONS: { title: string; side: TriggerOption['side'] }[] = [
  * else applies, which is usually Waiting on others.
  */
 export default function ReasonsPane({ muted, onBack }: Props): React.JSX.Element {
-  const toggle = (trigger: Trigger, on: boolean): void => {
-    const mutedTriggers = on ? muted.filter((t) => t !== trigger) : [...muted, trigger]
-    void window.api.setSettings({ mutedTriggers })
-  }
-
   return (
     <View height="100%" minHeight={0}>
       <PaneHeader back="Settings" onBack={onBack} title="Reasons" />
@@ -50,7 +45,9 @@ export default function ReasonsPane({ muted, onBack }: Props): React.JSX.Element
                           name={`trigger-${option.value}`}
                           inputAttributes={{ 'aria-label': option.label }}
                           checked={!muted.includes(option.value)}
-                          onChange={({ checked }) => toggle(option.value, checked)}
+                          onChange={({ checked }) =>
+                            void window.api.setTriggerMuted(option.value, !checked)
+                          }
                         />
                       }
                     />

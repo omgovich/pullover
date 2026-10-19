@@ -105,7 +105,10 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
     }
   }
 
-  if (pr.buckets.includes('mentions') && !requested && isOn('mentioned')) {
+  // A request outranks a mention, unless its own reason is muted: the request
+  // is then off screen, and the mention would vanish along with it.
+  const requestShown = requested && isOn(participated ? 're-review-requested' : 'review-requested')
+  if (pr.buckets.includes('mentions') && !requestShown && isOn('mentioned')) {
     const lastActivity = myLastActivityAt(pr, myLogin)
     // `mentionsAt` is empty when our own text scan couldn't find where (a
     // team mention, etc.) even though GitHub's search matched — fall back to
@@ -169,10 +172,15 @@ function classifyOwnPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
   }
 
   if (pr.reviewDecision === 'APPROVED') {
-    // Everything above blocks auto-merge from ever firing, so it only gets to
-    // speak for the case where merging is genuinely all that is left — and
-    // then the pull request is already on its way out, worth nobody's slot in
-    // the inbox. If a check goes red later it lands back in `my-pr-action`.
+    // Checked again rather than assumed gone: a blocker muted above still
+    // stands between this pull request and a merge.
+    const blocked =
+      pr.mergeable === 'CONFLICTING' || unanswered.length > 0 || pr.ciStatus === 'failure'
+    if (blocked) {
+      return { category: 'waiting', reason: 'Approved', waitingSince: null }
+    }
+    // Merging is genuinely all that is left, so with auto-merge armed the pull
+    // request is already on its way out, worth nobody's slot in the inbox.
     if (pr.hasAutoMerge) {
       return { category: 'hidden', reason: '', waitingSince: null }
     }

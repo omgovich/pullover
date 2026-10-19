@@ -6,6 +6,7 @@ import {
   type Snooze,
   type SnoozeType,
   TRIGGER_OPTIONS,
+  type Trigger,
 } from '@shared/types'
 import Store from 'electron-store'
 
@@ -74,6 +75,11 @@ export class AppStore {
     this.updateSettings({
       repositories: this.getSettings().repositories.filter((repo) => repo !== normalised),
     })
+  }
+
+  setTriggerMuted(trigger: Trigger, muted: boolean): void {
+    const others = this.getSettings().mutedTriggers.filter((t) => t !== trigger)
+    this.updateSettings({ mutedTriggers: muted ? [...others, trigger] : others })
   }
 
   getSnoozes(): Record<string, Snooze> {

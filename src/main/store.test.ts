@@ -174,6 +174,21 @@ describe('settings', () => {
   })
 })
 
+describe('muted reasons', () => {
+  it('mutes a reason once, however often it is asked', () => {
+    store.setTriggerMuted('new-commits', true)
+    store.setTriggerMuted('new-commits', true)
+    expect(store.getSettings().mutedTriggers).toEqual(['new-commits'])
+  })
+
+  it('unmutes only the reason named', () => {
+    store.setTriggerMuted('new-commits', true)
+    store.setTriggerMuted('ci-failed', true)
+    store.setTriggerMuted('new-commits', false)
+    expect(store.getSettings().mutedTriggers).toEqual(['ci-failed'])
+  })
+})
+
 describe('repositories', () => {
   it('adds a repository', () => {
     store.addRepository('acme/web')

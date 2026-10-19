@@ -1,6 +1,6 @@
 import type { ClassifyContext } from '@core/classify'
 import { classify, classifyAll, countAttention } from '@core/classify'
-import type { Snooze, Trigger } from '@shared/types'
+import type { PullRequest, Snooze, Trigger } from '@shared/types'
 import { describe, expect, it } from 'vitest'
 import { makeComment, makePullRequest, makeReview, makeThread } from './test-factory'
 
@@ -396,6 +396,25 @@ describe('classify — muted reasons', () => {
     expect(classify(pr, muting('re-review-requested')).reason).toBe('New commits')
   })
 
+  it('shows the mention on a review request that is muted', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested', 'mentions'],
+      mentionsAt: ['2026-08-02T10:00:00Z'],
+    })
+    expect(classify(pr, muting('review-requested')).category).toBe('mentioned')
+  })
+
+  it('shows the mention on a re-review request that is muted', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested', 'involves', 'mentions'],
+      reviews: [makeReview(ME, '2026-08-01T10:00:00Z')],
+      lastCommitPushedAt: '2026-07-31T10:00:00Z',
+      reviewRequestedAt: '2026-08-02T10:00:00Z',
+      mentionsAt: ['2026-08-03T10:00:00Z'],
+    })
+    expect(classify(pr, muting('re-review-requested')).category).toBe('mentioned')
+  })
+
   it('hides a review request nobody has touched', () => {
     const pr = makePullRequest({ buckets: ['review-requested'] })
     expect(classify(pr, muting('review-requested')).category).toBe('hidden')
@@ -411,6 +430,41 @@ describe('classify — muted reasons', () => {
     const result = classify(pr, muting('ready-to-merge'))
     expect(result.category).toBe('waiting')
     expect(result.reason).toBe('Approved')
+  })
+
+  const approvedButBlocked: [Trigger, Partial<PullRequest>][] = [
+    ['ci-failed', { ciStatus: 'failure' }],
+    ['merge-conflicts', { mergeable: 'CONFLICTING' }],
+    [
+      'open-threads',
+      { reviewThreads: [makeThread({ comments: [makeComment('alice', '2026-08-02T10:00:00Z')] })] },
+    ],
+  ]
+
+  it.each(approvedButBlocked)(
+    'never calls an approved pull request ready to merge while muted %s still blocks it',
+    (trigger, blocker) => {
+      const pr = makePullRequest({
+        authorLogin: ME,
+        buckets: ['author'],
+        reviewDecision: 'APPROVED',
+        ...blocker,
+      })
+      const result = classify(pr, muting(trigger))
+      expect(result.category).toBe('waiting')
+      expect(result.reason).toBe('Approved')
+    },
+  )
+
+  it('keeps an approved, blocked pull request with auto-merge armed in view', () => {
+    const pr = makePullRequest({
+      authorLogin: ME,
+      buckets: ['author'],
+      reviewDecision: 'APPROVED',
+      hasAutoMerge: true,
+      ciStatus: 'failure',
+    })
+    expect(classify(pr, muting('ci-failed')).category).toBe('waiting')
   })
 
   it('leaves every other reason alone', () => {

@@ -1,4 +1,4 @@
-import type { ClassifiedPullRequest, Settings, SnoozeType, UpdateState } from './types'
+import type { ClassifiedPullRequest, Settings, SnoozeType, Trigger, UpdateState } from './types'
 
 export interface InboxSnapshot {
   status: 'signed-out' | 'loading' | 'ready' | 'error'
@@ -61,6 +61,7 @@ export const IPC = {
   settingsChanged: 'settings:changed',
   addRepository: 'settings:add-repository',
   removeRepository: 'settings:remove-repository',
+  setTriggerMuted: 'settings:set-trigger-muted',
   startAuth: 'auth:start',
   deviceCode: 'auth:device-code',
   signOut: 'auth:sign-out',
@@ -89,6 +90,7 @@ export interface RendererApi {
   onSettings: (listener: (settings: Settings) => void) => () => void
   addRepository: (fullName: string) => Promise<void>
   removeRepository: (fullName: string) => Promise<void>
+  setTriggerMuted: (trigger: Trigger, muted: boolean) => Promise<void>
   startAuth: () => Promise<void>
   signOut: () => Promise<void>
   hidePopup: () => Promise<void>

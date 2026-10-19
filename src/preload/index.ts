@@ -5,7 +5,7 @@ import {
   type PrMenuRequest,
   type RendererApi,
 } from '@shared/ipc'
-import type { Settings, SnoozeType, UpdateState } from '@shared/types'
+import type { Settings, SnoozeType, Trigger, UpdateState } from '@shared/types'
 import { contextBridge, type IpcRendererEvent, ipcRenderer } from 'electron'
 
 function subscribe<T>(channel: string, listener: (payload: T) => void): () => void {
@@ -34,6 +34,8 @@ const api: RendererApi = {
   onSettings: (listener: (settings: Settings) => void) => subscribe(IPC.settingsChanged, listener),
   addRepository: (fullName: string) => ipcRenderer.invoke(IPC.addRepository, fullName),
   removeRepository: (fullName: string) => ipcRenderer.invoke(IPC.removeRepository, fullName),
+  setTriggerMuted: (trigger: Trigger, muted: boolean) =>
+    ipcRenderer.invoke(IPC.setTriggerMuted, trigger, muted),
   startAuth: () => ipcRenderer.invoke(IPC.startAuth),
   signOut: () => ipcRenderer.invoke(IPC.signOut),
   hidePopup: () => ipcRenderer.invoke(IPC.hidePopup),
