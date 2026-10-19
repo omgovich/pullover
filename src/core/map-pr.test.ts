@@ -316,7 +316,7 @@ describe('mapPullRequest', () => {
     expect(pr.ciStatus).toBe('success')
   })
 
-  function pushed(committedDate: string, suites: string[]) {
+  function pushed(committedDate: string, suites: (string | null)[]) {
     return mapPullRequest(
       node({
         commits: {
@@ -324,7 +324,9 @@ describe('mapPullRequest', () => {
             {
               commit: {
                 committedDate,
-                checkSuites: { nodes: suites.map((createdAt) => ({ createdAt })) },
+                checkSuites: {
+                  nodes: suites.map((createdAt) => (createdAt === null ? null : { createdAt })),
+                },
                 statusCheckRollup: null,
               },
             },
@@ -344,6 +346,12 @@ describe('mapPullRequest', () => {
   // would make every comment in between look answered by the push.
   it('takes the earliest suite whatever order GitHub returns them in', () => {
     expect(pushed('2026-08-04T10:00:00Z', ['2026-08-04T18:00:00Z', '2026-08-04T12:00:01Z'])).toBe(
+      '2026-08-04T12:00:01Z',
+    )
+  })
+
+  it('skips a suite GitHub returns as null', () => {
+    expect(pushed('2026-08-04T10:00:00Z', [null, '2026-08-04T12:00:01Z'])).toBe(
       '2026-08-04T12:00:01Z',
     )
   })
