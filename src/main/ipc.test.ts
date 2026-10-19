@@ -109,6 +109,13 @@ describe('settings push', () => {
     expect(send).toHaveBeenCalledWith(IPC.settingsChanged, store.getSettings())
   })
 
+  it('reclassifies when a reason is muted', async () => {
+    const reclassify = vi.spyOn(Inbox.prototype, 'reclassify')
+    await call(IPC.setSettings, { mutedTriggers: ['new-commits'] } as never)
+    expect(reclassify).toHaveBeenCalledTimes(1)
+    reclassify.mockRestore()
+  })
+
   it('re-registers the global shortcut when it changes', async () => {
     await call(IPC.setSettings, { globalShortcut: 'Control+Alt+R' } as never)
     expect(shortcutCalls).toEqual(['Control+Alt+R'])

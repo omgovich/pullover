@@ -183,6 +183,91 @@ export const LAYOUT_OPTIONS: { value: Layout; label: string }[] = [
   { value: 'compact', label: 'Compact' },
 ]
 
+/** Each reason the classifier can put a pull request in front of the user for. */
+export type Trigger =
+  | 'review-requested'
+  | 'new-replies'
+  | 're-review-requested'
+  | 'new-commits'
+  | 'mentioned'
+  | 'changes-requested'
+  | 'merge-conflicts'
+  | 'open-threads'
+  | 'ci-failed'
+  | 'ready-to-merge'
+
+export interface TriggerOption {
+  value: Trigger
+  label: string
+  description: string
+  /** Whose pull request the reason is about: one the user reviews, or one they wrote. */
+  side: 'review' | 'own'
+}
+
+/** The Reasons screen's rows, and the allowlist `store` validates `mutedTriggers` against. */
+export const TRIGGER_OPTIONS: TriggerOption[] = [
+  {
+    value: 'review-requested',
+    label: 'Review requested',
+    description: 'Somebody asked for your review.',
+    side: 'review',
+  },
+  {
+    value: 'new-replies',
+    label: 'New replies',
+    description: 'Somebody answered a thread you are in.',
+    side: 'review',
+  },
+  {
+    value: 're-review-requested',
+    label: 'Re-review requested',
+    description: 'The author asked for another pass after your review.',
+    side: 'review',
+  },
+  {
+    value: 'new-commits',
+    label: 'New commits',
+    description: 'Commits were pushed after your review.',
+    side: 'review',
+  },
+  {
+    value: 'mentioned',
+    label: 'Mentioned',
+    description: 'Somebody @-mentioned you.',
+    side: 'review',
+  },
+  {
+    value: 'changes-requested',
+    label: 'Changes requested',
+    description: 'A reviewer asked for changes.',
+    side: 'own',
+  },
+  {
+    value: 'merge-conflicts',
+    label: 'Merge conflicts',
+    description: 'The branch conflicts with its base.',
+    side: 'own',
+  },
+  {
+    value: 'open-threads',
+    label: 'Open threads',
+    description: 'A review comment is waiting on your answer.',
+    side: 'own',
+  },
+  {
+    value: 'ci-failed',
+    label: 'CI is red',
+    description: 'A check failed.',
+    side: 'own',
+  },
+  {
+    value: 'ready-to-merge',
+    label: 'Ready to merge',
+    description: 'Approved, with nothing else in the way.',
+    side: 'own',
+  },
+]
+
 export interface Settings {
   pollIntervalMinutes: number
   repositories: string[]
@@ -198,6 +283,11 @@ export interface Settings {
    * on and the server off.
    */
   mcpServerEnabled: boolean
+  /**
+   * Reasons the user switched off. Stored as the ones turned off rather than
+   * the ones kept, so a reason added in a later version arrives switched on.
+   */
+  mutedTriggers: Trigger[]
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -208,4 +298,5 @@ export const DEFAULT_SETTINGS: Settings = {
   globalShortcut: 'Control+Alt+P',
   layout: 'comfortable',
   mcpServerEnabled: false,
+  mutedTriggers: [],
 }

@@ -16,6 +16,7 @@ import {
   type ClassifiedPullRequest,
   type PullRequest,
   type Snooze,
+  type Trigger,
   VISIBLE_CATEGORIES,
 } from '@shared/types'
 
@@ -24,7 +25,14 @@ export interface ClassifyContext {
   snoozes: Record<string, Snooze>
   /** ISO timestamp treated as "now". Injected so the classifier stays pure. */
   now: string
+  /**
+   * Reasons switched off in settings. A muted reason's branch is skipped, so
+   * the pull request falls through to whatever else applies — often `waiting`.
+   */
+  mutedTriggers?: readonly Trigger[]
 }
+
+type IsOn = (trigger: Trigger) => boolean
 
 interface Verdict {
   category: Category
@@ -52,11 +60,11 @@ function visibleSince(pr: PullRequest): string {
     : pr.createdAt
 }
 
-function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
+function classifyReviewPr(pr: PullRequest, myLogin: string, on: IsOn): Verdict {
   const requested = pr.buckets.includes('review-requested')
   const participated = hasParticipated(pr, myLogin)
 
-  if (requested && !participated) {
+  if (requested && !participated && on('review-requested')) {
     return {
       category: 'needs-review',
       reason: 'Review requested',
@@ -65,7 +73,7 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
   }
 
   const awaiting = threadsAwaitingMyReply(pr, myLogin)
-  if (awaiting.length > 0) {
+  if (awaiting.length > 0 && on('new-replies')) {
     const word = pluralize(awaiting.length, 'new reply', 'new replies')
     return {
       category: 'new-replies',
@@ -78,7 +86,7 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
   if (myReview !== null) {
     // I already reviewed, so GitHub cleared me from the reviewer list.
     // Being requested again means the author asked for another pass.
-    if (requested) {
+    if (requested && on('re-review-requested')) {
       // Only a request made after my review can be the one that put this
       // back on me; an older timestamp is the request I already answered,
       // meaning this one came from a team and names nobody to date it by.
@@ -88,7 +96,7 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
           : pr.updatedAt
       return { category: 're-review', reason: 'Re-review requested', waitingSince: asked }
     }
-    if (pr.lastCommitPushedAt > myReview.submittedAt) {
+    if (pr.lastCommitPushedAt > myReview.submittedAt && on('new-commits')) {
       return {
         category: 're-review',
         reason: 'New commits',
@@ -97,7 +105,7 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
     }
   }
 
-  if (pr.buckets.includes('mentions') && !requested) {
+  if (pr.buckets.includes('mentions') && !requested && on('mentioned')) {
     const lastActivity = myLastActivityAt(pr, myLogin)
     // `mentionsAt` is empty when our own text scan couldn't find where (a
     // team mention, etc.) even though GitHub's search matched — fall back to
@@ -124,8 +132,8 @@ function classifyReviewPr(pr: PullRequest, myLogin: string): Verdict {
   return { category: 'hidden', reason: '', waitingSince: null }
 }
 
-function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
-  if (pr.reviewDecision === 'CHANGES_REQUESTED') {
+function classifyOwnPr(pr: PullRequest, myLogin: string, on: IsOn): Verdict {
+  if (pr.reviewDecision === 'CHANGES_REQUESTED' && on('changes-requested')) {
     return {
       category: 'my-pr-action',
       reason: 'Changes requested',
@@ -135,7 +143,7 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
 
   // Only CONFLICTING: GitHub reports UNKNOWN while it is still computing, and
   // a freshly pushed PR would otherwise flash this reason.
-  if (pr.mergeable === 'CONFLICTING') {
+  if (pr.mergeable === 'CONFLICTING' && on('merge-conflicts')) {
     // Conflicts usually arrive when the base branch moves, which is not an
     // event on this pull request and does not touch `updatedAt` — so there is
     // nothing to date this from and the last activity merely stands in.
@@ -143,7 +151,7 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
   }
 
   const unanswered = unansweredThreads(pr, myLogin)
-  if (unanswered.length > 0) {
+  if (unanswered.length > 0 && on('open-threads')) {
     const word = pluralize(unanswered.length, 'open thread', 'open threads')
     return {
       category: 'my-pr-action',
@@ -152,7 +160,7 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
     }
   }
 
-  if (pr.ciStatus === 'failure') {
+  if (pr.ciStatus === 'failure' && on('ci-failed')) {
     return {
       category: 'my-pr-action',
       reason: 'CI is red',
@@ -167,6 +175,9 @@ function classifyOwnPr(pr: PullRequest, myLogin: string): Verdict {
     // the inbox. If a check goes red later it lands back in `my-pr-action`.
     if (pr.hasAutoMerge) {
       return { category: 'hidden', reason: '', waitingSince: null }
+    }
+    if (!on('ready-to-merge')) {
+      return { category: 'waiting', reason: 'Approved', waitingSince: null }
     }
     return {
       category: 'my-pr-action',
@@ -189,10 +200,12 @@ export function classify(
     return { pr, category: 'hidden', reason: '', waitingSince: null, isSnoozed: false }
   }
 
+  const muted = ctx.mutedTriggers ?? []
+  const on: IsOn = (trigger) => !muted.includes(trigger)
   const verdict =
     pr.authorLogin === ctx.myLogin
-      ? classifyOwnPr(pr, ctx.myLogin)
-      : classifyReviewPr(pr, ctx.myLogin)
+      ? classifyOwnPr(pr, ctx.myLogin, on)
+      : classifyReviewPr(pr, ctx.myLogin, on)
 
   if (verdict.category === 'hidden') {
     return { pr, ...verdict, isSnoozed: false }

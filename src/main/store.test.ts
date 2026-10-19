@@ -88,6 +88,7 @@ describe('settings', () => {
       globalShortcut: 'Control+Alt+P',
       layout: 'comfortable',
       mcpServerEnabled: false,
+      mutedTriggers: [],
     })
     store = new AppStore(backend)
     expect(store.getSettings().watchAllRepositories).toBe(false)
@@ -108,7 +109,18 @@ describe('settings', () => {
       globalShortcut: 'Control+Alt+P',
       layout: 'comfortable',
       mcpServerEnabled: false,
+      mutedTriggers: [],
     })
+  })
+
+  it('drops a muted reason this build no longer knows', () => {
+    const backend = new MemoryStore()
+    backend.set('settings', {
+      ...DEFAULT_SETTINGS,
+      mutedTriggers: ['new-commits', 'stars' as never],
+    })
+    store = new AppStore(backend)
+    expect(store.getSettings().mutedTriggers).toEqual(['new-commits'])
   })
 
   it('replaces a shortcut this build no longer offers', () => {

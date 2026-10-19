@@ -1,6 +1,12 @@
 import { repositorySummary } from '@core/repo-filter'
 import type { McpStatus } from '@shared/ipc'
-import { LAYOUT_OPTIONS, type Layout, SHORTCUT_OPTIONS, type ThemePreference } from '@shared/types'
+import {
+  LAYOUT_OPTIONS,
+  type Layout,
+  SHORTCUT_OPTIONS,
+  type ThemePreference,
+  TRIGGER_OPTIONS,
+} from '@shared/types'
 import { Heart, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Avatar, Button, Link, ScrollArea, Switch, Text, View } from 'reshaped/bundle'
@@ -8,6 +14,7 @@ import { useLaunchAtLogin } from '../useLaunchAtLogin'
 import { useSettings } from '../useSettings'
 import McpSection from './McpSection'
 import PaneHeader from './PaneHeader'
+import ReasonsPane from './ReasonsPane'
 import RepositoriesPane from './RepositoriesPane'
 import SegmentedPicker from './SegmentedPicker'
 import SettingRow from './SettingRow'
@@ -32,8 +39,8 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
 
 const SHORTCUT_PICKER_OPTIONS = [{ value: 'off', label: 'Off' }, ...SHORTCUT_OPTIONS]
 
-/** Which screen the panel is showing. Repositories is the one that needs room of its own. */
-type Pane = 'root' | 'repositories'
+/** Which screen the panel is showing. The lists that need room of their own get a screen. */
+type Pane = 'root' | 'repositories' | 'reasons'
 
 export default function SettingsPanel({
   knownRepositories,
@@ -72,6 +79,14 @@ export default function SettingsPanel({
     settings.repositories,
   )
 
+  const shownReasons = TRIGGER_OPTIONS.length - settings.mutedTriggers.length
+  const reasonSummary =
+    shownReasons === TRIGGER_OPTIONS.length ? 'All' : `${shownReasons} of ${TRIGGER_OPTIONS.length}`
+
+  if (pane === 'reasons') {
+    return <ReasonsPane muted={settings.mutedTriggers} onBack={() => setPane('root')} />
+  }
+
   if (pane === 'repositories') {
     return (
       <RepositoriesPane
@@ -95,6 +110,11 @@ export default function SettingsPanel({
                 label="Repositories"
                 value={summary}
                 onClick={() => setPane('repositories')}
+              />
+              <SettingRow
+                label="Reasons"
+                value={reasonSummary}
+                onClick={() => setPane('reasons')}
               />
             </SettingsGroup>
 

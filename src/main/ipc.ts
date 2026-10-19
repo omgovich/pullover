@@ -122,7 +122,9 @@ export function registerIpc(deps: IpcDeps): void {
   ipcMain.handle(IPC.setSettings, async (_event, patch: Partial<Settings>) => {
     deps.store.updateSettings(patch)
     if (patch.pollIntervalMinutes !== undefined) deps.restartPolling()
-    if (patch.watchAllRepositories !== undefined) deps.inbox.reclassify()
+    if (patch.watchAllRepositories !== undefined || patch.mutedTriggers !== undefined) {
+      deps.inbox.reclassify()
+    }
     // From the store, not the patch: it may correct an accelerator this build
     // no longer offers, and the OS must hold whatever the picker shows.
     if (patch.globalShortcut !== undefined) {
