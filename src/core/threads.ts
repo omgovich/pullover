@@ -90,28 +90,20 @@ export function myLastActivityAt(pr: PullRequest, myLogin: string): string | nul
  * let the pull request go.
  */
 export function unansweredPrCommentsAt(pr: PullRequest, myLogin: string): string[] {
-  const lastActivity = myLastActivityAt(pr, myLogin)
-  const answeredUntil =
-    lastActivity !== null && compareIso(lastActivity, pr.lastCommitPushedAt) > 0
-      ? lastActivity
-      : pr.lastCommitPushedAt
+  const lastActivity = myLastActivityAt(pr, myLogin) ?? pr.lastCommitPushedAt
+  const since =
+    compareIso(lastActivity, pr.lastCommitPushedAt) > 0 ? lastActivity : pr.lastCommitPushedAt
+  const byOthers = (c: { authorLogin: string; authorIsBot?: boolean }): boolean =>
+    c.authorLogin !== myLogin && c.authorIsBot !== true
 
   // Only a COMMENTED review: an approval's text rides along with the approval,
   // and a request for changes already has its own reason.
-  const reviews = pr.reviews
-    .filter((r) => r.state === 'COMMENTED' && (r.bodyText ?? '').trim() !== '')
-    .map((r) => ({ authorLogin: r.authorLogin, authorIsBot: r.authorIsBot, at: r.submittedAt }))
-  const comments = pr.conversationComments.map((c) => ({
-    authorLogin: c.authorLogin,
-    authorIsBot: c.authorIsBot,
-    at: c.createdAt,
-  }))
+  const reviewsAt = pr.reviews
+    .filter((r) => r.state === 'COMMENTED' && (r.bodyText ?? '').trim() !== '' && byOthers(r))
+    .map((r) => r.submittedAt)
+  const commentsAt = pr.conversationComments.filter(byOthers).map((c) => c.createdAt)
 
-  return [...reviews, ...comments]
-    .filter((c) => c.authorLogin !== myLogin && c.authorIsBot !== true)
-    .map((c) => c.at)
-    .filter((at) => compareIso(at, answeredUntil) > 0)
-    .sort(compareIso)
+  return [...reviewsAt, ...commentsAt].filter((at) => compareIso(at, since) > 0).sort(compareIso)
 }
 
 function oldestIso(dates: string[]): string | null {
