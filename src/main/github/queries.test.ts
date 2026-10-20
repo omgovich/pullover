@@ -22,9 +22,9 @@ describe('DETAILS_QUERY', () => {
   })
 
   it('fetches GitHub stack positions and full sizes', () => {
-    expect(DETAILS_QUERY).toContain('stackEntry {')
-    expect(DETAILS_QUERY).toContain('position')
-    expect(DETAILS_QUERY).toContain('stack { id size }')
+    expect(DETAILS_QUERY.replace(/\s+/g, ' ')).toContain(
+      'stackEntry { position stack { id size } }',
+    )
   })
 
   it('fetches the review requests a waiting time is dated from', () => {
