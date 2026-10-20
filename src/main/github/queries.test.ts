@@ -21,6 +21,12 @@ describe('DETAILS_QUERY', () => {
     expect(DETAILS_QUERY).toContain('baseRefName')
   })
 
+  it('fetches GitHub stack positions and full sizes', () => {
+    expect(DETAILS_QUERY).toContain('stackEntry {')
+    expect(DETAILS_QUERY).toContain('position')
+    expect(DETAILS_QUERY).toContain('stack { id size }')
+  })
+
   it('fetches the review requests a waiting time is dated from', () => {
     // Without these, `needs-review` can only guess from the PR's creation —
     // wrong by days for a reviewer added long after it opened.

@@ -41,6 +41,7 @@ export interface PullRequestNode {
   deletions: number
   headRefName: string
   baseRefName: string
+  stackEntry: { position: number; stack: { id: string; size: number } | null } | null
   reviewDecision: ReviewDecision
   mergeable: MergeableState
   autoMergeRequest: { enabledAt: string } | null
@@ -264,6 +265,13 @@ export function mapPullRequest(
     deletions: node.deletions,
     headRefName: node.headRefName,
     baseRefName: node.baseRefName,
+    nativeStack: node.stackEntry?.stack
+      ? {
+          id: node.stackEntry.stack.id,
+          index: node.stackEntry.position,
+          total: node.stackEntry.stack.size,
+        }
+      : null,
     ciStatus: mapCiStatus(lastCommit?.statusCheckRollup?.state),
     lastCommitPushedAt: lastCommit === null ? node.createdAt : pushedAt(lastCommit),
     reviewDecision: node.reviewDecision,

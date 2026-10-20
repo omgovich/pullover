@@ -27,6 +27,58 @@ function classified(
 }
 
 describe('computeStackPositions', () => {
+  it('keeps GitHub positions 9/16 through 16/16 after the lower eight PRs merge', () => {
+    const branches = [
+      [4550, 'local-copy'],
+      [4551, 'sync-listener'],
+      [4621, 'sync-session'],
+      [4552, 'dashboard-read'],
+      [4553, 'send-actions'],
+      [4554, 'folder-move-bin'],
+      [4555, 'bin'],
+      [4556, 'upload'],
+    ] as const
+    const prs = branches.map(([number, branch], i) =>
+      pr({
+        id: `PR_${number}`,
+        number,
+        headRefName: `feature/ppw-8-${branch}`,
+        baseRefName: i === 0 ? 'staging' : `feature/ppw-8-${branches[i - 1][1]}`,
+        nativeStack: { id: 'PRS_stack', index: i + 9, total: 16 },
+      }),
+    )
+
+    const positions = computeStackPositions([...prs].reverse())
+
+    prs.forEach((pr, i) => {
+      expect(positions.get(pr.id)).toEqual({ id: 'PRS_stack', index: i + 9, total: 16 })
+    })
+  })
+
+  it('keeps a native position even when no other stack members were fetched', () => {
+    const positions = computeStackPositions([
+      pr({ id: 'PR_4550', nativeStack: { id: 'PRS_stack', index: 9, total: 16 } }),
+    ])
+
+    expect(positions.get('PR_4550')).toEqual({ id: 'PRS_stack', index: 9, total: 16 })
+  })
+
+  it('does not infer links into a native stack from matching branch names', () => {
+    const positions = computeStackPositions([
+      pr({
+        id: 'PR_native',
+        headRefName: 'a',
+        nativeStack: { id: 'PRS_stack', index: 9, total: 16 },
+      }),
+      pr({ id: 'PR_b', headRefName: 'b', baseRefName: 'a' }),
+      pr({ id: 'PR_c', headRefName: 'c', baseRefName: 'b' }),
+    ])
+
+    expect(positions.get('PR_native')).toEqual({ id: 'PRS_stack', index: 9, total: 16 })
+    expect(positions.get('PR_b')).toEqual({ id: 'PR_b', index: 1, total: 2 })
+    expect(positions.get('PR_c')).toEqual({ id: 'PR_b', index: 2, total: 2 })
+  })
+
   it("positions a real eight-deep stack from the owner's account", () => {
     // Real data (see stack-brief.md): the owner had been typing "(search
     // N/8)" into these titles by hand, and this fixture's computed positions

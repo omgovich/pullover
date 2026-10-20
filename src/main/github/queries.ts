@@ -31,6 +31,10 @@ export const DETAILS_QUERY = `
         deletions
         headRefName
         baseRefName
+        stackEntry {
+          position
+          stack { id size }
+        }
         reviewDecision
         mergeable
         autoMergeRequest { enabledAt }

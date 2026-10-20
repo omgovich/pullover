@@ -15,6 +15,7 @@ function node(overrides: Partial<PullRequestNode> = {}): PullRequestNode {
     deletions: 3,
     headRefName: 'feature-branch',
     baseRefName: 'main',
+    stackEntry: null,
     reviewDecision: 'REVIEW_REQUIRED',
     mergeable: 'MERGEABLE',
     autoMergeRequest: null,
@@ -46,6 +47,22 @@ describe('mapCiStatus', () => {
 })
 
 describe('mapPullRequest', () => {
+  it('reads GitHub stack numbering including merged members', () => {
+    const pr = mapPullRequest(
+      node({ stackEntry: { position: 9, stack: { id: 'PRS_stack', size: 16 } } }),
+      [],
+      'vlad',
+    )
+    expect(pr.nativeStack).toEqual({ id: 'PRS_stack', index: 9, total: 16 })
+  })
+
+  it('has no native stack when the entry or its stack is absent', () => {
+    expect(mapPullRequest(node(), [], 'vlad').nativeStack).toBeNull()
+    expect(
+      mapPullRequest(node({ stackEntry: { position: 9, stack: null } }), [], 'vlad').nativeStack,
+    ).toBeNull()
+  })
+
   it('carries mergeability through', () => {
     expect(mapPullRequest(node({ mergeable: 'CONFLICTING' }), [], 'vlad').mergeable).toBe(
       'CONFLICTING',

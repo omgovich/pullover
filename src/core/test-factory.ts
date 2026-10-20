@@ -37,6 +37,7 @@ export function makePullRequest(overrides: Partial<PullRequest> = {}): PullReque
     deletions: 2,
     headRefName: 'feature-1',
     baseRefName: 'main',
+    nativeStack: null,
     ciStatus: 'success',
     lastCommitPushedAt: '2026-08-01T10:00:00Z',
     reviewDecision: 'REVIEW_REQUIRED',

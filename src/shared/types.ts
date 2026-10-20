@@ -1,8 +1,8 @@
 export interface StackPosition {
   /**
    * Identifies the stack this position belongs to, so two different chains
-   * of the same length can be told apart. The root pull request's id is the
-   * natural choice — every member of a chain walks back to the same root.
+   * of the same length can be told apart. GitHub's stack id when available,
+   * otherwise the root pull request's id.
    */
   id: string
   /** 1-based position within the chain, counted from the root. */
@@ -83,6 +83,8 @@ export interface PullRequest {
   deletions: number
   headRefName: string
   baseRefName: string
+  /** GitHub's own stack numbering, including merged members. */
+  nativeStack: StackPosition | null
   ciStatus: CiStatus
   lastCommitPushedAt: string
   reviewDecision: ReviewDecision

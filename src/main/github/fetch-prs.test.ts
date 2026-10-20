@@ -25,6 +25,7 @@ function detailNode(id: string, overrides: Record<string, unknown> = {}) {
     updatedAt: '2026-08-02T10:00:00Z',
     additions: 1,
     deletions: 0,
+    stackEntry: null,
     reviewDecision: 'REVIEW_REQUIRED',
     author: { login: 'alice', avatarUrl: 'https://avatars.example/alice.png' },
     repository: { nameWithOwner: 'acme/web' },

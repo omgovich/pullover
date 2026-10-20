@@ -17,21 +17,21 @@ function groupBy<T>(items: T[], keyOf: (item: T) => string): Map<string, T[]> {
 /**
  * Position of each pull request within its stack, keyed by PR id.
  *
- * A stacked pull request targets the previous one's head branch, so the
- * chain is implied entirely by `headRefName`/`baseRefName` — nothing needs
- * to be parsed out of a title or description.
- *
- * Only open pull requests are ever fetched (see `fetchPullRequests`), so a
- * stack whose lower parts have merged simply reads as the shorter remaining
- * chain rooted at whatever is still open. That's the right answer as-is and
- * needs no special handling here.
+ * GitHub's native numbering includes merged members and takes priority.
+ * Otherwise, infer a chain from the open PRs' head/base branch names.
  */
 export function computeStackPositions(prs: PullRequest[]): Map<string, StackPosition> {
   const result = new Map<string, StackPosition>()
+  for (const pr of prs) {
+    if (pr.nativeStack !== null) result.set(pr.id, pr.nativeStack)
+  }
 
   // Branch names are only meaningful within their own repository, so a
   // coincidental match across repos must never link two unrelated PRs.
-  const byRepo = groupBy(prs, (pr) => pr.repository)
+  const byRepo = groupBy(
+    prs.filter((pr) => pr.nativeStack === null),
+    (pr) => pr.repository,
+  )
 
   for (const repoPrs of byRepo.values()) {
     const byId = new Map(repoPrs.map((pr) => [pr.id, pr]))
