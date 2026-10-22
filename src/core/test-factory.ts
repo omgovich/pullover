@@ -43,6 +43,7 @@ export function makePullRequest(overrides: Partial<PullRequest> = {}): PullReque
     reviewDecision: 'REVIEW_REQUIRED',
     mergeable: 'MERGEABLE',
     hasAutoMerge: false,
+    isInMergeQueue: false,
     reviews: [],
     reviewThreads: [],
     conversationComments: [],

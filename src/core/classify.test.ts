@@ -17,6 +17,21 @@ describe('classify — visibility overrides', () => {
     expect(classify(pr, ctx()).category).toBe('hidden')
   })
 
+  it('hides my approved PR once it is in the merge queue', () => {
+    const pr = makePullRequest({
+      authorLogin: ME,
+      buckets: ['author'],
+      reviewDecision: 'APPROVED',
+      isInMergeQueue: true,
+    })
+    expect(classify(pr, ctx()).category).toBe('hidden')
+  })
+
+  it('hides a review request on a PR already in the merge queue', () => {
+    const pr = makePullRequest({ buckets: ['review-requested'], isInMergeQueue: true })
+    expect(classify(pr, ctx()).category).toBe('hidden')
+  })
+
   it('hides a PR I am neither requested on nor involved in', () => {
     const pr = makePullRequest({ buckets: ['involves'] })
     expect(classify(pr, ctx()).category).toBe('hidden')

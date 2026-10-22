@@ -91,6 +91,8 @@ export interface PullRequest {
   mergeable: MergeableState
   /** Whether auto-merge is armed, so GitHub will merge this itself once checks pass. */
   hasAutoMerge: boolean
+  /** Whether it waits in its base branch's merge queue, so it is already on its way in. */
+  isInMergeQueue: boolean
   reviews: Review[]
   reviewThreads: ReviewThread[]
   /** Latest conversation-tab comments, oldest first. Inline review comments live in `reviewThreads`. */

@@ -19,6 +19,7 @@ function node(overrides: Partial<PullRequestNode> = {}): PullRequestNode {
     reviewDecision: 'REVIEW_REQUIRED',
     mergeable: 'MERGEABLE',
     autoMergeRequest: null,
+    isInMergeQueue: false,
     author: { login: 'alice', avatarUrl: 'https://avatars.example/alice.png' },
     repository: { nameWithOwner: 'acme/web' },
     reviews: { nodes: [] },
@@ -74,6 +75,11 @@ describe('mapPullRequest', () => {
     const armed = node({ autoMergeRequest: { enabledAt: '2026-08-02T10:00:00Z' } })
     expect(mapPullRequest(armed, [], 'vlad').hasAutoMerge).toBe(true)
     expect(mapPullRequest(node(), [], 'vlad').hasAutoMerge).toBe(false)
+  })
+
+  it('reads whether the pull request is in the merge queue', () => {
+    expect(mapPullRequest(node({ isInMergeQueue: true }), [], 'vlad').isInMergeQueue).toBe(true)
+    expect(mapPullRequest(node(), [], 'vlad').isInMergeQueue).toBe(false)
   })
 
   it('copies the scalar fields and attaches the buckets', () => {

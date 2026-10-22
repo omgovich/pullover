@@ -253,7 +253,9 @@ export function classify(
   pr: PullRequest,
   ctx: ClassifyContext,
 ): Omit<ClassifiedPullRequest, 'stack'> {
-  if (pr.isDraft) {
+  // A pull request in the merge queue is as good as merged: nothing on it is
+  // anyone's move. If the queue drops it, it is back on the next refresh.
+  if (pr.isDraft || pr.isInMergeQueue) {
     return { pr, category: 'hidden', reason: '', waitingSince: null, isSnoozed: false }
   }
 
