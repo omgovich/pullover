@@ -66,17 +66,25 @@ export function registerTools(server: McpServer, deps: McpServerDeps): void {
    * before the snooze is ever consulted. Writing one anyway would report no
    * effect and then quietly take hold the day the pull request reappears.
    *
-   * Three things are hidden, not just drafts — an own pull request that is
-   * approved with auto-merge armed, and one the user is simply not involved
-   * in, are the other two — so only a draft may be named as one.
+   * Four things are hidden — a draft, one in the merge queue, an own pull
+   * request that is approved with auto-merge armed, and one the user is simply
+   * not involved in — so only the first two may be named as such.
    */
   const refuseIfHidden = (item: ClassifiedPullRequest): CallToolResult | null => {
     if (item.category !== 'hidden') return null
     const name = `${item.pr.repository}#${item.pr.number}`
+    if (item.pr.isDraft) {
+      return toolError(
+        `${name} is a draft, and Pullover does not park drafts: they are out of the inbox already. It will appear once it is marked ready for review.`,
+      )
+    }
+    if (item.pr.isInMergeQueue) {
+      return toolError(
+        `${name} is in the merge queue and on its way in, so it is out of the inbox already. It will appear again only if the queue drops it.`,
+      )
+    }
     return toolError(
-      item.pr.isDraft
-        ? `${name} is a draft, and Pullover does not park drafts: they are out of the inbox already. It will appear once it is marked ready for review.`
-        : `${name} is not in the inbox — nothing about it is waiting on the user — so there is nothing to park. Call get_inbox to see what is.`,
+      `${name} is not in the inbox — nothing about it is waiting on the user — so there is nothing to park. Call get_inbox to see what is.`,
     )
   }
 

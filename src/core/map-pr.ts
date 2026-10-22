@@ -45,6 +45,7 @@ export interface PullRequestNode {
   reviewDecision: ReviewDecision
   mergeable: MergeableState
   autoMergeRequest: { enabledAt: string } | null
+  isInMergeQueue: boolean
   bodyText: string
   author: ActorNode | null
   repository: { nameWithOwner: string }
@@ -277,6 +278,7 @@ export function mapPullRequest(
     reviewDecision: node.reviewDecision,
     mergeable: node.mergeable,
     hasAutoMerge: node.autoMergeRequest !== null,
+    isInMergeQueue: node.isInMergeQueue,
     reviews,
     reviewThreads,
     conversationComments,

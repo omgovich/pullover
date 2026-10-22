@@ -39,6 +39,7 @@ export const DETAILS_QUERY = `
         reviewDecision
         mergeable
         autoMergeRequest { enabledAt }
+        isInMergeQueue
         bodyText
         author { login avatarUrl }
         repository { nameWithOwner }

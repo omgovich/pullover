@@ -451,8 +451,30 @@ describe('snooze tools', () => {
     expect(store.getSnoozes()).toEqual({})
   })
 
-  // `classify` hides three things, and only one of them is a draft. Saying
-  // "draft" about the other two would have the agent repeat it to the user.
+  it('refuses a pull request in the merge queue, and says so', async () => {
+    prs = [
+      makePullRequest({
+        id: 'PR_Q',
+        repository: 'acme/web',
+        number: 6,
+        isInMergeQueue: true,
+        buckets: ['review-requested'],
+      }),
+    ]
+    await inbox.refresh()
+
+    const { isError, text } = await callTool('snooze_pull_request', {
+      repository: 'acme/web',
+      number: 6,
+    })
+    expect(isError).toBe(true)
+    expect(text).toMatch(/merge queue/)
+    expect(text).not.toMatch(/draft/i)
+    expect(store.getSnoozes()).toEqual({})
+  })
+
+  // `classify` hides four things, and only two of them are named. Saying
+  // "draft" about the others would have the agent repeat it to the user.
   it('refuses a hidden pull request that is not a draft without calling it one', async () => {
     prs = [
       makePullRequest({
