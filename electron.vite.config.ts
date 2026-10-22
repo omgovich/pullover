@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import { defineConfig } from 'electron-vite'
 
 const alias = {
   '@shared': resolve(import.meta.dirname, 'src/shared'),
@@ -13,8 +13,8 @@ const { version } = JSON.parse(
 ) as { version: string }
 
 export default defineConfig({
-  main: { resolve: { alias }, plugins: [externalizeDepsPlugin()] },
-  preload: { resolve: { alias }, plugins: [externalizeDepsPlugin()] },
+  main: { resolve: { alias } },
+  preload: { resolve: { alias } },
   renderer: {
     root: resolve(import.meta.dirname, 'src/renderer'),
     resolve: { alias },
