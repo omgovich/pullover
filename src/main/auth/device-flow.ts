@@ -15,6 +15,8 @@ export interface DeviceCodeInfo {
 export interface PollDeps {
   fetchFn?: typeof fetch
   sleep?: (ms: number) => Promise<void>
+  /** Stops polling, e.g. when the user starts a different sign-in. */
+  signal?: AbortSignal
 }
 
 interface DeviceCodeResponse {
@@ -37,9 +39,11 @@ async function postJson<T>(
   url: string,
   body: Record<string, string>,
   fetchFn: typeof fetch,
+  signal?: AbortSignal,
 ): Promise<T> {
   const response = await fetchFn(url, {
     method: 'POST',
+    signal,
     headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
@@ -56,11 +60,13 @@ function describeError(error: string, description?: string): string {
 export async function requestDeviceCode(
   clientId: string,
   fetchFn: typeof fetch = fetch,
+  signal?: AbortSignal,
 ): Promise<DeviceCodeInfo> {
   const data = await postJson<DeviceCodeResponse>(
     DEVICE_CODE_URL,
     { client_id: clientId, scope: GITHUB_SCOPES },
     fetchFn,
+    signal,
   )
 
   if (data.error !== undefined) {
@@ -79,8 +85,19 @@ export async function requestDeviceCode(
   }
 }
 
-const defaultSleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms))
+function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    signal?.throwIfAborted()
+    const timer = setTimeout(done, ms)
+    signal?.addEventListener('abort', done, { once: true })
+    function done(): void {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', done)
+      if (signal?.aborted) reject(signal.reason)
+      else resolve()
+    }
+  })
+}
 
 /**
  * Polls until the user approves the device in their browser. Resolves with the
@@ -92,13 +109,15 @@ export async function pollForToken(
   deps: PollDeps = {},
 ): Promise<string> {
   const fetchFn = deps.fetchFn ?? fetch
-  const sleep = deps.sleep ?? defaultSleep
+  const signal = deps.signal
+  const sleep = deps.sleep ?? ((ms: number) => abortableSleep(ms, signal))
   let intervalMs = info.interval * 1000
   let elapsedMs = 0
   const expiresInMs = info.expiresIn * 1000
 
   for (;;) {
     await sleep(intervalMs)
+    signal?.throwIfAborted()
     elapsedMs += intervalMs
 
     if (elapsedMs >= expiresInMs) {
@@ -113,6 +132,7 @@ export async function pollForToken(
         grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
       },
       fetchFn,
+      signal,
     )
 
     if (data.access_token !== undefined) return data.access_token

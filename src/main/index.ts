@@ -1,9 +1,12 @@
 import { shouldRefreshOnOpen } from '@core/staleness'
 import { IPC } from '@shared/ipc'
 import { app, type BrowserWindow, clipboard, type Rectangle, shell, type Tray } from 'electron'
+import { Accounts } from './accounts'
 import { pollForToken, requestDeviceCode } from './auth/device-flow'
 import { clearToken, loadToken, saveToken } from './auth/token-storage'
-import { createGraphQLClient, type GraphQLClient } from './github/fetch-prs'
+import { createGraphQLClient } from './github/fetch-prs'
+import { createGitLabClient, normalizeGitLabUrl } from './gitlab/client'
+import { fetchGitLabViewer } from './gitlab/fetch-mrs'
 import { Inbox } from './inbox'
 import { registerIpc } from './ipc'
 import { mcpUrl, PulloverMcpServer } from './mcp/server'
@@ -23,25 +26,45 @@ const CLIENT_ID = import.meta.env.MAIN_VITE_GITHUB_CLIENT_ID as string | undefin
 
 let window: BrowserWindow | null = null
 let tray: Tray | null = null
-let client: GraphQLClient | null = null
 
 const store = createAppStore()
 
 const inbox = new Inbox({
   store,
-  getClient: () => client,
+  getClient: () => accounts.getGitHubClient(),
+  getGitLabClient: () => accounts.getGitLabClient(),
   onChange: (snapshot) => {
     window?.webContents.send(IPC.snapshotChanged, snapshot)
-    if (tray !== null) setBadge(tray, snapshot.attentionCount)
+    if (tray !== null) setBadge(tray, snapshot.attentionCount, store.getSettings().provider)
   },
   // A revoked or expired token fails every refresh identically, so a
   // refresh that recognises one signs the user out instead of leaving them
   // staring at a stale list forever.
-  onAuthError: () => signOut(),
+  onAuthError: (failed) => accounts.handleAuthError(failed),
 })
 
-// Two ports for the same reason as two app names: a dev Pullover next to an
-// installed one must not fight it for the socket.
+const accounts = new Accounts({
+  store,
+  inbox,
+  tokens: { load: loadToken, save: saveToken, clear: clearToken },
+  createGitHubClient: createGraphQLClient,
+  createGitLabClient,
+  normalizeGitLabUrl,
+  verifyGitLab: fetchGitLabViewer,
+  deviceFlow: CLIENT_ID
+    ? {
+        requestCode: (signal) => requestDeviceCode(CLIENT_ID, fetch, signal),
+        pollForToken: (info, signal) => pollForToken(CLIENT_ID, info, { signal }),
+        present: async (info) => {
+          // The user has to type the code, so hand it to them via the clipboard too.
+          clipboard.writeText(info.userCode)
+          await shell.openExternal(info.verificationUri)
+        },
+      }
+    : null,
+})
+
+// A dev Pullover and an installed one must not fight for the socket.
 const MCP_PORT = app.isPackaged ? 7855 : 7856
 
 const mcp = new PulloverMcpServer({ inbox, store, version: app.getVersion() })
@@ -50,81 +73,9 @@ function applyMcpSetting(): Promise<void> {
   return store.getSettings().mcpServerEnabled ? mcp.start(MCP_PORT) : mcp.stop()
 }
 
-function loadClientFromDisk(): void {
-  const token = loadToken()
-  client = token === null ? null : createGraphQLClient(token)
-}
-
 function shouldFetchOnOpen(): boolean {
-  if (client === null) return false
+  if (!accounts.isConnected()) return false
   return shouldRefreshOnOpen(inbox.getSnapshot(), new Date().toISOString())
-}
-
-let signInInFlight: Promise<void> | null = null
-
-async function doSignIn(
-  onDeviceCode: (payload: { userCode: string; verificationUri: string }) => void,
-): Promise<void> {
-  if (!CLIENT_ID) {
-    throw new Error('MAIN_VITE_GITHUB_CLIENT_ID is not set — fill in your .env')
-  }
-
-  const info = await requestDeviceCode(CLIENT_ID)
-  onDeviceCode({
-    userCode: info.userCode,
-    verificationUri: info.verificationUri,
-  })
-  // The user has to type the code, so hand it to them via the clipboard too.
-  clipboard.writeText(info.userCode)
-  await shell.openExternal(info.verificationUri)
-
-  const token = await pollForToken(CLIENT_ID, info)
-  saveToken(token)
-  client = createGraphQLClient(token)
-  inbox.start()
-}
-
-/**
- * A device-code sign-in stays in flight for up to the code's expiry (15
- * minutes by default). A second concurrent call joins that same run instead
- * of starting an independent device-code cycle — two cycles would overwrite
- * each other's clipboard/UI and race to save the token and start polling.
- * The second caller's `onDeviceCode` is simply never invoked; it gets the
- * first run's outcome.
- */
-function signIn(
-  onDeviceCode: (payload: { userCode: string; verificationUri: string }) => void,
-): Promise<void> {
-  if (signInInFlight !== null) {
-    return signInInFlight
-  }
-
-  const run = doSignIn(onDeviceCode)
-  signInInFlight = run
-  return run.finally(() => {
-    signInInFlight = null
-  })
-}
-
-function signOut(): void {
-  clearToken()
-  client = null
-  inbox.stop()
-  void inbox.refresh()
-}
-
-/**
- * Restarts polling after a settings change. Starting the timer while signed
- * out would just tick forever calling refresh(), which re-emits
- * signed-out each time — so this only (re)arms it when a client exists,
- * and makes sure it's stopped otherwise.
- */
-function restartPolling(): void {
-  if (client === null) {
-    inbox.stop()
-    return
-  }
-  inbox.start()
 }
 
 // Pushes a changed update state to both surfaces that show it, so the tray
@@ -151,7 +102,7 @@ const shortcut = new Shortcut(() => {
 app.dock?.hide()
 
 void app.whenReady().then(() => {
-  loadClientFromDisk()
+  accounts.loadFromDisk()
   window = createPopupWindow()
 
   tray = createTray({
@@ -167,9 +118,13 @@ void app.whenReady().then(() => {
     inbox,
     store,
     getWindow: () => window,
-    signIn,
-    signOut,
-    restartPolling,
+    signIn: (onDeviceCode) => accounts.signIn(onDeviceCode),
+    cancelSignIn: () => accounts.cancelSignIn(),
+    connectGitLab: (serverUrl, token) => accounts.connectGitLab(serverUrl, token),
+    switchProvider: (provider) => accounts.switchProvider(provider),
+    canUseGitHubDeviceFlow: () => Boolean(CLIENT_ID),
+    signOut: () => accounts.signOut(),
+    restartPolling: () => accounts.restartPolling(),
     getUpdate: () => updater.getState(),
     installUpdate: () => updater.install(),
     applyShortcut: (accelerator) => shortcut.apply(accelerator),
@@ -181,7 +136,7 @@ void app.whenReady().then(() => {
     applyMcpSetting,
   })
 
-  if (client !== null) inbox.start()
+  if (accounts.isConnected()) inbox.start()
   updater.start()
   shortcut.apply(store.getSettings().globalShortcut)
   void applyMcpSetting()

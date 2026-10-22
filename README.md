@@ -38,7 +38,8 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 - ⌨️ **Drive it from the keyboard.** Get through the list without reaching for the mouse.
 - 🌗 **Light, dark, roomy or dense.** Follows your macOS appearance out of the box, and can pack down to one row per PR when your list gets long.
 - ⬇️ **Updates itself quietly.** New versions download in the background; Pullover then offers a restart and waits for you to take it.
-- 👀 **Read-only by design.** Pullover never comments, approves, or merges. Clicking a PR opens it on github.com — you act where you always did.
+- 👀 **Read-only by design.** Pullover never comments, approves, or merges. Clicking a request opens it on its GitHub or GitLab server.
+- 🦊 **GitLab inbox.** Connect GitLab.com or a self-hosted GitLab server with a personal access token, then switch between GitLab and GitHub in Settings.
 - 🤖 **Talks to your agents.** An optional MCP server, local to your Mac, lets Claude Code and other agents ask which PRs are waiting on you and why — and park the ones that can wait — from the same inbox you see, with no extra GitHub token.
 
 ## 📦 Install
@@ -49,6 +50,8 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 Drag Pullover into Applications and launch it.
 
 Sign in with GitHub and you're done — out of the box Pullover watches every repo you're involved in. If that's too much, narrow it down to specific repos in **Settings**.
+
+For GitLab, choose **GitLab** at sign-in, enter your server URL and a personal access token with `read_api` scope. The token must belong to the account whose merge requests you want to see; group and project tokens identify separate bot accounts. [GitLab explains how to create a personal access token](https://docs.gitlab.com/user/profile/personal_access_tokens/). The app stores each provider's token separately, and **Settings → Account** switches between the two inboxes.
 
 <details>
 <summary><b>🛠️ Running from source</b></summary>
@@ -122,6 +125,6 @@ Nothing an agent does through Pullover reaches GitHub: it reads, and a snooze is
 
 ## 🔐 Privacy
 
-Pullover has no backend. There's no server in the middle, no account to create, no analytics, no telemetry, no crash reporting — the app talks to exactly one place, GitHub's API, straight from your Mac. The optional MCP server is off until you turn it on, and listens to this Mac alone. Your OAuth token never leaves the machine: it's encrypted via the macOS Keychain (Electron's `safeStorage`) and stored locally. And you don't have to take anyone's word for any of this — the entire app is open source, right here in this repo.
+Pullover has no backend. There's no server in the middle, no analytics, no telemetry, no crash reporting — the app talks directly to GitHub's API or the GitLab server you configure. The optional MCP server is off until you turn it on, and listens to this Mac alone. Your tokens are encrypted via the macOS Keychain (Electron's `safeStorage`) and stored locally. And you don't have to take anyone's word for any of this — the entire app is open source, right here in this repo.
 
-Pullover only ever reads from GitHub — never a comment, a review, or any other write there. The one thing it writes is its own snooze list, in a file on this Mac. Sign-in asks for `repo` and `read:org`, the narrowest scopes GitHub offers that can still see pull requests in private repositories and review requests that arrived through a team; if your organisation restricts third-party OAuth Apps, an owner has to approve Pullover under **Settings → Third-party Actions Access** before those repos show up.
+Pullover only ever reads from GitHub or GitLab — never a comment, a review, or any other write there. The one thing it writes is its own snooze list, in a file on this Mac. GitHub sign-in asks for `repo` and `read:org`, the narrowest scopes GitHub offers that can still see pull requests in private repositories and review requests that arrived through a team; if your organisation restricts third-party OAuth Apps, an owner has to approve Pullover under **Settings → Third-party Actions Access** before those repos show up. GitLab uses a personal access token with `read_api` scope.

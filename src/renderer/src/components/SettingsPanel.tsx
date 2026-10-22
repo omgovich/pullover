@@ -5,7 +5,7 @@ import {
   type Layout,
   SHORTCUT_OPTIONS,
   type ThemePreference,
-  TRIGGER_OPTIONS,
+  triggerOptionsFor,
 } from '@shared/types'
 import { Heart, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -38,6 +38,10 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
 ]
 
 const SHORTCUT_PICKER_OPTIONS = [{ value: 'off', label: 'Off' }, ...SHORTCUT_OPTIONS]
+const ACCOUNT_OPTIONS = [
+  { value: 'gitlab', label: 'GitLab' },
+  { value: 'github', label: 'GitHub' },
+]
 
 /** Which screen the panel is showing. The lists that need room of their own get a screen. */
 type Pane = 'root' | 'repositories' | 'reasons'
@@ -52,6 +56,7 @@ export default function SettingsPanel({
   const [shortcutActive, setShortcutActive] = useState(true)
   const [mcpStatus, setMcpStatus] = useState<McpStatus | null>(null)
   const [pane, setPane] = useState<Pane>('root')
+  const [switchError, setSwitchError] = useState<string | null>(null)
 
   useEffect(() => {
     void window.api.isShortcutActive().then(setShortcutActive)
@@ -71,6 +76,16 @@ export default function SettingsPanel({
     setShortcutActive(await window.api.isShortcutActive())
   }
 
+  const switchAccount = async (provider: 'github' | 'gitlab'): Promise<void> => {
+    setSwitchError(null)
+    try {
+      await window.api.switchProvider(provider)
+      onClose()
+    } catch (cause) {
+      setSwitchError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
   if (settings === null) return <View padding={4} height="100%" minHeight={0} />
 
   const summary = repositorySummary(
@@ -79,12 +94,21 @@ export default function SettingsPanel({
     settings.repositories,
   )
 
-  const shownReasons = TRIGGER_OPTIONS.length - settings.mutedTriggers.length
+  const reasons = triggerOptionsFor(settings.provider)
+  const shownReasons = reasons.filter(
+    (option) => !settings.mutedTriggers.includes(option.value),
+  ).length
   const reasonSummary =
-    shownReasons === TRIGGER_OPTIONS.length ? 'All' : `${shownReasons} of ${TRIGGER_OPTIONS.length}`
+    shownReasons === reasons.length ? 'All' : `${shownReasons} of ${reasons.length}`
 
   if (pane === 'reasons') {
-    return <ReasonsPane muted={settings.mutedTriggers} onBack={() => setPane('root')} />
+    return (
+      <ReasonsPane
+        muted={settings.mutedTriggers}
+        provider={settings.provider}
+        onBack={() => setPane('root')}
+      />
+    )
   }
 
   if (pane === 'repositories') {
@@ -105,6 +129,21 @@ export default function SettingsPanel({
       <View grow minHeight="0px">
         <ScrollArea scrollableClassName="pv-settings-scroll">
           <View paddingBlock={3} paddingInline={3} gap={3}>
+            <SettingsGroup>
+              <SettingRow label="Account" description="Switch inboxes or connect another account">
+                <SegmentedPicker
+                  value={settings.provider}
+                  options={ACCOUNT_OPTIONS}
+                  onChange={(value) => void switchAccount(value as 'github' | 'gitlab')}
+                />
+              </SettingRow>
+            </SettingsGroup>
+            {switchError !== null && (
+              <Text variant="caption-1" color="critical">
+                {switchError}
+              </Text>
+            )}
+
             <SettingsGroup>
               <SettingRow
                 label="Repositories"
@@ -184,7 +223,7 @@ export default function SettingsPanel({
               />
             </SettingsGroup>
 
-            <View direction="row" align="center" gap={3} paddingInline={1}>
+            <View direction="row" align="center" gap={3} paddingInline={3}>
               {/* `myLogin` lands with the first snapshot, so the icon is the pre-fetch stand-in. */}
               <Avatar
                 color="primary"
@@ -197,7 +236,7 @@ export default function SettingsPanel({
                   {myLogin ?? 'Signed in'}
                 </Text>
                 <Text variant="caption-1" color="neutral-faded">
-                  Signed in with GitHub
+                  {settings.provider === 'gitlab' ? `GitLab · ${settings.gitlabUrl}` : 'GitHub'}
                 </Text>
               </View>
               <View grow />
@@ -205,7 +244,7 @@ export default function SettingsPanel({
                 size="small"
                 variant="outline"
                 color="critical"
-                onClick={() => void window.api.signOut()}
+                onClick={() => void window.api.signOut().then(onClose)}
               >
                 Sign out
               </Button>
@@ -219,6 +258,7 @@ export default function SettingsPanel({
         align="center"
         gap={3}
         padding={3}
+        paddingEnd={6}
         borderColor="neutral-faded"
         borderTop
         backgroundColor="elevation-raised"

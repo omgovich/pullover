@@ -68,7 +68,18 @@ export type ReviewDecision = 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED
 /** GitHub computes mergeability in the background, so `UNKNOWN` means "not yet", not "maybe". */
 export type MergeableState = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
 
+export interface AttentionOverride {
+  category: Category
+  reason: string
+  waitingSince: string | null
+  /** Omitted for reasons the Reasons screen cannot mute. */
+  trigger?: Trigger
+}
+
 export interface PullRequest {
+  provider?: 'github' | 'gitlab'
+  /** Decided by the provider, most urgent first; `classify` takes the first whose trigger is on. */
+  attentionOverrides?: AttentionOverride[]
   id: string
   number: number
   title: string
@@ -113,6 +124,7 @@ export type Category =
   | 're-review'
   | 'my-pr-action'
   | 'mentioned'
+  | 'other-action'
   | 'waiting'
   | 'hidden'
 
@@ -123,6 +135,7 @@ export const ATTENTION_CATEGORIES: readonly Category[] = [
   're-review',
   'my-pr-action',
   'mentioned',
+  'other-action',
 ]
 
 /** All visible categories, in display order. `waiting` renders last, collapsed. */
@@ -134,6 +147,7 @@ export const CATEGORY_TITLES: Record<Category, string> = {
   're-review': 'Take another look',
   'my-pr-action': 'Your PRs',
   mentioned: 'Mentions',
+  'other-action': 'Other actions',
   waiting: 'Waiting on others',
   hidden: '',
 }
@@ -207,6 +221,9 @@ export interface TriggerOption {
   value: Trigger
   label: string
   description: string
+  gitlabDescription?: string
+  /** GitLab's inbox never produces it, so its switch would do nothing there. */
+  githubOnly?: boolean
   /** Whose pull request the reason is about: one the user reviews, or one they wrote. */
   side: 'review' | 'own'
 }
@@ -224,6 +241,7 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
     label: 'Re-review requested',
     description: 'The author asked for another pass after your review.',
     side: 'review',
+    githubOnly: true,
   },
   {
     value: 'new-replies',
@@ -236,6 +254,7 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
     label: 'New commits',
     description: 'Commits were pushed after your review.',
     side: 'review',
+    githubOnly: true,
   },
   {
     value: 'mentioned',
@@ -265,6 +284,7 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
     value: 'new-comments',
     label: 'New comments',
     description: 'Somebody commented on the pull request as a whole.',
+    gitlabDescription: 'Somebody commented on the merge request as a whole.',
     side: 'own',
   },
   {
@@ -278,14 +298,32 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
     label: 'Ready to merge',
     description: 'Approved, with nothing else in the way.',
     side: 'own',
+    githubOnly: true,
   },
 ]
 
+export function triggerOptionsFor(provider: Provider): TriggerOption[] {
+  return provider === 'gitlab'
+    ? TRIGGER_OPTIONS.filter((option) => !option.githubOnly)
+    : TRIGGER_OPTIONS
+}
+
+export type Provider = 'github' | 'gitlab'
+
+export interface RepositoryFilter {
+  repositories: string[]
+  watchAllRepositories: boolean
+}
+
 export interface Settings {
+  provider: Provider
+  gitlabUrl: string
   pollIntervalMinutes: number
   repositories: string[]
   /** When true, search every repo the user is involved in and ignore `repositories`. */
   watchAllRepositories: boolean
+  /** Saved selections for the inactive provider. The active one is also in the fields above. */
+  repositoryFilters: Partial<Record<Provider, RepositoryFilter>>
   theme: ThemePreference
   /** Accelerator that opens the popup from anywhere, or null for no shortcut. */
   globalShortcut: string | null
@@ -304,9 +342,12 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  provider: 'github',
+  gitlabUrl: '',
   pollIntervalMinutes: 5,
   repositories: [],
   watchAllRepositories: true,
+  repositoryFilters: {},
   theme: 'system',
   globalShortcut: 'Control+Alt+P',
   layout: 'comfortable',

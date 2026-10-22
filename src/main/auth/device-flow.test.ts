@@ -46,6 +46,22 @@ describe('requestDeviceCode', () => {
       /unauthorized_client/,
     )
   })
+
+  it('aborts the initial device-code request when sign-in is cancelled', async () => {
+    const controller = new AbortController()
+    const fetchFn = vi.fn<typeof fetch>(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(init.signal?.reason))
+        }),
+    )
+    const request = requestDeviceCode('client-123', fetchFn, controller.signal)
+
+    controller.abort(new Error('Sign-in was cancelled'))
+
+    await expect(request).rejects.toThrow('Sign-in was cancelled')
+    expect(fetchFn.mock.calls[0]?.[1]?.signal).toBe(controller.signal)
+  })
 })
 
 describe('pollForToken', () => {
@@ -125,5 +141,21 @@ describe('pollForToken', () => {
     ).rejects.toThrow(/expired/)
 
     expect(fetchFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('stops waiting for approval as soon as the sign-in is cancelled', async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ error: 'authorization_pending' }),
+    )
+    const controller = new AbortController()
+
+    const polling = pollForToken('client-123', INFO, {
+      fetchFn: fetchFn as unknown as typeof fetch,
+      signal: controller.signal,
+    })
+    controller.abort(new Error('GitHub sign-in was cancelled'))
+
+    await expect(polling).rejects.toThrow(/cancelled/)
+    expect(fetchFn).not.toHaveBeenCalled()
   })
 })

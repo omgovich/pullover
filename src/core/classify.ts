@@ -253,16 +253,23 @@ export function classify(
   pr: PullRequest,
   ctx: ClassifyContext,
 ): Omit<ClassifiedPullRequest, 'stack'> {
-  if (pr.isDraft) {
+  const muted = ctx.mutedTriggers ?? []
+  const isOn: IsOn = (trigger) => !muted.includes(trigger)
+  const override = pr.attentionOverrides?.find(({ trigger }) => !trigger || isOn(trigger))
+
+  if (pr.isDraft && (!override || override.category === 'waiting')) {
     return { pr, category: 'hidden', reason: '', waitingSince: null, isSnoozed: false }
   }
 
-  const muted = ctx.mutedTriggers ?? []
-  const isOn: IsOn = (trigger) => !muted.includes(trigger)
   const verdict =
-    pr.authorLogin === ctx.myLogin
+    (override && {
+      category: override.category,
+      reason: override.reason,
+      waitingSince: override.waitingSince,
+    }) ??
+    (pr.authorLogin === ctx.myLogin
       ? classifyOwnPr(pr, ctx.myLogin, isOn)
-      : classifyReviewPr(pr, ctx.myLogin, isOn)
+      : classifyReviewPr(pr, ctx.myLogin, isOn))
 
   if (verdict.category === 'hidden') {
     return { pr, ...verdict, isSnoozed: false }

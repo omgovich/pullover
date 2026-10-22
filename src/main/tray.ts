@@ -12,9 +12,10 @@ import { createTrayIcon } from './tray-icon'
  * also covers every state before the first fetch, where the count is zero
  * because nothing has been counted — not because nothing is waiting.
  */
-export function formatBadgeTitle(count: number): string {
+export function formatBadgeTitle(count: number, provider: 'github' | 'gitlab' = 'github'): string {
   if (count === 0) return ''
-  return count === 1 ? '1 PR' : `${count} PRs`
+  const noun = provider === 'gitlab' ? 'MR' : 'PR'
+  return `${count} ${noun}${count === 1 ? '' : 's'}`
 }
 
 /**
@@ -98,6 +99,6 @@ export function createTray(callbacks: TrayCallbacks): Tray {
   return tray
 }
 
-export function setBadge(tray: Tray, count: number): void {
-  tray.setTitle(formatBadgeTitle(count))
+export function setBadge(tray: Tray, count: number, provider: 'github' | 'gitlab'): void {
+  tray.setTitle(formatBadgeTitle(count, provider))
 }

@@ -179,7 +179,8 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
               </View>
               <View as="span" direction="row" align="center" gap={1}>
                 <Text as="span" variant="caption-1" numeric color="primary">
-                  #{pr.number}
+                  {pr.provider === 'gitlab' ? '!' : '#'}
+                  {pr.number}
                 </Text>
                 {/* Not Reshaped's `Badge`: its faded variant fills with the
                     `*-faded` token, which needs the border it also draws to
@@ -217,23 +218,27 @@ const PullRequestCard = forwardRef<PullRequestCardHandle, Props>(function PullRe
                   ? formatWaiting(item.waitingSince, now)
                   : formatAge(pr.updatedAt, now)}
               </Text>
-              <Text
-                as="span"
-                variant="caption-1"
-                color="neutral-faded"
-                attributes={{ style: { opacity: 0.45 } }}
-              >
-                ·
-              </Text>
-              <View as="span" direction="row" gap={1}>
-                <Text as="span" variant="caption-1" weight="semibold" numeric color="positive">
-                  +{pr.additions}
-                </Text>
-                <Text as="span" variant="caption-1" weight="semibold" numeric color="critical">
-                  {'−'}
-                  {pr.deletions}
-                </Text>
-              </View>
+              {pr.provider !== 'gitlab' && (
+                <>
+                  <Text
+                    as="span"
+                    variant="caption-1"
+                    color="neutral-faded"
+                    attributes={{ style: { opacity: 0.45 } }}
+                  >
+                    ·
+                  </Text>
+                  <View as="span" direction="row" gap={1}>
+                    <Text as="span" variant="caption-1" weight="semibold" numeric color="positive">
+                      +{pr.additions}
+                    </Text>
+                    <Text as="span" variant="caption-1" weight="semibold" numeric color="critical">
+                      {'−'}
+                      {pr.deletions}
+                    </Text>
+                  </View>
+                </>
+              )}
 
               {/* The same menu the right-click and the M key open — the
                   button is only the affordance that says it is there. Stays

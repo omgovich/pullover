@@ -114,7 +114,9 @@ const InboxSection = forwardRef<HTMLDivElement, Props>(function InboxSection(
             backgroundColor="elevation-overlay"
           >
             <Text as="span" variant="caption-1" weight="semibold" color="neutral">
-              {CATEGORY_TITLES[category]}
+              {category === 'my-pr-action' && items[0]?.pr.provider === 'gitlab'
+                ? 'Your MRs'
+                : CATEGORY_TITLES[category]}
             </Text>
             {/* Compact leaves the count bare; comfortable sets it in a plain
                 View rather than a `Badge`, whose only borderless variant swaps

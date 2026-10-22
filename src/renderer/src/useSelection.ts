@@ -29,12 +29,23 @@ export interface Selection {
  * whose snooze pill shows. Hovering moves it rather than shadowing it with a
  * second state, so nothing appears to jump back when the pointer leaves the
  * window — what is highlighted is simply wherever it was last put, by mouse
- * or by keys alike.
+ * or by keys alike. A change of `resetKey` (the active account) drops it, so
+ * the next list starts from its first card instead of an id it doesn't hold.
  */
-export function useSelection(visibleItems: ClassifiedPullRequest[]): Selection {
+export function useSelection(
+  visibleItems: ClassifiedPullRequest[],
+  resetKey: string | null,
+): Selection {
   const [cursor, setCursor] = useState<Cursor | null>(null)
   const cardHandles = useRef(new Map<string, PullRequestCardHandle>())
+  const keyRef = useRef(resetKey)
   const selectedId = cursor?.prId ?? null
+
+  useEffect(() => {
+    if (keyRef.current === resetKey) return
+    keyRef.current = resetKey
+    setCursor(null)
+  }, [resetKey])
 
   const registerCard = useCallback((prId: string, handle: PullRequestCardHandle | null): void => {
     if (handle === null) cardHandles.current.delete(prId)

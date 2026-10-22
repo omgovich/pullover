@@ -26,7 +26,7 @@ export interface AgentPullRequestSummary {
   ci: CiStatus
   reviewDecision: ReviewDecision
   mergeable: MergeableState
-  size: { additions: number; deletions: number }
+  size: { additions: number; deletions: number } | null
   updatedAt: string
 }
 
@@ -64,7 +64,7 @@ export function describePullRequest(item: ClassifiedPullRequest): AgentPullReque
     ci: pr.ciStatus,
     reviewDecision: pr.reviewDecision,
     mergeable: pr.mergeable,
-    size: { additions: pr.additions, deletions: pr.deletions },
+    size: pr.provider === 'gitlab' ? null : { additions: pr.additions, deletions: pr.deletions },
     updatedAt: pr.updatedAt,
   }
 }
@@ -72,7 +72,7 @@ export function describePullRequest(item: ClassifiedPullRequest): AgentPullReque
 function noticeFor(snapshot: InboxSnapshot): string | null {
   switch (snapshot.status) {
     case 'signed-out':
-      return 'Pullover is signed out. Sign in from its menu-bar window to see pull requests.'
+      return 'Pullover is signed out. Sign in from its menu-bar window to see requests.'
     case 'error':
       return snapshot.errorMessage
     case 'loading':

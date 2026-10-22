@@ -27,7 +27,11 @@ export async function showPrMenu(
   anchor: MenuAnchor,
   onSnoozed: (item: ClassifiedPullRequest) => void,
 ): Promise<void> {
-  const action = await window.api.showPrMenu({ isSnoozed: item.isSnoozed, ...anchor })
+  const action = await window.api.showPrMenu({
+    isSnoozed: item.isSnoozed,
+    provider: item.pr.provider ?? 'github',
+    ...anchor,
+  })
   const { pr } = item
 
   switch (action) {
@@ -52,7 +56,7 @@ export async function showPrMenu(
       await window.api.openPr(pr.url)
       return
     case 'open-files':
-      await window.api.openPr(`${pr.url}/files`)
+      await window.api.openPr(`${pr.url}/${pr.provider === 'gitlab' ? 'diffs' : 'files'}`)
       return
     case 'copy-link':
       await window.api.copyText(pr.url)

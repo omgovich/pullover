@@ -1066,3 +1066,33 @@ describe('countAttention', () => {
     expect(countAttention(items)).toBe(1)
   })
 })
+
+describe('classify — provider-decided attention', () => {
+  const pr = makePullRequest({
+    authorLogin: ME,
+    attentionOverrides: [
+      {
+        category: 'my-pr-action',
+        reason: 'Merge conflicts',
+        waitingSince: '2026-08-05T10:00:00Z',
+        trigger: 'merge-conflicts',
+      },
+      {
+        category: 'my-pr-action',
+        reason: 'Approval required',
+        waitingSince: '2026-08-06T10:00:00Z',
+      },
+      { category: 'waiting', reason: 'Waiting on reviewers', waitingSince: null },
+    ],
+  })
+
+  it('takes the first reason', () => {
+    expect(classify(pr, ctx()).reason).toBe('Merge conflicts')
+  })
+
+  it('skips a muted reason for the next one', () => {
+    expect(classify(pr, { ...ctx(), mutedTriggers: ['merge-conflicts'] }).reason).toBe(
+      'Approval required',
+    )
+  })
+})

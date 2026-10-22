@@ -17,7 +17,10 @@ const SEPARATOR: PrMenuEntry = { type: 'separator' }
  * Kept apart from the `Menu.popup` call in `ipc.ts` so the wording and the
  * ordering can be tested without an Electron runtime.
  */
-export function prMenuEntries(isSnoozed: boolean): PrMenuEntry[] {
+export function prMenuEntries(
+  isSnoozed: boolean,
+  provider: 'github' | 'gitlab' = 'github',
+): PrMenuEntry[] {
   // "New activity" is deliberately vaguer than the wake condition in
   // `snooze.ts`, which is a push or a reply in a thread you are already in —
   // not every comment on the pull request.
@@ -30,7 +33,11 @@ export function prMenuEntries(isSnoozed: boolean): PrMenuEntry[] {
       ]
 
   return [
-    { type: 'item', label: 'Open on GitHub', action: 'open' },
+    {
+      type: 'item',
+      label: `Open on ${provider === 'gitlab' ? 'GitLab' : 'GitHub'}`,
+      action: 'open',
+    },
     { type: 'item', label: 'Open files changed', action: 'open-files' },
     SEPARATOR,
     { type: 'item', label: 'Copy link', action: 'copy-link' },

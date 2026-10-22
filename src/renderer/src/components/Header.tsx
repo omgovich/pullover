@@ -14,11 +14,13 @@ interface Props {
   onRefresh: () => void
   onOpenSettings: () => void
   onInstallUpdate: () => void
+  noGitLabMrs?: boolean
 }
 
-function headline(snapshot: InboxSnapshot): string {
+function headline(snapshot: InboxSnapshot, noGitLabMrs: boolean): string {
   if (snapshot.attentionCount > 0) return 'waiting on you'
-  return isPartialInbox(snapshot) ? 'Partial inbox' : 'All clear'
+  if (isPartialInbox(snapshot)) return 'Partial inbox'
+  return noGitLabMrs ? 'No MRs found' : 'All clear'
 }
 
 /**
@@ -55,6 +57,7 @@ export default function Header({
   onRefresh,
   onOpenSettings,
   onInstallUpdate,
+  noGitLabMrs = false,
 }: Props): React.JSX.Element {
   const updateReady = update.status === 'ready' && update.version !== null
   const updateLabel = `Restart to update to ${update.version}`
@@ -108,7 +111,7 @@ export default function Header({
           }}
         >
           <Text as="span" variant="body-2" weight="semibold" color="neutral" maxLines={1}>
-            {headline(snapshot)}
+            {headline(snapshot, noGitLabMrs)}
           </Text>
           <Text as="div" variant="caption-1" color="neutral-faded">
             {/* Keyed by the text: the line changes under the cursor every

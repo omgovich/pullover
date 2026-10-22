@@ -2,21 +2,21 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, safeStorage } from 'electron'
 
-function tokenPath(): string {
-  return join(app.getPath('userData'), 'token.bin')
+function tokenPath(provider: 'github' | 'gitlab' = 'github'): string {
+  return join(app.getPath('userData'), provider === 'github' ? 'token.bin' : 'gitlab-token.bin')
 }
 
-export function saveToken(token: string): void {
+export function saveToken(token: string, provider: 'github' | 'gitlab' = 'github'): void {
   if (!safeStorage.isEncryptionAvailable()) {
     throw new Error("Keychain isn't available, so the token can't be saved")
   }
-  writeFileSync(tokenPath(), safeStorage.encryptString(token))
+  writeFileSync(tokenPath(provider), safeStorage.encryptString(token))
 }
 
-export function loadToken(): string | null {
+export function loadToken(provider: 'github' | 'gitlab' = 'github'): string | null {
   let encrypted: Buffer
   try {
-    encrypted = readFileSync(tokenPath())
+    encrypted = readFileSync(tokenPath(provider))
   } catch (error) {
     // No token file yet is the normal first-run/signed-out path — stay
     // silent. Anything else (permissions, a half-written file) is worth
@@ -30,17 +30,15 @@ export function loadToken(): string | null {
   try {
     return safeStorage.decryptString(encrypted)
   } catch (error) {
-    // The Keychain couldn't decrypt this file — e.g. it was written under a
-    // different user or the OS keychain entry is gone. Distinguishing this
-    // from "no token yet" matters: silently returning null here would leave
-    // an unusable file behind forever, so the next sign-in would keep
-    // tripping over it. Log it and clear the file so sign-in starts clean.
-    console.error('[token-storage] failed to decrypt the stored token; clearing it', error)
-    clearToken()
+    // Keychain access may be denied temporarily, for example when the user
+    // cancels macOS's prompt after an app update. Keep the encrypted file so
+    // a later launch can retry. Signing in again or signing out explicitly
+    // replaces/removes it when the user chooses to do so.
+    console.error('[token-storage] failed to decrypt the stored token', error)
     return null
   }
 }
 
-export function clearToken(): void {
-  rmSync(tokenPath(), { force: true })
+export function clearToken(provider: 'github' | 'gitlab' = 'github'): void {
+  rmSync(tokenPath(provider), { force: true })
 }

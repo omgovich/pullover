@@ -20,6 +20,22 @@ describe('prMenuEntries', () => {
     ])
   })
 
+  it('opens merge requests on GitLab without changing the other actions', () => {
+    expect(
+      prMenuEntries(false, 'gitlab')
+        .filter((entry) => entry.type === 'item')
+        .map((entry) => entry.label),
+    ).toEqual([
+      'Open on GitLab',
+      'Open files changed',
+      'Copy link',
+      'Copy branch name',
+      'Snooze until new activity',
+      'Snooze for 4 hours',
+      'Snooze until tomorrow',
+    ])
+  })
+
   it('gives every item its own verb, so none leans on the section above it', () => {
     for (const label of labels(false)) {
       expect(label).toMatch(/^(Open|Copy|Snooze) /)
