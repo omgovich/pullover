@@ -67,7 +67,7 @@ Release builds ship with a built-in OAuth client ID, but a from-source build nee
 
    - **Redirect URI** — unused by Device Flow. `http://localhost` if you want one at all. Leave **Allow wildcard matching** off.
 3. Tick **Enable Device Flow**. Easy to miss, and without it sign-in fails with `unauthorized_client`.
-4. Leave **Expire user access tokens** OFF. It hands out an 8-hour token plus a `refresh_token`, and Pullover doesn't implement refresh — you'd be silently signed out every few hours, and because the app doesn't tell a 401 apart from a network blip it would sit there showing a stale list and an error instead of sending you back to sign in.
+4. Leave **Expire user access tokens** OFF. It hands out an 8-hour token plus a `refresh_token`, and Pullover doesn't implement refresh — you'd be signed out and sent back to sign in every eight hours.
 5. Click **Register application**, then copy the **Client ID**. You don't need the client secret — Pullover is a public client and never asks for one.
 
 ### 2. Point Pullover at it
