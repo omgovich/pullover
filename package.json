@@ -27,10 +27,6 @@
     "@octokit/graphql": "^9.0.5",
     "electron-store": "^11.0.2",
     "electron-updater": "^6.8.9",
-    "lucide-react": "^1.38.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "reshaped": "^4.1.0",
     "zod": "^4.6.2"
   },
   "devDependencies": {
@@ -45,7 +41,11 @@
     "electron": "^44.0.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
+    "lucide-react": "^1.38.0",
     "playwright": "^1.63.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "reshaped": "^4.1.0",
     "typescript": "^7.0.2",
     "vite": "^7.0.0",
     "vitest": "^4.1.11",

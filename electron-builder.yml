@@ -6,6 +6,10 @@ directories:
 files:
   - out/**/*
   - package.json
+# The interface is English only, so Chromium's other 219 locales are 48 MB of
+# nothing.
+electronLanguages:
+  - en
 dmg:
   # No blockmap for the dmg, and no dmg entry in `latest-mac.yml`. Updates are
   # delivered as the zip (the feed's `path:` points there), so the dmg's
