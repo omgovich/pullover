@@ -6,8 +6,7 @@ directories:
 files:
   - out/**/*
   - package.json
-# The interface is English only, so Chromium's other 219 locales are 48 MB of
-# nothing.
+# The interface is English only; Chromium's other locales are 48 MB of nothing.
 electronLanguages:
   - en
 dmg:
