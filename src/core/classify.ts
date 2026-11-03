@@ -61,11 +61,25 @@ function visibleSince(pr: PullRequest): string {
     : pr.createdAt
 }
 
+/**
+ * A comment made before I was asked to review — an ops command, an answer to
+ * a mention — is not an answer to the request. A request reaching me through
+ * a team has no date of its own, so there any comment still counts.
+ */
+function commentedSinceRequest(pr: PullRequest, myLogin: string): boolean {
+  const lastActivity = myLastActivityAt(pr, myLogin)
+  if (lastActivity === null) return false
+  const askedAt = pr.namedReviewRequestAt
+  return askedAt === null || compareIso(lastActivity, askedAt) > 0
+}
+
 function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
   const requested = pr.buckets.includes('review-requested')
   const participated = hasParticipated(pr, myLogin)
+  const myReview = myLatestReview(pr, myLogin)
+  const answeredRequest = myReview !== null || commentedSinceRequest(pr, myLogin)
 
-  if (requested && !participated && isOn('review-requested')) {
+  if (requested && !answeredRequest && isOn('review-requested')) {
     return {
       category: 'needs-review',
       reason: 'Review requested',
@@ -83,7 +97,6 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
     }
   }
 
-  const myReview = myLatestReview(pr, myLogin)
   if (myReview !== null) {
     // I already reviewed, so GitHub cleared me from the reviewer list.
     // Being requested again means the author asked for another pass.
@@ -108,7 +121,7 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
 
   // Asked to review and only commented so far: a newer mention does not pull
   // that into Mentions. Any other request reaching here has its reason muted.
-  const commentedOnRequest = requested && participated && myReview === null
+  const commentedOnRequest = requested && answeredRequest && myReview === null
   if (pr.buckets.includes('mentions') && !commentedOnRequest && isOn('mentioned')) {
     const lastActivity = myLastActivityAt(pr, myLogin)
     // `mentionsAt` is empty when our own text scan couldn't find where (a
