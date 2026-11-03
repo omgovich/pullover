@@ -525,7 +525,9 @@ describe('mapPullRequest', () => {
       // something asked us, and the event's own time beats dating the wait
       // from whenever the PR happened to be opened.
       const n = node({ timelineItems: { nodes: [requestedAnonymously('2026-08-02T10:00:00Z')] } })
-      expect(mapPullRequest(n, [], 'vlad').reviewRequestedAt).toBe('2026-08-02T10:00:00Z')
+      const pr = mapPullRequest(n, [], 'vlad')
+      expect(pr.reviewRequestedAt).toBe('2026-08-02T10:00:00Z')
+      expect(pr.namedReviewRequestAt).toBeNull()
     })
 
     it('prefers a request naming me over a later one naming nobody', () => {
@@ -539,7 +541,21 @@ describe('mapPullRequest', () => {
           ],
         },
       })
-      expect(mapPullRequest(n, [], 'vlad').reviewRequestedAt).toBe('2026-08-01T10:00:00Z')
+      const pr = mapPullRequest(n, [], 'vlad')
+      expect(pr.reviewRequestedAt).toBe('2026-08-01T10:00:00Z')
+      expect(pr.namedReviewRequestAt).toBe('2026-08-01T10:00:00Z')
+    })
+
+    it('names no request date when only a request naming nobody came after a teammate was named', () => {
+      const n = node({
+        timelineItems: {
+          nodes: [
+            requested('bob', '2026-08-01T10:00:00Z'),
+            requestedAnonymously('2026-08-02T10:00:00Z'),
+          ],
+        },
+      })
+      expect(mapPullRequest(n, [], 'vlad').namedReviewRequestAt).toBeNull()
     })
 
     it('does not read a request naming nobody out of a ready-for-review event', () => {

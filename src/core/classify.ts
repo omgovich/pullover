@@ -63,13 +63,14 @@ function visibleSince(pr: PullRequest): string {
 
 /**
  * A comment made before I was asked to review — an ops command, an answer to
- * a mention — is not an answer to the request. Without a date for the request
- * any comment counts, as before.
+ * a mention — is not an answer to the request. A request reaching me through
+ * a team has no date of its own, so there any comment still counts.
  */
 function commentedSinceRequest(pr: PullRequest, myLogin: string): boolean {
   const lastActivity = myLastActivityAt(pr, myLogin)
   if (lastActivity === null) return false
-  return pr.reviewRequestedAt === null || compareIso(lastActivity, pr.reviewRequestedAt) > 0
+  const askedAt = pr.namedReviewRequestAt
+  return askedAt === null || compareIso(lastActivity, askedAt) > 0
 }
 
 function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {

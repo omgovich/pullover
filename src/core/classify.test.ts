@@ -209,6 +209,7 @@ describe('classify — reviewer branch', () => {
       buckets: ['review-requested'],
       conversationComments: [makeComment(ME, '2026-08-01T10:00:00Z')],
       reviewRequestedAt: '2026-08-03T10:00:00Z',
+      namedReviewRequestAt: '2026-08-03T10:00:00Z',
     })
     const result = classify(pr, ctx())
     expect(result.category).toBe('needs-review')
@@ -219,6 +220,16 @@ describe('classify — reviewer branch', () => {
     const pr = makePullRequest({
       buckets: ['review-requested'],
       conversationComments: [makeComment(ME, '2026-08-04T10:00:00Z')],
+      reviewRequestedAt: '2026-08-03T10:00:00Z',
+      namedReviewRequestAt: '2026-08-03T10:00:00Z',
+    })
+    expect(classify(pr, ctx()).category).toBe('waiting')
+  })
+
+  it('waiting when I commented on a team request, though a later team or bot request redates it', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested'],
+      conversationComments: [makeComment(ME, '2026-08-02T10:00:00Z')],
       reviewRequestedAt: '2026-08-03T10:00:00Z',
     })
     expect(classify(pr, ctx()).category).toBe('waiting')
@@ -547,6 +558,7 @@ describe('classify — muted reasons', () => {
       buckets: ['review-requested', 'involves', 'mentions'],
       conversationComments: [makeComment(ME, '2026-08-01T10:00:00Z')],
       reviewRequestedAt: '2026-08-02T10:00:00Z',
+      namedReviewRequestAt: '2026-08-02T10:00:00Z',
       mentionsAt: ['2026-08-03T10:00:00Z'],
     })
     expect(classify(pr, muting('review-requested')).category).toBe('mentioned')
@@ -800,9 +812,8 @@ describe('classify — waitingSince', () => {
   })
 
   it("falls back to the PR's creation when the request has no timestamp", () => {
-    // A team request names no user, so `reviewRequestedAt` is null — opening
-    // time is the closest honest answer, and for a reviewer named at open
-    // time it is the exact one.
+    // No request event within reach — opening time is the closest honest
+    // answer, and for a reviewer named at open time it is the exact one.
     const pr = makePullRequest({
       buckets: ['review-requested'],
       createdAt: '2026-08-02T10:00:00Z',
