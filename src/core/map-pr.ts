@@ -169,13 +169,20 @@ function reviewRequests(node: PullRequestNode): RequestEvent[] {
  * a team or bot request is why GitHub matched this PR at all.
  */
 function computeReviewRequestedAt(node: PullRequestNode, myLogin: string): string | null {
-  const requests = reviewRequests(node)
-  const named = latestIso(
-    requests.flatMap((e) => (e.requestedReviewer?.login === myLogin ? [e.createdAt] : [])),
-  )
+  const named = computeNamedReviewRequestAt(node, myLogin)
   if (named !== null) return named
   return latestIso(
-    requests.flatMap((e) => (e.requestedReviewer?.login === undefined ? [e.createdAt] : [])),
+    reviewRequests(node).flatMap((e) =>
+      e.requestedReviewer?.login === undefined ? [e.createdAt] : [],
+    ),
+  )
+}
+
+function computeNamedReviewRequestAt(node: PullRequestNode, myLogin: string): string | null {
+  return latestIso(
+    reviewRequests(node).flatMap((e) =>
+      e.requestedReviewer?.login === myLogin ? [e.createdAt] : [],
+    ),
   )
 }
 
@@ -292,6 +299,7 @@ export function mapPullRequest(
     reviewRequestedAt: computeReviewRequestedAt(node, myLogin),
     authorCanMerge: ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(node.authorAssociation ?? 'OWNER'),
     hasPendingReviewRequest: (node.reviewRequests?.totalCount ?? 0) > 0,
+    namedReviewRequestAt: computeNamedReviewRequestAt(node, myLogin),
     readyForReviewAt: computeReadyForReviewAt(node),
     mentionsAt: computeMentionsAt(
       node,

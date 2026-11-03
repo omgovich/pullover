@@ -107,6 +107,12 @@ export interface PullRequest {
   /** Whether a review is still requested from anybody, a team included. */
   hasPendingReviewRequest: boolean
   /**
+   * The latest request naming the user, or null if none does. Unlike
+   * `reviewRequestedAt` it never falls back to a team or bot request, whose
+   * date may belong to a request that never reached the user.
+   */
+  namedReviewRequestAt: string | null
+  /**
    * When the pull request stopped being a draft, or null if it never was one.
    * The floor on any waiting time: before it, the PR was hidden.
    */
