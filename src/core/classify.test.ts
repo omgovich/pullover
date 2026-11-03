@@ -204,6 +204,26 @@ describe('classify — reviewer branch', () => {
     expect(result.category).toBe('waiting')
   })
 
+  it('needs-review when my only comment predates the request', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested'],
+      conversationComments: [makeComment(ME, '2026-08-01T10:00:00Z')],
+      reviewRequestedAt: '2026-08-03T10:00:00Z',
+    })
+    const result = classify(pr, ctx())
+    expect(result.category).toBe('needs-review')
+    expect(result.waitingSince).toBe('2026-08-03T10:00:00Z')
+  })
+
+  it('waiting when I commented after the request', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested'],
+      conversationComments: [makeComment(ME, '2026-08-04T10:00:00Z')],
+      reviewRequestedAt: '2026-08-03T10:00:00Z',
+    })
+    expect(classify(pr, ctx()).category).toBe('waiting')
+  })
+
   it('is waiting, not hidden, when I only commented in the conversation', () => {
     const pr = makePullRequest({
       buckets: ['involves'],
@@ -518,6 +538,16 @@ describe('classify — muted reasons', () => {
     const pr = makePullRequest({
       buckets: ['review-requested', 'mentions'],
       mentionsAt: ['2026-08-02T10:00:00Z'],
+    })
+    expect(classify(pr, muting('review-requested')).category).toBe('mentioned')
+  })
+
+  it('shows the mention on a muted review request when my only comment predates the request', () => {
+    const pr = makePullRequest({
+      buckets: ['review-requested', 'involves', 'mentions'],
+      conversationComments: [makeComment(ME, '2026-08-01T10:00:00Z')],
+      reviewRequestedAt: '2026-08-02T10:00:00Z',
+      mentionsAt: ['2026-08-03T10:00:00Z'],
     })
     expect(classify(pr, muting('review-requested')).category).toBe('mentioned')
   })
