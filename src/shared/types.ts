@@ -100,6 +100,8 @@ export interface PullRequest {
   conversationComments: ThreadComment[]
   /** When the user was last asked to review this PR, or null if never. */
   reviewRequestedAt: string | null
+  /** Whether the head branch lives in a fork, where this repository's branch names mean nothing. */
+  isCrossRepository: boolean
   /** Whether a review is still requested from anybody, a team included. */
   hasPendingReviewRequest: boolean
   /**

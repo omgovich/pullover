@@ -488,6 +488,13 @@ describe('mapPullRequest', () => {
     ).toBe(false)
   })
 
+  it('reads whether the pull request comes from a fork', () => {
+    expect(mapPullRequest(node({ isCrossRepository: true }), [], 'vlad').isCrossRepository).toBe(
+      true,
+    )
+    expect(mapPullRequest(node(), [], 'vlad').isCrossRepository).toBe(false)
+  })
+
   describe('reviewRequestedAt', () => {
     function requested(login: string | null, createdAt: string) {
       return {

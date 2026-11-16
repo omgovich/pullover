@@ -319,7 +319,7 @@ async function fetchDetails(
 /**
  * PR id → the set of search buckets it turned up in.
  *
- * The four bucket searches run concurrently (`Promise.all`), each resolving
+ * The bucket searches run concurrently (`Promise.all`), each resolving
  * its own list of ids independently — nothing touches a shared `Map` until
  * every search has settled, so there is no concurrent-writer race. The merge
  * below then runs synchronously over `results` in `SEARCH_BUCKETS` order

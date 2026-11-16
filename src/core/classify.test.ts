@@ -248,6 +248,21 @@ describe('classify — pull requests nobody asked me to review', () => {
     expect(classify(pr, ctx()).waitingSince).toBe('2026-08-03T10:00:00Z')
   })
 
+  it('leaves it to whoever already reviewed it', () => {
+    const pr = unrequested({ reviews: [makeReview('carol', '2026-08-02T10:00:00Z')] })
+    expect(classify(pr, ctx()).category).toBe('hidden')
+  })
+
+  it('still needs me when only a bot or the author has reviewed', () => {
+    const pr = unrequested({
+      reviews: [
+        makeReview('cubic', '2026-08-02T10:00:00Z', { authorIsBot: true }),
+        makeReview('alice', '2026-08-02T11:00:00Z'),
+      ],
+    })
+    expect(classify(pr, ctx()).reason).toBe('New in your repository')
+  })
+
   it('leaves it to whoever was asked to review it', () => {
     const pr = unrequested({ hasPendingReviewRequest: true })
     expect(classify(pr, ctx()).category).toBe('hidden')

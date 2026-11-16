@@ -29,7 +29,7 @@ export function computeStackPositions(prs: PullRequest[]): Map<string, StackPosi
   // Branch names are only meaningful within their own repository, so a
   // coincidental match across repos must never link two unrelated PRs.
   const byRepo = groupBy(
-    prs.filter((pr) => pr.nativeStack === null),
+    prs.filter((pr) => pr.nativeStack === null && !pr.isCrossRepository),
     (pr) => pr.repository,
   )
 

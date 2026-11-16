@@ -61,6 +61,10 @@ function visibleSince(pr: PullRequest): string {
     : pr.createdAt
 }
 
+function reviewedByOthers(pr: PullRequest): boolean {
+  return pr.reviews.some((review) => review.authorLogin !== pr.authorLogin && !review.authorIsBot)
+}
+
 function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
   const requested = pr.buckets.includes('review-requested')
   const participated = hasParticipated(pr, myLogin)
@@ -73,11 +77,13 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
     }
   }
 
-  // Somebody else asked to review it has the move, and a muted request to me
-  // must not come back through this door.
+  // Whoever was asked or already reviewed has the move; GitHub drops a reviewer
+  // from the pending requests once they submit. A muted request to me must not
+  // come back through this door either.
   if (
     pr.buckets.includes('owned') &&
     !pr.hasPendingReviewRequest &&
+    !reviewedByOthers(pr) &&
     !participated &&
     isOn('unrequested')
   ) {

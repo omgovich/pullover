@@ -58,7 +58,7 @@ export function registerTools(server: McpServer, deps: McpServerDeps): void {
     toolError(
       inbox.getSnapshot().status === 'signed-out'
         ? 'Pullover is signed out, so it knows no pull requests at all. Sign in from its menu-bar window first.'
-        : `Pullover does not know ${repository}#${number}. It only tracks open pull requests involving the signed-in user; call get_inbox first, which refreshes the list when it is stale.`,
+        : `Pullover does not know ${repository}#${number}. It only tracks open pull requests involving the signed-in user or opened in their own repositories; call get_inbox first, which refreshes the list when it is stale.`,
     )
 
   /**

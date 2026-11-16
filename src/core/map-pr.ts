@@ -41,6 +41,8 @@ export interface PullRequestNode {
   deletions: number
   headRefName: string
   baseRefName: string
+  /** Optional so fixtures that predate it keep compiling; `DETAILS_QUERY` always asks for it. */
+  isCrossRepository?: boolean
   stackEntry: { position: number; stack: { id: string; size: number } | null } | null
   reviewDecision: ReviewDecision
   mergeable: MergeableState
@@ -268,6 +270,7 @@ export function mapPullRequest(
     deletions: node.deletions,
     headRefName: node.headRefName,
     baseRefName: node.baseRefName,
+    isCrossRepository: node.isCrossRepository ?? false,
     nativeStack: node.stackEntry?.stack
       ? {
           id: node.stackEntry.stack.id,

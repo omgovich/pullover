@@ -31,6 +31,7 @@ export const DETAILS_QUERY = `
         additions
         deletions
         headRefName
+        isCrossRepository
         baseRefName
         stackEntry {
           position
