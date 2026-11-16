@@ -89,7 +89,7 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
   ) {
     return {
       category: 'needs-review',
-      reason: 'New in your repository',
+      reason: 'New in your repo',
       waitingSince: pr.createdAt,
     }
   }

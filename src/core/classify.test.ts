@@ -239,7 +239,7 @@ describe('classify — pull requests nobody asked me to review', () => {
   it('needs my review when it is in my repository and nobody was asked', () => {
     const result = classify(unrequested(), ctx())
     expect(result.category).toBe('needs-review')
-    expect(result.reason).toBe('New in your repository')
+    expect(result.reason).toBe('New in your repo')
     expect(result.waitingSince).toBe('2026-08-01T10:00:00Z')
   })
 
@@ -260,7 +260,7 @@ describe('classify — pull requests nobody asked me to review', () => {
         makeReview('alice', '2026-08-02T11:00:00Z'),
       ],
     })
-    expect(classify(pr, ctx()).reason).toBe('New in your repository')
+    expect(classify(pr, ctx()).reason).toBe('New in your repo')
   })
 
   it('leaves it to whoever was asked to review it', () => {
@@ -289,7 +289,7 @@ describe('classify — pull requests nobody asked me to review', () => {
       buckets: ['owned', 'mentions'],
       mentionsAt: ['2026-08-02T10:00:00Z'],
     })
-    expect(classify(pr, ctx()).reason).toBe('New in your repository')
+    expect(classify(pr, ctx()).reason).toBe('New in your repo')
   })
 
   it('treats my own pull request in my repository as mine', () => {
