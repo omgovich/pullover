@@ -9,8 +9,8 @@ name: Release
 #   draft GitHub release (electron-builder's publisher, see the `publish` section of
 #   electron-builder.yml). The `publish` job then checks the assets, tags the commit
 #   and publishes the draft with that version's CHANGELOG.md section as its notes.
-# The tag is created last, so a run that fails anywhere before it is retried by the
-# next push to main, or by running this workflow by hand.
+# The tag appears only when the release is published, so a run that fails anywhere
+# before that is retried by the next push to main, or by running this workflow by hand.
 #
 # Repository configuration — Settings → Secrets and variables → Actions:
 #   Variables
@@ -47,6 +47,8 @@ permissions:
 
 jobs:
   plan:
+    # A run dispatched from another branch, such as the unmerged Release PR, must not release.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       pending: ${{ steps.plan.outputs.pending }}
@@ -61,9 +63,14 @@ jobs:
           if ls .changeset/*.md | grep -v README.md > /dev/null; then
             echo "pending=true" >> "$GITHUB_OUTPUT"
           fi
-          if ! git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null; then
-            echo "release=true" >> "$GITHUB_OUTPUT"
-          fi
+          # Exit code 2 means no such tag; anything else is a failed lookup, not a release.
+          status=0
+          git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null || status=$?
+          case $status in
+            0) ;;
+            2) echo "release=true" >> "$GITHUB_OUTPUT" ;;
+            *) exit "$status" ;;
+          esac
 
   version:
     needs: plan
@@ -79,11 +86,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts
+      # Empty when only empty changesets are pending: they release nothing.
       - id: next
         run: |
           npx changeset status --output "$RUNNER_TEMP/status.json"
-          echo "version=$(node -p "require('$RUNNER_TEMP/status.json').releases[0].newVersion")" >> "$GITHUB_OUTPUT"
-      - uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+          version=$(node -p "require('$RUNNER_TEMP/status.json').releases[0]?.newVersion ?? ''")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - if: steps.next.outputs.version != ''
+        uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           script: npm run changeset:version
           commit-message: Release v${{ steps.next.outputs.version }}
@@ -92,6 +102,8 @@ jobs:
   build:
     needs: plan
     if: needs.plan.outputs.release == 'true'
+    permissions:
+      contents: write # electron-builder creates the draft release
     # Pinned, not `macos-latest`. electron-builder creates its signing
     # keychain with a random password but calls `security
     # set-key-partition-list` with the *certificate's* password instead; the
@@ -262,13 +274,11 @@ jobs:
             exit 1
           fi
 
-      # The draft names itself after the version (`0.3.0`), not the tag, so the
-      # title is set here. The tag goes on the commit that was built.
-      - name: Tag the commit and publish the release
+      # Publishing creates the tag on the commit that was built, in the same call, so
+      # no tag exists unless the release went out. The draft names itself after the
+      # version (`0.3.0`), not the tag, so the title is set here too.
+      - name: Publish the release
         run: |
-          # A re-run after this step already tagged finds the tag in place.
-          gh api "repos/$REPO/git/refs" -f "ref=refs/tags/$TAG" -f "sha=$GITHUB_SHA" > /dev/null \
-            || [ "$(gh api "repos/$REPO/git/ref/tags/$TAG" --jq .object.sha)" = "$GITHUB_SHA" ]
           gh api -X PATCH "repos/$REPO/releases/$RELEASE_ID" \
             -f "tag_name=$TAG" -f "target_commitish=$GITHUB_SHA" -f "name=$TAG" \
             -F "body=@$RUNNER_TEMP/notes.md" -F draft=false > /dev/null
