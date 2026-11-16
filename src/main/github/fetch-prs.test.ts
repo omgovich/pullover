@@ -80,6 +80,9 @@ describe('fetchPullRequests', () => {
     expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
     const searchCalls = client.mock.calls.filter(([q]) => q === SEARCH_QUERY)
     expect(searchCalls).toHaveLength(SEARCH_BUCKETS.length)
+    expect(searchCalls.some(([, variables]) => (variables.q as string).includes('user:@me'))).toBe(
+      true,
+    )
     for (const [, variables] of searchCalls) {
       expect(variables.q as string).not.toContain('repo:')
     }
