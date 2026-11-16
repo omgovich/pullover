@@ -253,6 +253,13 @@ describe('classify — pull requests nobody asked me to review', () => {
     expect(classify(pr, ctx()).category).toBe('hidden')
   })
 
+  it('still needs me while my own review is an unsubmitted draft', () => {
+    const pr = unrequested({
+      reviews: [makeReview(ME, '2026-08-02T10:00:00Z', { state: 'PENDING' })],
+    })
+    expect(classify(pr, ctx()).reason).toBe('New in your repo')
+  })
+
   it('still needs me when only a bot or the author has reviewed', () => {
     const pr = unrequested({
       reviews: [

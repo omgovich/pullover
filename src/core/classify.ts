@@ -62,7 +62,10 @@ function visibleSince(pr: PullRequest): string {
 }
 
 function reviewedByOthers(pr: PullRequest): boolean {
-  return pr.reviews.some((review) => review.authorLogin !== pr.authorLogin && !review.authorIsBot)
+  return pr.reviews.some(
+    (review) =>
+      review.authorLogin !== pr.authorLogin && !review.authorIsBot && review.state !== 'PENDING',
+  )
 }
 
 function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
