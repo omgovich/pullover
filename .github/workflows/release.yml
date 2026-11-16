@@ -10,7 +10,8 @@ name: Release
 #   electron-builder.yml). The `publish` job then checks the assets, tags the commit
 #   and publishes the draft with that version's CHANGELOG.md section as its notes.
 # The tag appears only when the release is published, so a run that fails anywhere
-# before that is retried by the next push to main, or by running this workflow by hand.
+# before that is retried by the next push to main, or by running this workflow by hand,
+# always from the commit that set the version.
 #
 # Repository configuration — Settings → Secrets and variables → Actions:
 #   Variables
@@ -54,13 +55,21 @@ jobs:
       pending: ${{ steps.plan.outputs.pending }}
       version: ${{ steps.plan.outputs.version }}
       release: ${{ steps.plan.outputs.release }}
+      commit: ${{ steps.plan.outputs.commit }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # A release is built from the commit that set its version, never from a later
+      # head: work merged after a failed release must wait for the next Release PR,
+      # or it would ship under notes that do not mention it.
       - id: plan
         run: |
           version=$(node -p "require('./package.json').version")
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          if ls .changeset/*.md | grep -v README.md > /dev/null; then
+          echo "commit=$(git log -n 1 --format=%H -G '"version":' -- package.json)" >> "$GITHUB_OUTPUT"
+          # An empty changeset releases nothing, so it does not count as pending.
+          if grep -lqE "^['\"]?pullover['\"]?:" .changeset/*.md; then
             echo "pending=true" >> "$GITHUB_OUTPUT"
           fi
           # Exit code 2 means no such tag; anything else is a failed lookup, not a release.
@@ -114,6 +123,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.commit }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -219,8 +230,11 @@ jobs:
       REPO: ${{ github.repository }}
       VERSION: ${{ needs.plan.outputs.version }}
       TAG: v${{ needs.plan.outputs.version }}
+      COMMIT: ${{ needs.plan.outputs.commit }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.commit }}
 
       # electron-builder sometimes races itself and leaves two drafts for one tag,
       # with the assets split between them. Move everything into the draft that
@@ -280,6 +294,5 @@ jobs:
       - name: Publish the release
         run: |
           gh api -X PATCH "repos/$REPO/releases/$RELEASE_ID" \
-            -f "tag_name=$TAG" -f "target_commitish=$GITHUB_SHA" -f "name=$TAG" \
-            -F "body=@$RUNNER_TEMP/notes.md" -F draft=false > /dev/null
-          gh release view "$TAG" --repo "$REPO" --json url,isDraft --jq '"\(.url) draft=\(.isDraft)"'
+            -f "tag_name=$TAG" -f "target_commitish=$COMMIT" -f "name=$TAG" \
+            -F "body=@$RUNNER_TEMP/notes.md" -F draft=false --jq .html_url
