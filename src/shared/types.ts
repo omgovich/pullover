@@ -253,7 +253,7 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
   },
   {
     value: 'unrequested',
-    label: 'New in your repositories',
+    label: 'New in your repos',
     description: 'Somebody opened one without asking anybody to review it.',
     side: 'review',
   },
