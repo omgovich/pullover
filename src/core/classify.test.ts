@@ -232,6 +232,57 @@ describe('classify — reviewer branch', () => {
   })
 })
 
+describe('classify — pull requests nobody asked me to review', () => {
+  const unrequested = (overrides: Partial<PullRequest> = {}) =>
+    makePullRequest({ repository: 'vlad/colord', buckets: ['owned'], ...overrides })
+
+  it('needs my review when it is in my repository and nobody was asked', () => {
+    const result = classify(unrequested(), ctx())
+    expect(result.category).toBe('needs-review')
+    expect(result.reason).toBe('New in your repository')
+    expect(result.waitingSince).toBe('2026-08-01T10:00:00Z')
+  })
+
+  it('dates the wait from when the draft became ready', () => {
+    const pr = unrequested({ isDraft: false, readyForReviewAt: '2026-08-03T10:00:00Z' })
+    expect(classify(pr, ctx()).waitingSince).toBe('2026-08-03T10:00:00Z')
+  })
+
+  it('leaves it to whoever was asked to review it', () => {
+    const pr = unrequested({ hasPendingReviewRequest: true })
+    expect(classify(pr, ctx()).category).toBe('hidden')
+  })
+
+  it('waits on the author once I have commented', () => {
+    const pr = unrequested({
+      buckets: ['owned', 'involves'],
+      conversationComments: [makeComment(ME, '2026-08-02T10:00:00Z')],
+    })
+    expect(classify(pr, ctx()).category).toBe('waiting')
+  })
+
+  it('names the request, not the repository, when I was asked to review', () => {
+    const pr = unrequested({
+      buckets: ['owned', 'review-requested'],
+      hasPendingReviewRequest: true,
+    })
+    expect(classify(pr, ctx()).reason).toBe('Review requested')
+  })
+
+  it('names the repository over a mention', () => {
+    const pr = unrequested({
+      buckets: ['owned', 'mentions'],
+      mentionsAt: ['2026-08-02T10:00:00Z'],
+    })
+    expect(classify(pr, ctx()).reason).toBe('New in your repository')
+  })
+
+  it('treats my own pull request in my repository as mine', () => {
+    const pr = unrequested({ authorLogin: ME, buckets: ['owned', 'author'] })
+    expect(classify(pr, ctx()).reason).toBe('Waiting on reviewers')
+  })
+})
+
 describe('classify — author branch', () => {
   const mine = { authorLogin: ME, buckets: ['author' as const] }
 
@@ -503,6 +554,19 @@ describe('classify — muted reasons', () => {
       mentionsAt: ['2026-08-06T10:00:00Z'],
     })
     expect(classify(pr, muting('new-commits')).category).toBe('mentioned')
+  })
+
+  it('hides a pull request nobody asked me to review when that reason is muted', () => {
+    const pr = makePullRequest({ buckets: ['owned'] })
+    expect(classify(pr, muting('unrequested')).category).toBe('hidden')
+  })
+
+  it('does not bring back a muted review request as a pull request in my repository', () => {
+    const pr = makePullRequest({
+      buckets: ['owned', 'review-requested'],
+      hasPendingReviewRequest: true,
+    })
+    expect(classify(pr, muting('review-requested')).category).toBe('hidden')
   })
 
   it('falls back to new commits when a re-review request is muted', () => {

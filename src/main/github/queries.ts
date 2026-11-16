@@ -67,6 +67,7 @@ export const DETAILS_QUERY = `
             }
           }
         }
+        reviewRequests { totalCount }
         timelineItems(last: 50, itemTypes: [REVIEW_REQUESTED_EVENT, READY_FOR_REVIEW_EVENT]) {
           nodes {
             __typename

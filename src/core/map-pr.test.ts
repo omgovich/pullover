@@ -28,6 +28,7 @@ function node(overrides: Partial<PullRequestNode> = {}): PullRequestNode {
     bodyText: '',
     commits: { nodes: [] },
     timelineItems: { nodes: [] },
+    reviewRequests: { totalCount: 0 },
     ...overrides,
   }
 }
@@ -474,6 +475,17 @@ describe('mapPullRequest', () => {
     )
     expect(pr.reviews.map((r) => r.authorIsBot)).toEqual([true, false])
     expect(pr.conversationComments.map((c) => c.authorIsBot)).toEqual([true, false])
+  })
+
+  it('reads whether any review request is still pending', () => {
+    expect(
+      mapPullRequest(node({ reviewRequests: { totalCount: 2 } }), [], 'vlad')
+        .hasPendingReviewRequest,
+    ).toBe(true)
+    expect(
+      mapPullRequest(node({ reviewRequests: { totalCount: 0 } }), [], 'vlad')
+        .hasPendingReviewRequest,
+    ).toBe(false)
   })
 
   describe('reviewRequestedAt', () => {

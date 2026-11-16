@@ -46,6 +46,12 @@ describe('buildSearchQuery', () => {
     }
   })
 
+  it('finds every pull request in the repositories I own', () => {
+    expect(buildSearchQuery('owned')).toBe(
+      'is:pr is:open archived:false user:@me sort:updated-desc',
+    )
+  })
+
   it('maps every bucket to its own qualifier', () => {
     expect(buildSearchQuery('author')).toContain('author:@me')
     expect(buildSearchQuery('involves')).toContain('involves:@me')

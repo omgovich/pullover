@@ -73,6 +73,21 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
     }
   }
 
+  // Somebody else asked to review it has the move, and a muted request to me
+  // must not come back through this door.
+  if (
+    pr.buckets.includes('owned') &&
+    !pr.hasPendingReviewRequest &&
+    !participated &&
+    isOn('unrequested')
+  ) {
+    return {
+      category: 'needs-review',
+      reason: 'New in your repository',
+      waitingSince: pr.createdAt,
+    }
+  }
+
   const awaiting = threadsAwaitingMyReply(pr, myLogin)
   if (awaiting.length > 0 && isOn('new-replies')) {
     const word = pluralize(awaiting.length, 'new reply', 'new replies')

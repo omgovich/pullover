@@ -25,13 +25,14 @@ export interface UpdateState {
 
 export type CiStatus = 'success' | 'failure' | 'pending' | 'none'
 
-export type SearchBucket = 'review-requested' | 'author' | 'involves' | 'mentions'
+export type SearchBucket = 'review-requested' | 'author' | 'involves' | 'mentions' | 'owned'
 
 export const SEARCH_BUCKETS: readonly SearchBucket[] = [
   'review-requested',
   'author',
   'involves',
   'mentions',
+  'owned',
 ]
 
 export interface ThreadComment {
@@ -99,6 +100,8 @@ export interface PullRequest {
   conversationComments: ThreadComment[]
   /** When the user was last asked to review this PR, or null if never. */
   reviewRequestedAt: string | null
+  /** Whether a review is still requested from anybody, a team included. */
+  hasPendingReviewRequest: boolean
   /**
    * When the pull request stopped being a draft, or null if it never was one.
    * The floor on any waiting time: before it, the PR was hidden.
@@ -198,6 +201,7 @@ export type Trigger =
   | 'new-replies'
   | 'new-commits'
   | 'mentioned'
+  | 'unrequested'
   | 'changes-requested'
   | 'merge-conflicts'
   | 'open-threads'
@@ -243,6 +247,12 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
     value: 'mentioned',
     label: 'Mentioned',
     description: 'Somebody @-mentioned you.',
+    side: 'review',
+  },
+  {
+    value: 'unrequested',
+    label: 'New in your repositories',
+    description: 'Somebody opened one without asking anybody to review it.',
     side: 'review',
   },
   {

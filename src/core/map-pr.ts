@@ -72,6 +72,8 @@ export interface PullRequestNode {
   commits: {
     nodes: Array<{ commit: CommitNode } | null>
   }
+  /** Optional so fixtures that predate it keep compiling; `DETAILS_QUERY` always asks for it. */
+  reviewRequests?: { totalCount: number }
   /** Review-requested and ready-for-review events only; see `DETAILS_QUERY`. */
   timelineItems: {
     nodes: Array<{
@@ -283,6 +285,7 @@ export function mapPullRequest(
     reviewThreads,
     conversationComments,
     reviewRequestedAt: computeReviewRequestedAt(node, myLogin),
+    hasPendingReviewRequest: (node.reviewRequests?.totalCount ?? 0) > 0,
     readyForReviewAt: computeReadyForReviewAt(node),
     mentionsAt: computeMentionsAt(
       node,
