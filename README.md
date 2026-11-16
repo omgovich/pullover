@@ -28,7 +28,7 @@ GitHub notifications bury the one thing that matters — *whose move is it?* Pul
 
 ## ✨ Features
 
-- 🎯 **Only what needs you.** Review requests, re-reviews, replies you owe, mentions, pull requests opened in repositories you own personally without asking anybody to review — each PR sits under the reason it's there, longest wait first. The ones waiting on somebody else collapse into their own section.
+- 🎯 **Only what needs you.** Review requests, re-reviews, replies you owe, mentions — each PR sits under the reason it's there, longest wait first. The ones waiting on somebody else collapse into their own section.
 - 🧑‍💻 **Your own PRs, too.** They surface only when there's something for you to do: changes requested, a comment you haven't answered, red CI, merge conflicts, or approved and ready to merge.
 - 🔒 **Private repos and team requests.** Both land in the inbox like anything else — nothing to configure.
 - 🧬 **Stacks stay together.** A stacked PR shows its place in the chain (`4/8`), and the stack is drawn as one connected run.
