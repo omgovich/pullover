@@ -57,10 +57,10 @@ curl -s -X POST http://127.0.0.1:7856/mcp -H 'Content-Type: application/json' -H
 
 ## Releases
 
-Everything happens in CI: pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds the dmgs into a draft GitHub release, writes the notes, and publishes it. To cut a release, from a clean synced `main`:
+Releases follow [Changesets](https://changesets.dev) and run entirely in CI, in `.github/workflows/release.yml`. Never bump `version` or push a `v*` tag by hand.
 
-1. Bump `version` in `package.json` and commit as `Release v<X.Y.Z>`. Semver, judged by the commits since the last tag: user-visible change → minor, otherwise patch; a version named by the maintainer wins.
-2. `git tag v<X.Y.Z> && git push origin main v<X.Y.Z>`.
-3. Watch the run; when it's done, check the release looks right (`gh release view v<X.Y.Z>`) and report its URL.
+- A PR that changes something a person running Pullover can see or feel adds a changeset: `npx changeset`, or a `.changeset/<name>.md` file written by hand. `minor` for a user-visible change, `patch` for a fix. Its summary is the release note line as is: an emoji, the change in bold, then what it means for the user, e.g. `🔔 **Mentions** — a pull request that mentions you now shows up even when you are not a reviewer.` A fix says what stopped being broken. Anything that loses data, signs the user out or resets settings starts with ⚠️ and says plainly what will happen.
+- Tests, CI, refactors, build tooling and docs need no changeset. A bug that no release ever shipped needs none either.
+- On push to `main`, pending changesets open or update a "Release" PR that bumps the version and writes CHANGELOG.md. Merging it builds, signs and notarizes the app and publishes the GitHub release `v<X.Y.Z>` with that version's CHANGELOG.md lines as its notes. To cut a release, merge that PR, watch the run, check `gh release view v<X.Y.Z>` and report its URL.
 
-If the run fails before anything was published, it's fine to delete the draft release and the tag, fix `main`, and re-tag the same version. Never move or reuse a tag or release that has been **published** — problems ship as the next version.
+A failed run leaves no published release, so the next push to `main`, or running the workflow by hand, builds the same version again from the commit that set it. If that commit itself cannot build, merge the fix with a `patch` changeset and release the next version instead. Never move or reuse a tag or release that has been **published** — problems ship as the next version.
