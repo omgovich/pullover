@@ -1,5 +1,12 @@
 # pullover
 
+## 0.20.0
+
+### Minor Changes
+
+- 🔀 **Approved, not merged** — a pull request you approved in your own repository comes back as Ready to merge when its author cannot merge it.
+- 📬 **New in your repos** — a pull request somebody opens in a repository you own personally shows up even when they did not ask anybody to review it.
+
 ## 0.19.1
 
 - 📦 **Smaller app** — Pullover takes about 90 MB less on disk, and the download is 18 MB lighter.
