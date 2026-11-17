@@ -51,6 +51,7 @@ export function makePullRequest(overrides: Partial<PullRequest> = {}): PullReque
     authorCanMerge: true,
     hasPendingReviewRequest: false,
     isCrossRepository: false,
+    namedReviewRequestAt: null,
     readyForReviewAt: null,
     mentionsAt: [],
     buckets: [],

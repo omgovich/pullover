@@ -98,7 +98,10 @@ export interface PullRequest {
   reviewThreads: ReviewThread[]
   /** Latest conversation-tab comments, oldest first. Inline review comments live in `reviewThreads`. */
   conversationComments: ThreadComment[]
-  /** When the user was last asked to review this PR, or null if never. */
+  /**
+   * When the user was last asked to review this PR: the latest request naming
+   * them, else the latest naming nobody (a team or a bot), else null.
+   */
   reviewRequestedAt: string | null
   /** Whether the head branch lives in a fork, where this repository's branch names mean nothing. */
   isCrossRepository: boolean
@@ -106,6 +109,12 @@ export interface PullRequest {
   authorCanMerge: boolean
   /** Whether a review is still requested from anybody, a team included. */
   hasPendingReviewRequest: boolean
+  /**
+   * The latest request naming the user, or null if none does. Unlike
+   * `reviewRequestedAt` it never falls back to a team or bot request, whose
+   * date may belong to a request that never reached the user.
+   */
+  namedReviewRequestAt: string | null
   /**
    * When the pull request stopped being a draft, or null if it never was one.
    * The floor on any waiting time: before it, the PR was hidden.
