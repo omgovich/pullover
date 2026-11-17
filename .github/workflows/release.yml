@@ -78,7 +78,11 @@ jobs:
           version=$(node -p "require('./package.json').version")
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "commit=$(git log -n 1 --format=%H -G '"version":' -- package.json)" >> "$GITHUB_OUTPUT"
-          if [ "$(gh release view "v$version" --json isDraft --jq .isDraft 2>/dev/null)" != "false" ]; then
+          # Not released yet means a 404 or a draft; any other error fails the run.
+          if draft=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$version" --jq .draft 2>&1); then
+            if [ "$draft" = "true" ]; then echo "release=true" >> "$GITHUB_OUTPUT"; fi
+          else
+            grep -q "HTTP 404" <<< "$draft" || { echo "$draft"; exit 1; }
             echo "release=true" >> "$GITHUB_OUTPUT"
           fi
 
