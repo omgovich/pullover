@@ -30,7 +30,7 @@ const GET_INBOX_TOOL_DESCRIPTION = `Pullover's inbox: the open pull requests wai
 Each section is longest-waiting first — except "waiting", which has nobody waiting and is ordered by latest activity. Pullover refreshes from GitHub when its last fetch is over a minute old, so the list is current as of lastUpdatedAt. When notice is not null, the list is not the whole answer — signed out, a fetch that failed, a first one still running, a search that stopped before reaching the oldest pull requests, or an organization that has not approved Pullover and whose pull requests are therefore missing from an otherwise current list — so relay the notice to the user.
 
 Categories, in the order the app shows them:
-- needs-review: somebody asked the user for review and they have not reviewed yet, or somebody opened it in a repository the user owns personally without asking anybody to review it.
+- needs-review: somebody asked the user for review and they have not reviewed yet, or somebody opened it in a repository the user owns personally without asking anybody to review it, or the user approved it there, its author cannot merge it, and nothing is left for the author to fix: no newer commits, merge conflict, red CI or change request.
 - new-replies: somebody replied in a review thread the user took part in; the reason says how many.
 - re-review: the user reviewed already and the author pushed new commits or asked again.
 - my-pr-action: the user's own pull request needs them — changes requested, open threads, new comments, red CI, merge conflicts, or approved and ready to merge; the reason says which.

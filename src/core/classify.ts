@@ -16,6 +16,7 @@ import {
   type Category,
   type ClassifiedPullRequest,
   type PullRequest,
+  type Review,
   type Snooze,
   type Trigger,
   VISIBLE_CATEGORIES,
@@ -66,6 +67,15 @@ function reviewedByOthers(pr: PullRequest): boolean {
     (review) =>
       review.authorLogin !== pr.authorLogin && !review.authorIsBot && review.state !== 'PENDING',
   )
+}
+
+/** My approval, unless I asked for changes after it or it was dismissed; a later comment keeps it. */
+function myStandingApproval(pr: PullRequest, myLogin: string): Review | null {
+  const verdicts = pr.reviews
+    .filter((r) => r.authorLogin === myLogin && r.state !== 'COMMENTED' && r.state !== 'PENDING')
+    .sort((a, b) => compareIso(a.submittedAt, b.submittedAt))
+  const latest = verdicts.at(-1)
+  return latest?.state === 'APPROVED' ? latest : null
 }
 
 function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
@@ -127,6 +137,27 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
         reason: 'New commits',
         waitingSince: pr.lastCommitPushedAt,
       }
+    }
+  }
+
+  // In my repository an outside author cannot merge, so after my approval the merge is mine,
+  // unless a conflict, red CI or another reviewer's change request puts it back on them.
+  const approval = myStandingApproval(pr, myLogin)
+  if (
+    approval !== null &&
+    pr.buckets.includes('owned') &&
+    !pr.authorCanMerge &&
+    compareIso(pr.lastCommitPushedAt, approval.submittedAt) <= 0 &&
+    pr.mergeable !== 'CONFLICTING' &&
+    pr.ciStatus !== 'failure' &&
+    oldestBlockingChangeRequestAt(pr) === null &&
+    !pr.hasAutoMerge &&
+    isOn('approved-not-merged')
+  ) {
+    return {
+      category: 'needs-review',
+      reason: 'Ready to merge',
+      waitingSince: approval.submittedAt,
     }
   }
 
