@@ -98,7 +98,10 @@ export interface PullRequest {
   reviewThreads: ReviewThread[]
   /** Latest conversation-tab comments, oldest first. Inline review comments live in `reviewThreads`. */
   conversationComments: ThreadComment[]
-  /** When the user was last asked to review this PR, or null if never. */
+  /**
+   * When the user was last asked to review this PR: the latest request naming
+   * them, else the latest naming nobody (a team or a bot), else null.
+   */
   reviewRequestedAt: string | null
   /** Whether the head branch lives in a fork, where this repository's branch names mean nothing. */
   isCrossRepository: boolean
