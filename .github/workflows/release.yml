@@ -1,17 +1,14 @@
 name: Release
 
-# Releases follow the changesets in .changeset/ (see its README). On every push to main:
-# - pending changesets → the `version` job opens or updates a "Release vX.Y.Z" PR
-#   that bumps package.json and writes CHANGELOG.md;
-# - a package.json version with no `v<version>` tag yet, which is what merging that PR
-#   leaves → the `build` job builds one universal dmg (Apple Silicon + Intel), signs
-#   it with a Developer ID certificate, has Apple notarize it, and attaches it to a
-#   draft GitHub release (electron-builder's publisher, see the `publish` section of
-#   electron-builder.yml). The `publish` job then checks the assets, tags the commit
-#   and publishes the draft with that version's CHANGELOG.md section as its notes.
-# The tag appears only when the release is published, so a run that fails anywhere
-# before that is retried by the next push to main, or by running this workflow by hand,
-# always from the commit that set the version.
+# On push to main:
+# - pending changesets → the `version` job opens or updates the Release PR, which bumps
+#   package.json and writes CHANGELOG.md;
+# - a version that has no release yet, which is what merging that PR leaves → `build`
+#   builds, signs and notarizes one universal dmg into a draft release (electron-builder,
+#   see the `publish` section of electron-builder.yml), then publishes it with that
+#   version's CHANGELOG.md lines as notes. Publishing creates the tag.
+# A failed build leaves no release, so the next push to main, or running this workflow
+# by hand, tries again.
 #
 # Repository configuration — Settings → Secrets and variables → Actions:
 #   Variables
@@ -29,65 +26,23 @@ name: Release
 #   - APPLE_API_ISSUER       — the issuer UUID it belongs to.
 # Settings → Actions → General must allow GitHub Actions to create pull requests,
 # or the `version` job cannot open the Release PR.
-# Only the account holder can issue the certificate, so only they can cut a
-# release; a fork's CI will fail the build's secret check, which is correct.
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-# Queued, never cancelled: a second push while a release builds must wait for its
-# tag, or it would build the same version again.
 concurrency:
   group: release
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
-  plan:
-    # A run dispatched from another branch, such as the unmerged Release PR, must not release.
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    outputs:
-      pending: ${{ steps.plan.outputs.pending }}
-      version: ${{ steps.plan.outputs.version }}
-      release: ${{ steps.plan.outputs.release }}
-      commit: ${{ steps.plan.outputs.commit }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      # A release is built from the commit that set its version, never from a later
-      # head: work merged after a failed release must wait for the next Release PR,
-      # or it would ship under notes that do not mention it.
-      - id: plan
-        run: |
-          version=$(node -p "require('./package.json').version")
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "commit=$(git log -n 1 --format=%H -G '"version":' -- package.json)" >> "$GITHUB_OUTPUT"
-          # An empty changeset releases nothing, so it does not count as pending.
-          if grep -lqE "^['\"]?pullover['\"]?:" .changeset/*.md; then
-            echo "pending=true" >> "$GITHUB_OUTPUT"
-          fi
-          # Exit code 2 means no such tag; anything else is a failed lookup, not a release.
-          status=0
-          git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null || status=$?
-          case $status in
-            0) ;;
-            2) echo "release=true" >> "$GITHUB_OUTPUT" ;;
-            *) exit "$status" ;;
-          esac
-
   version:
-    needs: plan
-    if: needs.plan.outputs.pending == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -95,24 +50,41 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts
-      # Empty when only empty changesets are pending: they release nothing.
-      - id: next
-        run: |
-          npx changeset status --output "$RUNNER_TEMP/status.json"
-          version=$(node -p "require('$RUNNER_TEMP/status.json').releases[0]?.newVersion ?? ''")
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-      - if: steps.next.outputs.version != ''
+      - id: mode
+        uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+      - if: steps.mode.outputs.mode == 'version'
         uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           script: npm run changeset:version
-          commit-message: Release v${{ steps.next.outputs.version }}
-          pr-title: Release v${{ steps.next.outputs.version }}
+          commit-message: Release
+          pr-title: Release
+
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      commit: ${{ steps.plan.outputs.commit }}
+      release: ${{ steps.plan.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # The release is built from the commit that set its version, not from a later
+      # head, so work merged after a failed release waits for the next one.
+      - id: plan
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git log -n 1 --format=%H -G '"version":' -- package.json)" >> "$GITHUB_OUTPUT"
+          if [ "$(gh release view "v$version" --json isDraft --jq .isDraft 2>/dev/null)" != "false" ]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
 
   build:
     needs: plan
     if: needs.plan.outputs.release == 'true'
-    permissions:
-      contents: write # electron-builder creates the draft release
     # Pinned, not `macos-latest`. electron-builder creates its signing
     # keychain with a random password but calls `security
     # set-key-partition-list` with the *certificate's* password instead; the
@@ -121,6 +93,8 @@ jobs:
     # entered is not correct". Fixed upstream in 27.0.0-alpha.6 and not
     # backported — unpin once a stable release carries it.
     runs-on: macos-15
+    env:
+      TAG: v${{ needs.plan.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -220,79 +194,14 @@ jobs:
           spctl --assess --type execute -vv "$app" 2>&1 | tee /tmp/spctl.txt
           grep -q "source=Notarized Developer ID" /tmp/spctl.txt
 
-  publish:
-    needs: [plan, build]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      REPO: ${{ github.repository }}
-      VERSION: ${{ needs.plan.outputs.version }}
-      TAG: v${{ needs.plan.outputs.version }}
-      COMMIT: ${{ needs.plan.outputs.commit }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.plan.outputs.commit }}
-
-      # electron-builder sometimes races itself and leaves two drafts for one tag,
-      # with the assets split between them. Move everything into the draft that
-      # holds the dmg and delete the rest.
-      - name: Merge duplicate drafts
-        run: |
-          drafts=$(gh api "repos/$REPO/releases" --jq "[.[] | select(.tag_name == \"$TAG\" and .draft)]")
-          keeper=$(jq -r --arg dmg "Pullover-$VERSION.dmg" '[.[] | select(any(.assets[]; .name == $dmg))][0].id // empty' <<< "$drafts")
-          if [ -z "$keeper" ]; then
-            echo "::error::No draft release for $TAG holds Pullover-$VERSION.dmg."
-            exit 1
-          fi
-          kept=$(jq -r --argjson id "$keeper" '.[] | select(.id == $id) | .assets[].name' <<< "$drafts")
-          for id in $(jq -r --argjson id "$keeper" '.[] | select(.id != $id) | .id' <<< "$drafts"); do
-            jq -c --argjson id "$id" '.[] | select(.id == $id) | .assets[]' <<< "$drafts" | while read -r asset; do
-              name=$(jq -r .name <<< "$asset")
-              grep -qxF "$name" <<< "$kept" && continue
-              gh api -H "Accept: application/octet-stream" "repos/$REPO/releases/assets/$(jq -r .id <<< "$asset")" > "$RUNNER_TEMP/$name"
-              curl -sS -f -X POST -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/octet-stream" \
-                --data-binary "@$RUNNER_TEMP/$name" \
-                "https://uploads.github.com/repos/$REPO/releases/$keeper/assets?name=$name" > /dev/null
-            done
-            gh api -X DELETE "repos/$REPO/releases/$id"
-          done
-          echo "RELEASE_ID=$keeper" >> "$GITHUB_ENV"
-
-      # The dmg is what people download; the zip, its blockmap and latest-mac.yml are
-      # what the auto-updater reads, so without them installed copies never see this
-      # release. A .dmg.blockmap means `dmg.writeUpdateInfo` was turned back on.
-      - name: Verify the assets
-        run: |
-          assets=$(gh api "repos/$REPO/releases/$RELEASE_ID" --jq '.assets[].name')
-          echo "$assets"
-          for name in "Pullover-$VERSION.dmg" "Pullover-$VERSION.zip" "Pullover-$VERSION.zip.blockmap" latest-mac.yml; do
-            grep -qxF "$name" <<< "$assets" || { echo "::error::$name is missing from the draft."; exit 1; }
-          done
-          if grep -q '\.dmg\.blockmap$' <<< "$assets"; then
-            echo "::error::The draft carries a .dmg.blockmap that nothing reads."
-            exit 1
-          fi
-
       # Changesets groups each version under "### Minor Changes" and "### Patch
-      # Changes"; the notes are one flat list.
-      - name: Write the notes
-        run: |
-          awk -v v="$VERSION" '$0 == "## " v { on = 1; next } /^## / { on = 0 } on && NF && !/^### /' \
-            CHANGELOG.md > "$RUNNER_TEMP/notes.md"
-          cat "$RUNNER_TEMP/notes.md"
-          if [ ! -s "$RUNNER_TEMP/notes.md" ]; then
-            echo "::error::CHANGELOG.md has no section for $VERSION."
-            exit 1
-          fi
-
-      # Publishing creates the tag on the commit that was built, in the same call, so
-      # no tag exists unless the release went out. The draft names itself after the
-      # version (`0.3.0`), not the tag, so the title is set here too.
+      # Changes"; the notes are one flat list. The draft is named after the version
+      # (`0.3.0`), so the title is set to the tag here.
       - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh api -X PATCH "repos/$REPO/releases/$RELEASE_ID" \
-            -f "tag_name=$TAG" -f "target_commitish=$COMMIT" -f "name=$TAG" \
-            -F "body=@$RUNNER_TEMP/notes.md" -F draft=false --jq .html_url
+          awk -v v="${TAG#v}" '$0 == "## " v { on = 1; next } /^## / { on = 0 } on && NF && !/^### /' \
+            CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          gh release edit "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" \
+            --target "$(git rev-parse HEAD)" --draft=false
