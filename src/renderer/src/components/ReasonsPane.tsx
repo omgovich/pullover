@@ -11,6 +11,7 @@ interface Props {
 
 const SECTIONS: { title: string; side: TriggerOption['side'] }[] = [
   { title: 'Pull requests you review', side: 'review' },
+  { title: 'Your repositories', side: 'repo' },
   { title: 'Your pull requests', side: 'own' },
 ]
 

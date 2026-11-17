@@ -215,8 +215,8 @@ export interface TriggerOption {
   value: Trigger
   label: string
   description: string
-  /** Whose pull request the reason is about: one the user reviews, or one they wrote. */
-  side: 'review' | 'own'
+  /** Which group the Reasons screen lists it under: pull requests the user reviews, ones they wrote, or ones in their own repositories. */
+  side: 'review' | 'own' | 'repo'
 }
 
 /** The Reasons screen's rows, and the allowlist `store` validates `mutedTriggers` against. */
@@ -255,7 +255,7 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
     value: 'unrequested',
     label: 'New in your repos',
     description: 'Somebody opened one without asking anybody to review it.',
-    side: 'review',
+    side: 'repo',
   },
   {
     value: 'changes-requested',
