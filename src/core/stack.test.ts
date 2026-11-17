@@ -147,6 +147,19 @@ describe('computeStackPositions', () => {
     expect(positions.has('PR_999')).toBe(false)
   })
 
+  it("is not broken by a fork's pull request from a branch named like mine", () => {
+    // The fork's `main` is not this repository's `main`, so nothing here is built on it.
+    const prs = [
+      pr({ id: 'PR_a', headRefName: 'a', baseRefName: 'main' }),
+      pr({ id: 'PR_b', headRefName: 'b', baseRefName: 'a' }),
+      pr({ id: 'PR_fork', headRefName: 'main', baseRefName: 'main', isCrossRepository: true }),
+    ]
+    const positions = computeStackPositions(prs)
+    expect(positions.get('PR_a')).toEqual({ id: 'PR_a', index: 1, total: 2 })
+    expect(positions.get('PR_b')).toEqual({ id: 'PR_a', index: 2, total: 2 })
+    expect(positions.has('PR_fork')).toBe(false)
+  })
+
   it('gives no position to a lone pull request (chain of one)', () => {
     const prs = [pr({ id: 'PR_1', headRefName: 'feature-x', baseRefName: 'main' })]
     expect(computeStackPositions(prs)).toEqual(new Map())

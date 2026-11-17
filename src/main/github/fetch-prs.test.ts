@@ -1,4 +1,5 @@
 import { GraphqlResponseError } from '@octokit/graphql'
+import { SEARCH_BUCKETS } from '@shared/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createGraphQLClient, fetchPullRequests, fetchViewerLogin } from './fetch-prs'
 import { DETAILS_QUERY, SEARCH_QUERY, VIEWER_QUERY } from './queries'
@@ -78,7 +79,10 @@ describe('fetchPullRequests', () => {
     const { prs } = await fetchPullRequests(client, 'vlad')
     expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
     const searchCalls = client.mock.calls.filter(([q]) => q === SEARCH_QUERY)
-    expect(searchCalls).toHaveLength(4)
+    expect(searchCalls).toHaveLength(SEARCH_BUCKETS.length)
+    expect(searchCalls.some(([, variables]) => (variables.q as string).includes('user:@me'))).toBe(
+      true,
+    )
     for (const [, variables] of searchCalls) {
       expect(variables.q as string).not.toContain('repo:')
     }
@@ -142,8 +146,10 @@ describe('fetchPullRequests', () => {
     const { prs } = await fetchPullRequests(client, 'vlad')
 
     expect(prs.map((pr) => pr.id)).toEqual(['PR_1'])
-    // The four buckets plus the one that had to be asked again.
-    expect(client.mock.calls.filter(([q]) => q === SEARCH_QUERY)).toHaveLength(5)
+    // Every bucket plus the one that had to be asked again.
+    expect(client.mock.calls.filter(([q]) => q === SEARCH_QUERY)).toHaveLength(
+      SEARCH_BUCKETS.length + 1,
+    )
   })
 
   it('splits a failed detail batch in half rather than asking for the same ids again', async () => {
@@ -215,7 +221,7 @@ describe('fetchPullRequests', () => {
 
       // One attempt per bucket, and not one more: `Inbox` decides what a
       // rate limit means, and it can only do that if the error reaches it.
-      expect(client).toHaveBeenCalledTimes(4)
+      expect(client).toHaveBeenCalledTimes(SEARCH_BUCKETS.length)
     }
   })
 
@@ -226,8 +232,8 @@ describe('fetchPullRequests', () => {
       { 'author:@me': ids },
       ids.map((id) => detailNode(id)),
     )
-    // Every response carries its own cost: four bucket searches and one
-    // detail batch, so five requests at 3 points each.
+    // Every response carries its own cost: five bucket searches and one
+    // detail batch, so six requests at 3 points each.
     const client = vi.fn(async (query: string, variables: Record<string, unknown>) => ({
       ...((await inner(query, variables)) as object),
       rateLimit: { cost: 3, remaining: 4985, resetAt: '2026-09-08T13:00:00Z' },
@@ -237,7 +243,7 @@ describe('fetchPullRequests', () => {
 
     expect(info).toHaveBeenCalledTimes(1)
     expect(info.mock.calls[0]![0]).toBe(
-      '[github] refresh cost 15 points, 4985 left until 2026-09-08T13:00:00Z',
+      '[github] refresh cost 18 points, 4985 left until 2026-09-08T13:00:00Z',
     )
     info.mockRestore()
   })
@@ -258,7 +264,7 @@ describe('fetchPullRequests', () => {
     await fetchPullRequests(client, 'vlad')
 
     expect(info.mock.calls[0]![0]).toBe(
-      '[github] refresh cost 5 points, 4990 left until 2026-09-08T13:00:00Z',
+      '[github] refresh cost 6 points, 4990 left until 2026-09-08T13:00:00Z',
     )
     info.mockRestore()
   })
@@ -314,7 +320,7 @@ describe('fetchPullRequests', () => {
     expect(prs[0]!.mentionsAt).not.toHaveLength(0)
   })
 
-  it('issues all four bucket searches concurrently rather than waiting for each to resolve', async () => {
+  it('issues every bucket search concurrently rather than waiting for each to resolve', async () => {
     // Every SEARCH_QUERY call hangs on a deferred the test controls. A
     // sequential `collectIds` (a for-await loop over the buckets) would only
     // ever have the FIRST bucket's request in flight at this point, because
@@ -337,13 +343,13 @@ describe('fetchPullRequests', () => {
     // Give the microtask queue a bounded number of turns to let every
     // concurrent call start — a sequential implementation would still be
     // stuck on the first one no matter how many turns this takes.
-    for (let i = 0; i < 20 && pending.length < 4; i++) {
+    for (let i = 0; i < 20 && pending.length < SEARCH_BUCKETS.length; i++) {
       await Promise.resolve()
     }
 
     const searchCalls = client.mock.calls.filter(([q]) => q === SEARCH_QUERY)
-    expect(searchCalls).toHaveLength(4)
-    expect(pending).toHaveLength(4)
+    expect(searchCalls).toHaveLength(SEARCH_BUCKETS.length)
+    expect(pending).toHaveLength(SEARCH_BUCKETS.length)
 
     for (const d of pending) d.resolve({ search: { nodes: [] } })
     await expect(result).resolves.toEqual({ prs: [], restrictedOrgs: [], incompleteReasons: [] })
@@ -588,8 +594,8 @@ describe('fetchPullRequests', () => {
 
     expect(result.prs.map((pr) => pr.id)).toEqual(['PR_1'])
     expect(result.restrictedOrgs).toEqual(['status-im'])
-    // Four buckets, two attempts each: the first, then one with the exclusion.
-    expect(searches).toBe(8)
+    // Every bucket, two attempts each: the first, then one with the exclusion.
+    expect(searches).toBe(SEARCH_BUCKETS.length * 2)
   })
 
   it('keeps the results it has when the rounds of exclusion run out', async () => {
@@ -889,7 +895,7 @@ describe('fetchPullRequests search pagination', () => {
     const { incompleteReasons } = await fetchPullRequests(client, 'vlad')
 
     const searches = client.mock.calls.filter(([query]) => query === SEARCH_QUERY)
-    expect(searches).toHaveLength(8)
+    expect(searches).toHaveLength(SEARCH_BUCKETS.length * 2)
     expect(incompleteReasons).toEqual(['bad-cursor'])
   })
 })

@@ -5,6 +5,7 @@ const BUCKET_QUALIFIERS: Record<SearchBucket, string> = {
   author: 'author:@me',
   involves: 'involves:@me',
   mentions: 'mentions:@me',
+  owned: 'user:@me',
 }
 
 /** Splits `items` into groups of at most `size`. `size` must be positive. */

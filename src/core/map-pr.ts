@@ -41,6 +41,8 @@ export interface PullRequestNode {
   deletions: number
   headRefName: string
   baseRefName: string
+  /** Optional so fixtures that predate it keep compiling; `DETAILS_QUERY` always asks for it. */
+  isCrossRepository?: boolean
   stackEntry: { position: number; stack: { id: string; size: number } | null } | null
   reviewDecision: ReviewDecision
   mergeable: MergeableState
@@ -72,6 +74,8 @@ export interface PullRequestNode {
   commits: {
     nodes: Array<{ commit: CommitNode } | null>
   }
+  /** Optional so fixtures that predate it keep compiling; `DETAILS_QUERY` always asks for it. */
+  reviewRequests?: { totalCount: number }
   /** Review-requested and ready-for-review events only; see `DETAILS_QUERY`. */
   timelineItems: {
     nodes: Array<{
@@ -266,6 +270,7 @@ export function mapPullRequest(
     deletions: node.deletions,
     headRefName: node.headRefName,
     baseRefName: node.baseRefName,
+    isCrossRepository: node.isCrossRepository ?? false,
     nativeStack: node.stackEntry?.stack
       ? {
           id: node.stackEntry.stack.id,
@@ -283,6 +288,7 @@ export function mapPullRequest(
     reviewThreads,
     conversationComments,
     reviewRequestedAt: computeReviewRequestedAt(node, myLogin),
+    hasPendingReviewRequest: (node.reviewRequests?.totalCount ?? 0) > 0,
     readyForReviewAt: computeReadyForReviewAt(node),
     mentionsAt: computeMentionsAt(
       node,

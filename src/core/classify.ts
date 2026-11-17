@@ -61,6 +61,13 @@ function visibleSince(pr: PullRequest): string {
     : pr.createdAt
 }
 
+function reviewedByOthers(pr: PullRequest): boolean {
+  return pr.reviews.some(
+    (review) =>
+      review.authorLogin !== pr.authorLogin && !review.authorIsBot && review.state !== 'PENDING',
+  )
+}
+
 function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict {
   const requested = pr.buckets.includes('review-requested')
   const participated = hasParticipated(pr, myLogin)
@@ -70,6 +77,23 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
       category: 'needs-review',
       reason: 'Review requested',
       waitingSince: pr.reviewRequestedAt ?? pr.createdAt,
+    }
+  }
+
+  // Whoever was asked or already reviewed has the move; GitHub drops a reviewer
+  // from the pending requests once they submit. A muted request to me must not
+  // come back through this door either.
+  if (
+    pr.buckets.includes('owned') &&
+    !pr.hasPendingReviewRequest &&
+    !reviewedByOthers(pr) &&
+    !participated &&
+    isOn('unrequested')
+  ) {
+    return {
+      category: 'needs-review',
+      reason: 'New in your repo',
+      waitingSince: pr.createdAt,
     }
   }
 
