@@ -305,6 +305,66 @@ describe('classify — pull requests nobody asked me to review', () => {
   })
 })
 
+describe('classify — approved pull requests the author cannot merge', () => {
+  const APPROVED_AT = '2026-08-03T10:00:00Z'
+  const approved = (overrides: Partial<PullRequest> = {}) =>
+    makePullRequest({
+      repository: 'vlad/colord',
+      buckets: ['owned', 'involves'],
+      authorCanMerge: false,
+      lastCommitPushedAt: '2026-08-02T10:00:00Z',
+      reviews: [makeReview(ME, APPROVED_AT, { state: 'APPROVED' })],
+      ...overrides,
+    })
+
+  it('is mine to merge once I approved it', () => {
+    const result = classify(approved(), ctx())
+    expect(result.category).toBe('needs-review')
+    expect(result.reason).toBe('Ready to merge')
+    expect(result.waitingSince).toBe(APPROVED_AT)
+  })
+
+  it('stays approved after a comment I left later', () => {
+    const pr = approved({
+      reviews: [
+        makeReview(ME, APPROVED_AT, { state: 'APPROVED' }),
+        makeReview(ME, '2026-08-04T10:00:00Z', { state: 'COMMENTED' }),
+      ],
+    })
+    expect(classify(pr, ctx()).reason).toBe('Ready to merge')
+  })
+
+  it('waits on an author who can merge it', () => {
+    const pr = approved({ authorCanMerge: true })
+    expect(classify(pr, ctx()).reason).toBe('Waiting on author')
+  })
+
+  it('waits on the author while it conflicts or CI is red', () => {
+    expect(classify(approved({ mergeable: 'CONFLICTING' }), ctx()).category).toBe('waiting')
+    expect(classify(approved({ ciStatus: 'failure' }), ctx()).category).toBe('waiting')
+  })
+
+  it('asks for another look, not a merge, after new commits', () => {
+    const pr = approved({ lastCommitPushedAt: '2026-08-04T10:00:00Z' })
+    expect(classify(pr, ctx()).reason).toBe('New commits')
+  })
+
+  it('does not ask me to merge outside my own repositories', () => {
+    const pr = approved({ buckets: ['involves'] })
+    expect(classify(pr, ctx()).category).toBe('waiting')
+  })
+
+  it('waits when I asked for changes after approving', () => {
+    const pr = approved({
+      reviews: [
+        makeReview(ME, APPROVED_AT, { state: 'APPROVED' }),
+        makeReview(ME, '2026-08-04T10:00:00Z', { state: 'CHANGES_REQUESTED' }),
+      ],
+    })
+    expect(classify(pr, ctx()).category).toBe('waiting')
+  })
+})
+
 describe('classify — author branch', () => {
   const mine = { authorLogin: ME, buckets: ['author' as const] }
 
@@ -576,6 +636,15 @@ describe('classify — muted reasons', () => {
       mentionsAt: ['2026-08-06T10:00:00Z'],
     })
     expect(classify(pr, muting('new-commits')).category).toBe('mentioned')
+  })
+
+  it('leaves an approved pull request waiting when merging it for the author is muted', () => {
+    const pr = makePullRequest({
+      buckets: ['owned', 'involves'],
+      authorCanMerge: false,
+      reviews: [makeReview(ME, '2026-08-03T10:00:00Z', { state: 'APPROVED' })],
+    })
+    expect(classify(pr, muting('approved-not-merged')).category).toBe('waiting')
   })
 
   it('hides a pull request nobody asked me to review when that reason is muted', () => {

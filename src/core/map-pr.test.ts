@@ -488,6 +488,17 @@ describe('mapPullRequest', () => {
     ).toBe(false)
   })
 
+  it('reads whether the author can merge from their relation to the repository', () => {
+    const canMerge = (authorAssociation: string) =>
+      mapPullRequest(node({ authorAssociation }), [], 'vlad').authorCanMerge
+    expect(['OWNER', 'MEMBER', 'COLLABORATOR'].map(canMerge)).toEqual([true, true, true])
+    expect(['CONTRIBUTOR', 'FIRST_TIME_CONTRIBUTOR', 'NONE'].map(canMerge)).toEqual([
+      false,
+      false,
+      false,
+    ])
+  })
+
   it('reads whether the pull request comes from a fork', () => {
     expect(mapPullRequest(node({ isCrossRepository: true }), [], 'vlad').isCrossRepository).toBe(
       true,

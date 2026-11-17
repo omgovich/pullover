@@ -102,6 +102,8 @@ export interface PullRequest {
   reviewRequestedAt: string | null
   /** Whether the head branch lives in a fork, where this repository's branch names mean nothing. */
   isCrossRepository: boolean
+  /** Whether the author can merge it: an owner, member or collaborator of the repository. */
+  authorCanMerge: boolean
   /** Whether a review is still requested from anybody, a team included. */
   hasPendingReviewRequest: boolean
   /**
@@ -204,6 +206,7 @@ export type Trigger =
   | 'new-commits'
   | 'mentioned'
   | 'unrequested'
+  | 'approved-not-merged'
   | 'changes-requested'
   | 'merge-conflicts'
   | 'open-threads'
@@ -255,6 +258,12 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
     value: 'unrequested',
     label: 'New in your repos',
     description: 'Somebody opened one without asking anybody to review it.',
+    side: 'repo',
+  },
+  {
+    value: 'approved-not-merged',
+    label: 'Approved, not merged',
+    description: 'You approved it, but its author cannot merge it.',
     side: 'repo',
   },
   {

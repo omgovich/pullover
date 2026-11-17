@@ -50,6 +50,8 @@ export interface PullRequestNode {
   isInMergeQueue: boolean
   bodyText: string
   author: ActorNode | null
+  /** Optional so fixtures that predate it keep compiling; `DETAILS_QUERY` always asks for it. */
+  authorAssociation?: string
   repository: { nameWithOwner: string }
   reviews: {
     nodes: Array<{
@@ -288,6 +290,7 @@ export function mapPullRequest(
     reviewThreads,
     conversationComments,
     reviewRequestedAt: computeReviewRequestedAt(node, myLogin),
+    authorCanMerge: ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(node.authorAssociation ?? 'OWNER'),
     hasPendingReviewRequest: (node.reviewRequests?.totalCount ?? 0) > 0,
     readyForReviewAt: computeReadyForReviewAt(node),
     mentionsAt: computeMentionsAt(

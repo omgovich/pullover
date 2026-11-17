@@ -43,6 +43,7 @@ export const DETAILS_QUERY = `
         isInMergeQueue
         bodyText
         author { login avatarUrl }
+        authorAssociation
         repository { nameWithOwner }
         reviews(last: 50) {
           nodes { author { __typename login } state submittedAt bodyText }
