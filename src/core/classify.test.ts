@@ -354,6 +354,30 @@ describe('classify — approved pull requests the author cannot merge', () => {
     expect(classify(pr, ctx()).category).toBe('waiting')
   })
 
+  it('waits on the author while another reviewer asks for changes', () => {
+    const pr = approved({
+      reviews: [
+        makeReview(ME, APPROVED_AT, { state: 'APPROVED' }),
+        makeReview('carol', '2026-08-04T10:00:00Z', { state: 'CHANGES_REQUESTED' }),
+      ],
+    })
+    expect(classify(pr, ctx()).category).toBe('waiting')
+  })
+
+  it('leaves it to auto-merge once that is armed', () => {
+    expect(classify(approved({ hasAutoMerge: true }), ctx()).category).toBe('waiting')
+  })
+
+  it('waits once my approval is dismissed', () => {
+    const pr = approved({
+      reviews: [
+        makeReview(ME, APPROVED_AT, { state: 'APPROVED' }),
+        makeReview(ME, '2026-08-04T10:00:00Z', { state: 'DISMISSED' }),
+      ],
+    })
+    expect(classify(pr, ctx()).category).toBe('waiting')
+  })
+
   it('waits when I asked for changes after approving', () => {
     const pr = approved({
       reviews: [

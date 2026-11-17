@@ -141,7 +141,7 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
   }
 
   // In my repository an outside author cannot merge, so after my approval the merge is mine,
-  // unless a conflict or red CI puts it back on them.
+  // unless a conflict, red CI or another reviewer's change request puts it back on them.
   const approval = myStandingApproval(pr, myLogin)
   if (
     approval !== null &&
@@ -150,6 +150,8 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
     compareIso(pr.lastCommitPushedAt, approval.submittedAt) <= 0 &&
     pr.mergeable !== 'CONFLICTING' &&
     pr.ciStatus !== 'failure' &&
+    oldestBlockingChangeRequestAt(pr) === null &&
+    !pr.hasAutoMerge &&
     isOn('approved-not-merged')
   ) {
     return {
