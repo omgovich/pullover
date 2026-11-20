@@ -1,4 +1,4 @@
-import { hasNewReplyInMyThreadsSince } from '@core/threads'
+import { hasNewReplyInMyThreadsSince, prCommentsByOthersAfter } from '@core/threads'
 import type { PullRequest, Snooze } from '@shared/types'
 
 /**
@@ -17,6 +17,7 @@ export function isSnoozeActive(
     case 'until-activity':
       return (
         !hasNewReplyInMyThreadsSince(pr, myLogin, snooze.snoozedAt) &&
+        prCommentsByOthersAfter(pr, myLogin, snooze.snoozedAt).length === 0 &&
         pr.lastCommitPushedAt <= snooze.snoozedAt
       )
   }
