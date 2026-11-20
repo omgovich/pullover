@@ -7,6 +7,7 @@ import {
   myLatestReview,
   oldestBlockingChangeRequestAt,
   oldestPendingReplyAt,
+  prCommentsSinceMyLastWordAt,
   threadsAwaitingMyReply,
   unansweredPrCommentsAt,
   unansweredThreads,
@@ -194,6 +195,17 @@ function classifyReviewPr(pr: PullRequest, myLogin: string, isOn: IsOn): Verdict
         reason: 'Mentioned',
         waitingSince: unanswered ?? latestMention,
       }
+    }
+  }
+
+  // An author often answers a review in one comment rather than thread by thread.
+  const comments = prCommentsSinceMyLastWordAt(pr, myLogin)
+  if (comments.length > 0 && isOn('review-comments')) {
+    const word = pluralize(comments.length, 'new comment', 'new comments')
+    return {
+      category: 'new-replies',
+      reason: `${comments.length} ${word}`,
+      waitingSince: comments[0] ?? pr.updatedAt,
     }
   }
 

@@ -85,14 +85,10 @@ export function myLastActivityAt(pr: PullRequest, myLogin: string): string | nul
 
 /**
  * When others wrote to the whole pull request — a review's text or a
- * conversation comment — after the user's last word and last push, oldest
- * first. Bots are left out: review bots comment on every push and would never
- * let the pull request go.
+ * conversation comment — after `since`, oldest first. Bots are left out:
+ * review bots comment on every push and would never let the pull request go.
  */
-export function unansweredPrCommentsAt(pr: PullRequest, myLogin: string): string[] {
-  const lastActivity = myLastActivityAt(pr, myLogin) ?? pr.lastCommitPushedAt
-  const since =
-    compareIso(lastActivity, pr.lastCommitPushedAt) > 0 ? lastActivity : pr.lastCommitPushedAt
+export function prCommentsByOthersAfter(pr: PullRequest, myLogin: string, since: string): string[] {
   const byOthers = (c: { authorLogin: string; authorIsBot?: boolean }): boolean =>
     c.authorLogin !== myLogin && !c.authorIsBot
 
@@ -104,6 +100,23 @@ export function unansweredPrCommentsAt(pr: PullRequest, myLogin: string): string
   const commentsAt = pr.conversationComments.filter(byOthers).map((c) => c.createdAt)
 
   return [...reviewsAt, ...commentsAt].filter((at) => compareIso(at, since) > 0).sort(compareIso)
+}
+
+/** Comments on the user's own pull request after their last word and last push. */
+export function unansweredPrCommentsAt(pr: PullRequest, myLogin: string): string[] {
+  const lastActivity = myLastActivityAt(pr, myLogin) ?? pr.lastCommitPushedAt
+  const since =
+    compareIso(lastActivity, pr.lastCommitPushedAt) > 0 ? lastActivity : pr.lastCommitPushedAt
+  return prCommentsByOthersAfter(pr, myLogin, since)
+}
+
+/**
+ * Comments on somebody else's pull request after the user's last word there,
+ * or none if they never spoke. A push does not answer them, unlike on their own.
+ */
+export function prCommentsSinceMyLastWordAt(pr: PullRequest, myLogin: string): string[] {
+  const lastActivity = myLastActivityAt(pr, myLogin)
+  return lastActivity === null ? [] : prCommentsByOthersAfter(pr, myLogin, lastActivity)
 }
 
 function oldestIso(dates: string[]): string | null {

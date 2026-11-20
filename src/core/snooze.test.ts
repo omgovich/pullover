@@ -1,7 +1,7 @@
 import { isSnoozeActive } from '@core/snooze'
 import type { Snooze } from '@shared/types'
 import { describe, expect, it } from 'vitest'
-import { makeComment, makePullRequest, makeThread } from './test-factory'
+import { makeComment, makePullRequest, makeReview, makeThread } from './test-factory'
 
 const ME = 'vlad'
 const NOW = '2026-08-10T12:00:00Z'
@@ -59,6 +59,34 @@ describe('isSnoozeActive — until-activity', () => {
   it('wakes on a commit newer than the snooze', () => {
     const pr = makePullRequest({ lastCommitPushedAt: '2026-08-10T11:00:00Z' })
     expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(false)
+  })
+
+  it('wakes on a comment in the conversation', () => {
+    const pr = makePullRequest({
+      lastCommitPushedAt: '2026-08-09T10:00:00Z',
+      conversationComments: [makeComment('alice', '2026-08-10T11:00:00Z')],
+    })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(false)
+  })
+
+  it('wakes on a review left as a comment', () => {
+    const pr = makePullRequest({
+      lastCommitPushedAt: '2026-08-09T10:00:00Z',
+      reviews: [makeReview('alice', '2026-08-10T11:00:00Z', { bodyText: 'Pushed a fix' })],
+    })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(false)
+  })
+
+  it('stays asleep for a bot, my own comment, or one older than the snooze', () => {
+    const pr = makePullRequest({
+      lastCommitPushedAt: '2026-08-09T10:00:00Z',
+      conversationComments: [
+        { ...makeComment('codecov', '2026-08-10T11:00:00Z'), authorIsBot: true },
+        makeComment(ME, '2026-08-10T11:00:00Z'),
+        makeComment('alice', '2026-08-09T11:00:00Z'),
+      ],
+    })
+    expect(isSnoozeActive(pr, snooze, ME, NOW)).toBe(true)
   })
 
   it('stays asleep when the only new comment is my own', () => {

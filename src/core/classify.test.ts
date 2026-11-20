@@ -263,6 +263,87 @@ describe('classify — reviewer branch', () => {
   })
 })
 
+describe('classify — comments on a pull request I reviewed', () => {
+  const muting = (...mutedTriggers: Trigger[]): ClassifyContext => ({ ...ctx(), mutedTriggers })
+  // The author pushed a fix, then answered the review in the conversation
+  // rather than in its threads.
+  const answeredInConversation = {
+    buckets: ['involves' as const],
+    reviews: [makeReview(ME, '2026-08-02T10:00:00Z')],
+    reviewThreads: [makeThread({ comments: [makeComment(ME, '2026-08-02T10:00:00Z')] })],
+    lastCommitPushedAt: '2026-08-03T10:00:00Z',
+    conversationComments: [makeComment('alice', '2026-08-03T11:00:00Z')],
+  }
+
+  it('shows a comment written after my review', () => {
+    const result = classify(makePullRequest(answeredInConversation), muting('new-commits'))
+    expect(result.category).toBe('new-replies')
+    expect(result.reason).toBe('1 new comment')
+    expect(result.waitingSince).toBe('2026-08-03T11:00:00Z')
+  })
+
+  it('counts a commented review by another reviewer', () => {
+    const pr = makePullRequest({
+      ...answeredInConversation,
+      reviews: [
+        ...answeredInConversation.reviews,
+        makeReview('bob', '2026-08-04T10:00:00Z', { bodyText: 'Agreed' }),
+      ],
+    })
+    expect(classify(pr, muting('new-commits')).reason).toBe('2 new comments')
+  })
+
+  it('keeps new commits ahead of a comment', () => {
+    expect(classify(makePullRequest(answeredInConversation), ctx()).reason).toBe('New commits')
+  })
+
+  it('ignores a comment I already answered', () => {
+    const pr = makePullRequest({
+      ...answeredInConversation,
+      conversationComments: [
+        ...answeredInConversation.conversationComments,
+        makeComment(ME, '2026-08-03T12:00:00Z'),
+      ],
+    })
+    expect(classify(pr, muting('new-commits')).reason).toBe('Waiting on author')
+  })
+
+  it('ignores bots', () => {
+    const pr = makePullRequest({
+      ...answeredInConversation,
+      conversationComments: [
+        { ...makeComment('codecov', '2026-08-03T11:00:00Z'), authorIsBot: true },
+      ],
+    })
+    expect(classify(pr, muting('new-commits')).reason).toBe('Waiting on author')
+  })
+
+  it('ignores a pull request I never took part in', () => {
+    const pr = makePullRequest({
+      buckets: ['involves'],
+      conversationComments: [makeComment('alice', '2026-08-03T11:00:00Z')],
+    })
+    expect(classify(pr, ctx()).category).toBe('hidden')
+  })
+
+  it('leaves a mention in Mentioned', () => {
+    const pr = makePullRequest({
+      ...answeredInConversation,
+      buckets: ['involves', 'mentions'],
+      mentionsAt: ['2026-08-03T11:00:00Z'],
+    })
+    expect(classify(pr, muting('new-commits')).category).toBe('mentioned')
+  })
+
+  it('leaves the pull request waiting on the author when muted', () => {
+    const result = classify(
+      makePullRequest(answeredInConversation),
+      muting('new-commits', 'review-comments'),
+    )
+    expect(result.reason).toBe('Waiting on author')
+  })
+})
+
 describe('classify — pull requests nobody asked me to review', () => {
   const unrequested = (overrides: Partial<PullRequest> = {}) =>
     makePullRequest({ repository: 'vlad/colord', buckets: ['owned'], ...overrides })
