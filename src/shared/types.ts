@@ -212,6 +212,7 @@ export type Trigger =
   | 'review-requested'
   | 're-review-requested'
   | 'new-replies'
+  | 'review-comments'
   | 'new-commits'
   | 'mentioned'
   | 'unrequested'
@@ -249,6 +250,12 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
     value: 'new-replies',
     label: 'New replies',
     description: 'Somebody answered a thread you are in.',
+    side: 'review',
+  },
+  {
+    value: 'review-comments',
+    label: 'New comments',
+    description: 'Somebody commented after you last spoke.',
     side: 'review',
   },
   {

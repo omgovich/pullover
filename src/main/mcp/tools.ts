@@ -31,7 +31,7 @@ Each section is longest-waiting first — except "waiting", which has nobody wai
 
 Categories, in the order the app shows them:
 - needs-review: somebody asked the user for review and they have not reviewed yet, or somebody opened it in a repository the user owns personally without asking anybody to review it, or the user approved it there, its author cannot merge it, and nothing is left for the author to fix: no newer commits, merge conflict, red CI or change request.
-- new-replies: somebody replied in a review thread the user took part in; the reason says how many.
+- new-replies: somebody replied in a review thread the user took part in, or commented on a pull request the user reviewed or commented on after their last word there; the reason says how many replies or comments.
 - re-review: the user reviewed already and the author pushed new commits or asked again.
 - my-pr-action: the user's own pull request needs them — changes requested, open threads, new comments, red CI, merge conflicts, or approved and ready to merge; the reason says which.
 - mentioned: the user was @-mentioned and has not responded since.
@@ -138,7 +138,7 @@ export function registerTools(server: McpServer, deps: McpServerDeps): void {
           .max(24 * 14)
           .optional()
           .describe(
-            'Whole hours to park it for, 1 to 336. A park with hours ends on the clock alone — a reply or a new commit does not cut it short. Leave it out and it is parked with no deadline instead, until one of those wakes it.',
+            'Whole hours to park it for, 1 to 336. A park with hours ends on the clock alone — a reply, a comment or a new commit does not cut it short. Leave it out and it is parked with no deadline instead, until one of those wakes it.',
           ),
       },
       // Not idempotent: a repeat moves the deadline, or re-bases the wait on
