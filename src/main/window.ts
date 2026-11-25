@@ -83,8 +83,9 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
     skipTransformProcessType: true,
   })
 
-  // Let the popup take focus before binding it to the current Space.
-  // Keep the fullscreen-auxiliary bit so it still works over fullscreen apps.
+  // On macOS 27, clearing the all-Spaces flag right after `show()` can pull the
+  // user back to the previous Space before the popup lands, so wait for `focus`.
+  // Keep `visibleOnFullScreen` true so the popup still opens over fullscreen apps.
   win.once('focus', () => {
     win.setVisibleOnAllWorkspaces(false, {
       visibleOnFullScreen: true,
