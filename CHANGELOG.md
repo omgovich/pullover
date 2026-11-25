@@ -1,5 +1,11 @@
 # pullover
 
+## 0.21.1
+
+### Patch Changes
+
+- 🪟 **No more jumping Spaces** — opening Pullover no longer switches you back to the Space where it was last open, including over a full-screen app.
+
 ## 0.21.0
 
 ### Minor Changes
