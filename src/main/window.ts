@@ -13,8 +13,6 @@ export function createPopupWindow(): BrowserWindow {
     height: CARD_HEIGHT,
     show: false,
     frame: false,
-    // A non-activating panel can take keyboard focus without switching Spaces.
-    type: 'panel',
     // Transparent so the shell's rounded corners and drop shadow composite
     // over the desktop instead of painting as an opaque rectangle. A
     // transparent BrowserWindow can't be resized on macOS, which is fine
@@ -77,7 +75,7 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
 
   win.setPosition(x, y, false)
 
-  // On only for the show, so the window lands on the Space the user is on.
+  // Enable all Spaces while the popup opens so it lands on the current Space.
   // Without `skipTransformProcessType` Electron re-runs the process-type
   // transform, which blurs the popup into hiding itself (electron/electron#37875).
   win.setVisibleOnAllWorkspaces(true, {
@@ -86,12 +84,14 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
   })
 
   win.show()
+  win.focus()
 
-  // Off again straight after, so the popup belongs to this Space and leaves
-  // with it. `visibleOnFullScreen` must stay true: omitted, it clears the
-  // fullscreen-auxiliary bit that `fullscreenable: false` set.
-  win.setVisibleOnAllWorkspaces(false, {
-    visibleOnFullScreen: true,
-    skipTransformProcessType: true,
+  // Let the popup take focus before binding it to the current Space.
+  // Keep the fullscreen-auxiliary bit so it still works over fullscreen apps.
+  win.once('focus', () => {
+    win.setVisibleOnAllWorkspaces(false, {
+      visibleOnFullScreen: true,
+      skipTransformProcessType: true,
+    })
   })
 }

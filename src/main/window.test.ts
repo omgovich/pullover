@@ -1,17 +1,11 @@
-import { BrowserWindow, type Rectangle } from 'electron'
+import { EventEmitter } from 'node:events'
+import type { BrowserWindow, Rectangle } from 'electron'
 import { describe, expect, it, vi } from 'vitest'
-import { createPopupWindow, togglePopup } from './window'
+import { togglePopup } from './window'
 
 // A real BrowserWindow needs a running Electron, so togglePopup gets a fake.
 vi.mock('electron', () => ({
-  BrowserWindow: vi.fn(
-    class {
-      webContents = { setWindowOpenHandler: vi.fn() }
-      on = vi.fn()
-      loadURL = vi.fn()
-      loadFile = vi.fn()
-    },
-  ),
+  BrowserWindow: class {},
   screen: {
     getDisplayNearestPoint: () => ({ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }),
   },
@@ -23,25 +17,35 @@ const TRAY_BOUNDS: Rectangle = { x: 1600, y: 0, width: 24, height: 24 }
 /** Records calls in order, since the order is the part that matters here. */
 function fakeWindow(visible: boolean) {
   const calls: unknown[] = []
-  const win = {
+  const win = Object.assign(new EventEmitter(), {
     isVisible: () => visible,
     hide: () => calls.push('hide'),
     setPosition: () => {},
     setVisibleOnAllWorkspaces: (visible: boolean, options?: unknown) =>
       calls.push(['workspaces', visible, options]),
     show: () => calls.push('show'),
-  }
-  return { win: win as unknown as BrowserWindow, calls }
+    focus: () => calls.push('focus'),
+  })
+  return { win: win as unknown as BrowserWindow, calls, gainFocus: () => win.emit('focus') }
 }
 
 describe('togglePopup', () => {
-  it('turns the all-Spaces flag on for the show and off again after', () => {
+  it('keeps the all-Spaces flag on until the popup has focus', () => {
     const OPTIONS = { visibleOnFullScreen: true, skipTransformProcessType: true }
-    const { win, calls } = fakeWindow(false)
+    const { win, calls, gainFocus } = fakeWindow(false)
 
     togglePopup(win, TRAY_BOUNDS)
 
-    expect(calls).toEqual([['workspaces', true, OPTIONS], 'show', ['workspaces', false, OPTIONS]])
+    expect(calls).toEqual([['workspaces', true, OPTIONS], 'show', 'focus'])
+
+    gainFocus()
+
+    expect(calls).toEqual([
+      ['workspaces', true, OPTIONS],
+      'show',
+      'focus',
+      ['workspaces', false, OPTIONS],
+    ])
   })
 
   it('hides an open popup without touching its Space behaviour', () => {
@@ -50,13 +54,5 @@ describe('togglePopup', () => {
     togglePopup(win, TRAY_BOUNDS)
 
     expect(calls).toEqual(['hide'])
-  })
-})
-
-describe('createPopupWindow', () => {
-  it('uses a non-activating macOS panel', () => {
-    createPopupWindow()
-
-    expect(BrowserWindow).toHaveBeenCalledWith(expect.objectContaining({ type: 'panel' }))
   })
 })
