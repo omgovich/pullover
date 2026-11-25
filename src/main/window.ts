@@ -75,7 +75,7 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
 
   win.setPosition(x, y, false)
 
-  // On only for the show, so the window lands on the Space the user is on.
+  // Enable all Spaces while the popup opens so it lands on the current Space.
   // Without `skipTransformProcessType` Electron re-runs the process-type
   // transform, which blurs the popup into hiding itself (electron/electron#37875).
   win.setVisibleOnAllWorkspaces(true, {
@@ -83,14 +83,16 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
     skipTransformProcessType: true,
   })
 
+  // On macOS 27, clearing the all-Spaces flag right after `show()` can pull the
+  // user back to the previous Space before the popup lands, so wait for `focus`.
+  // Keep `visibleOnFullScreen` true so the popup still opens over fullscreen apps.
+  win.once('focus', () => {
+    win.setVisibleOnAllWorkspaces(false, {
+      visibleOnFullScreen: true,
+      skipTransformProcessType: true,
+    })
+  })
+
   win.show()
   win.focus()
-
-  // Off again straight after, so the popup belongs to this Space and leaves
-  // with it. `visibleOnFullScreen` must stay true: omitted, it clears the
-  // fullscreen-auxiliary bit that `fullscreenable: false` set.
-  win.setVisibleOnAllWorkspaces(false, {
-    visibleOnFullScreen: true,
-    skipTransformProcessType: true,
-  })
 }
