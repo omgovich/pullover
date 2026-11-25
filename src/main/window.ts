@@ -83,9 +83,6 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
     skipTransformProcessType: true,
   })
 
-  win.show()
-  win.focus()
-
   // Let the popup take focus before binding it to the current Space.
   // Keep the fullscreen-auxiliary bit so it still works over fullscreen apps.
   win.once('focus', () => {
@@ -94,4 +91,7 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
       skipTransformProcessType: true,
     })
   })
+
+  win.show()
+  win.focus()
 }

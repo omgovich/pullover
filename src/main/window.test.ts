@@ -48,6 +48,24 @@ describe('togglePopup', () => {
     ])
   })
 
+  it('clears the all-Spaces flag even if showing the popup gives it focus immediately', () => {
+    const OPTIONS = { visibleOnFullScreen: true, skipTransformProcessType: true }
+    const { win, calls, gainFocus } = fakeWindow(false)
+    vi.spyOn(win, 'show').mockImplementation(() => {
+      calls.push('show')
+      gainFocus()
+    })
+
+    togglePopup(win, TRAY_BOUNDS)
+
+    expect(calls).toEqual([
+      ['workspaces', true, OPTIONS],
+      'show',
+      ['workspaces', false, OPTIONS],
+      'focus',
+    ])
+  })
+
   it('hides an open popup without touching its Space behaviour', () => {
     const { win, calls } = fakeWindow(true)
 
