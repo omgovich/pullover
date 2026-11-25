@@ -13,6 +13,8 @@ export function createPopupWindow(): BrowserWindow {
     height: CARD_HEIGHT,
     show: false,
     frame: false,
+    // A non-activating panel can take keyboard focus without switching Spaces.
+    type: 'panel',
     // Transparent so the shell's rounded corners and drop shadow composite
     // over the desktop instead of painting as an opaque rectangle. A
     // transparent BrowserWindow can't be resized on macOS, which is fine
@@ -84,7 +86,6 @@ export function togglePopup(win: BrowserWindow, trayBounds: Rectangle): void {
   })
 
   win.show()
-  win.focus()
 
   // Off again straight after, so the popup belongs to this Space and leaves
   // with it. `visibleOnFullScreen` must stay true: omitted, it clears the

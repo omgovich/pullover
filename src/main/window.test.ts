@@ -1,10 +1,17 @@
-import type { BrowserWindow, Rectangle } from 'electron'
+import { BrowserWindow, type Rectangle } from 'electron'
 import { describe, expect, it, vi } from 'vitest'
-import { togglePopup } from './window'
+import { createPopupWindow, togglePopup } from './window'
 
 // A real BrowserWindow needs a running Electron, so togglePopup gets a fake.
 vi.mock('electron', () => ({
-  BrowserWindow: class {},
+  BrowserWindow: vi.fn(
+    class {
+      webContents = { setWindowOpenHandler: vi.fn() }
+      on = vi.fn()
+      loadURL = vi.fn()
+      loadFile = vi.fn()
+    },
+  ),
   screen: {
     getDisplayNearestPoint: () => ({ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }),
   },
@@ -23,7 +30,6 @@ function fakeWindow(visible: boolean) {
     setVisibleOnAllWorkspaces: (visible: boolean, options?: unknown) =>
       calls.push(['workspaces', visible, options]),
     show: () => calls.push('show'),
-    focus: () => calls.push('focus'),
   }
   return { win: win as unknown as BrowserWindow, calls }
 }
@@ -35,12 +41,7 @@ describe('togglePopup', () => {
 
     togglePopup(win, TRAY_BOUNDS)
 
-    expect(calls).toEqual([
-      ['workspaces', true, OPTIONS],
-      'show',
-      'focus',
-      ['workspaces', false, OPTIONS],
-    ])
+    expect(calls).toEqual([['workspaces', true, OPTIONS], 'show', ['workspaces', false, OPTIONS]])
   })
 
   it('hides an open popup without touching its Space behaviour', () => {
@@ -49,5 +50,13 @@ describe('togglePopup', () => {
     togglePopup(win, TRAY_BOUNDS)
 
     expect(calls).toEqual(['hide'])
+  })
+})
+
+describe('createPopupWindow', () => {
+  it('uses a non-activating macOS panel', () => {
+    createPopupWindow()
+
+    expect(BrowserWindow).toHaveBeenCalledWith(expect.objectContaining({ type: 'panel' }))
   })
 })
